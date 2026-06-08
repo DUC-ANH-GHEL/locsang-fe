@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	:root {
+		--bg-cream: #f6f2ea;
+		--bg-ink: #15161b;
+		--text-main: #1f2937;
+		--text-soft: #5b6475;
+		--brand: #e25544;
+		--brand-deep: #b93a2e;
+		--accent: #f2b545;
+		--surface: #ffffff;
+	}
+
+	html,
+	body,
+	#root {
+		min-height: 100%;
+	}
+
+	body {
+		font-family: 'Be Vietnam Pro', sans-serif;
+		color: var(--text-main);
+		background:
+			radial-gradient(1200px 600px at 10% -10%, #f8e5cf 0%, transparent 45%),
+			radial-gradient(1000px 500px at 100% 0%, #fde8da 0%, transparent 45%),
+			var(--bg-cream);
+	}
+
+	h1,
+	h2,
+	h3 {
+		font-family: 'Fraunces', serif;
+		letter-spacing: -0.01em;
+	}
+}
+
+@layer components {
+	.locsang-container {
+		@apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+	}
+
+	.locsang-card {
+		@apply rounded-2xl border border-black/5 bg-white shadow-sm;
+	}
+
+	.locsang-cta {
+		@apply inline-flex items-center justify-center rounded-xl bg-[#e25544] px-5 py-3 font-semibold text-white transition hover:bg-[#b93a2e];
+	}
+
+	.locsang-ghost {
+		@apply inline-flex items-center justify-center rounded-xl border border-black/10 bg-white/80 px-5 py-3 font-semibold text-slate-700 transition hover:bg-white;
+	}
+}
