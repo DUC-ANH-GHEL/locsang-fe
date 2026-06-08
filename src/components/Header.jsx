@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { FaShoppingCart, FaTrash, FaRegUserCircle } from 'react-icons/fa';
+import { Search } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useCart } from '../contexts/CartContext';
 import { useStorefrontAuth } from '../contexts/StorefrontAuthContext';
@@ -14,13 +15,13 @@ const formatVnd = (value) =>
   }).format(Number(value || 0));
 
 const DEFAULT_HEADER_CONTENT = {
-  header_brand_name: 'Lộc Sang',
-  header_brand_tagline: 'Mua sắm chọn lọc, giao nhanh toàn quốc',
-  header_nav_shop_text: 'Cửa hàng',
-  header_nav_new_arrivals_text: 'Hàng mới về',
-  header_nav_tips_text: 'Mẹo chăm sóc',
-  header_nav_shorts_text: 'Lộc Sang Shorts',
-  header_nav_orders_text: 'Đơn hàng',
+  header_brand_name: 'L?c Sang',
+  header_brand_tagline: 'Ph? t?ng v? nh?t Yanmar ch?nh h?ng',
+  header_nav_shop_text: 'C?a h?ng',
+  header_nav_new_arrivals_text: 'H?ng m?i v?',
+  header_nav_tips_text: 'C?m nang',
+  header_nav_shorts_text: 'L?c Sang Shorts',
+  header_nav_orders_text: '??n h?ng',
 };
 
 const resolveStorefrontAvatar = (user) => {
@@ -231,37 +232,46 @@ const Header = () => {
       </div>
 
       <div
-        className="md:hidden border-b border-[#ece2d6] bg-[#fff9f0] px-4 pb-2 shadow-[0_8px_20px_rgba(58,44,34,0.06)]"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.55rem)' }}
+        className="md:hidden border-b border-[#ededed] bg-white px-4 pb-3 shadow-[0_4px_14px_rgba(0,0,0,0.04)]"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.72rem)' }}
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-          <Link to="/" className="min-w-0 flex items-center gap-2.5">
-            <img src={logo_url} alt="Lộc Sang" className="h-9 w-9 rounded-full object-cover ring-1 ring-[#e9dfd4]" />
-            <div className="min-w-0 leading-tight">
-              <div className="truncate text-[1.32rem] font-extrabold tracking-[-0.01em] text-[#8a4f41]">{headerContent.header_brand_name}</div>
-              <div className="hidden truncate text-[8px] uppercase tracking-[0.14em] text-[#8a4f41]/60 min-[390px]:block">{headerContent.header_brand_tagline}</div>
-            </div>
+        <div className="mx-auto flex max-w-[944px] items-center justify-between gap-3">
+          <Link to="/" className="min-w-0 flex items-center">
+            <img
+              src="/locsang-home/brand-logo.png"
+              alt="Yanmar L?c Sang"
+              className="h-[3.55rem] w-auto object-contain max-[390px]:h-[2.95rem]"
+            />
           </Link>
 
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-5 max-[390px]:gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/products')}
+              className="inline-flex h-12 w-12 items-center justify-center text-[#d50918] active:scale-[0.98] max-[390px]:h-10 max-[390px]:w-10"
+              aria-label="T?m ki?m"
+            >
+              <Search size={38} strokeWidth={2.5} className="max-[390px]:h-8 max-[390px]:w-8" />
+            </button>
+
             <div className="relative" ref={mobileCartRef}>
               <button
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-[#8a4f41] transition hover:bg-[#f5ece1] active:scale-[0.98]"
+                className="relative inline-flex h-12 w-12 items-center justify-center text-[#d50918] active:scale-[0.98] max-[390px]:h-10 max-[390px]:w-10"
                 onClick={() => setCartOpen((v) => !v)}
-                aria-label="Giỏ hàng"
+                aria-label="Gi? h?ng"
               >
-                <FaShoppingCart size={15} className="cart-fly-target" />
+                <FaShoppingCart size={35} className="cart-fly-target max-[390px]:h-8 max-[390px]:w-8" />
                 {cartCount > 0 && (
-                  <span className="absolute -right-1 -top-1 inline-flex min-h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#e25544] px-1 text-[9px] font-bold leading-none text-white">
+                  <span className="absolute right-0 top-0 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#e30613] px-1 text-[10px] font-bold leading-none text-white">
                     {cartCount}
                   </span>
                 )}
               </button>
               {cartOpen && (
                 <div className="absolute right-0 mt-2 w-[min(92vw,20rem)] animate-fadeIn rounded-2xl border border-black/10 bg-white py-2 shadow-2xl z-50">
-                  <div className="border-b border-gray-100 px-4 py-2 text-base font-bold text-[#b93a2e]">Giỏ hàng</div>
+                  <div className="border-b border-gray-100 px-4 py-2 text-base font-bold text-[#d50918]">Gi? h?ng</div>
                   {cart.length === 0 ? (
-                    <div className="px-4 py-5 text-center text-sm text-gray-500">Chưa có sản phẩm nào</div>
+                    <div className="px-4 py-5 text-center text-sm text-gray-500">Ch?a c? s?n ph?m n?o</div>
                   ) : (
                     <>
                       <ul className="max-h-56 divide-y divide-gray-100 overflow-y-auto">
@@ -272,7 +282,7 @@ const Header = () => {
                               <div className="text-xs font-semibold text-gray-900 break-words leading-snug">{item.title}</div>
                               {item.variant_label && (
                                 <div className="mt-0.5 text-[11px] text-gray-500 break-words leading-snug">
-                                  Phân loại: <span className="font-medium text-gray-700">{item.variant_label}</span>
+                                  Ph?n lo?i: <span className="font-medium text-gray-700">{item.variant_label}</span>
                                 </div>
                               )}
                               <div className="text-[11px] text-gray-500">SL: {item.quantity} x {formatVnd(item.price)}</div>
@@ -294,50 +304,33 @@ const Header = () => {
                                 </button>
                               </div>
                             </div>
-                            <button className="p-1 text-red-500 hover:text-red-700" onClick={() => removeFromCart(item.item_key)} title="Xóa">
+                            <button className="p-1 text-red-500 hover:text-red-700" onClick={() => removeFromCart(item.item_key)} title="X?a">
                               <FaTrash />
                             </button>
                           </li>
                         ))}
                       </ul>
                       <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2">
-                        <span className="text-sm font-semibold text-gray-700">Tổng:</span>
-                        <span className="font-bold text-[#b93a2e]">{formatVnd(total)}</span>
+                        <span className="text-sm font-semibold text-gray-700">T?ng:</span>
+                        <span className="font-bold text-[#d50918]">{formatVnd(total)}</span>
                       </div>
                       <div className="flex gap-2 px-4 pb-2">
                         <button
-                          className="flex-1 rounded-xl bg-[#e25544] py-2 text-sm font-bold text-white transition hover:bg-[#b93a2e]"
+                          className="flex-1 rounded-xl bg-[#e30613] py-2 text-sm font-bold text-white transition hover:bg-[#ba0610]"
                           onClick={() => {
                             setCartOpen(false);
                             navigate('/checkout');
                           }}
                         >
-                          Thanh toán
+                          Thanh to?n
                         </button>
-                        <button className="rounded-xl bg-gray-200 px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-300" onClick={clearCart}>Xóa</button>
+                        <button className="rounded-xl bg-gray-200 px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-300" onClick={clearCart}>X?a</button>
                       </div>
                     </>
                   )}
                 </div>
               )}
             </div>
-
-            <Link
-              to={isAuthenticated ? '/account' : '/account/login'}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#8a4f41] transition hover:bg-[#f5ece1] active:scale-[0.98]"
-              aria-label="Tài khoản"
-            >
-              {isAuthenticated && avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={String(user?.full_name || 'Tài khoản')}
-                  className="h-[15px] w-[15px] rounded-full object-cover ring-1 ring-[#e9dfd4]"
-                  onError={() => setAvatarLoadFailed(true)}
-                />
-              ) : (
-                <FaRegUserCircle size={15} />
-              )}
-            </Link>
           </div>
         </div>
       </div>

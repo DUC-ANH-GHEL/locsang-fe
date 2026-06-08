@@ -24,7 +24,7 @@
     },
     {
       "src": "/api/(.*)",
-      "dest": "https://locsang-be.vercel.app/api/$1"
+      "dest": "https://locsang-be.cgnn.vn/api/$1"
     },
     {
       "src": "/(.*\\..*)",

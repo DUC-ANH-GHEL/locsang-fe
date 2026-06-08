@@ -26,7 +26,7 @@ export default async function handler(req, res) {
 
   const rawVersion = String(normalizeFirst(req.query?.v) || '').trim();
   const query = /^\d+$/.test(rawVersion) ? `?v=${rawVersion}` : '';
-  const backendBase = String(process.env.SHARE_PROXY_BACKEND_BASE_URL || 'https://locsang-be.vercel.app').replace(/\/+$/, '');
+  const backendBase = String(process.env.SHARE_PROXY_BACKEND_BASE_URL || 'https://locsang-be.cgnn.vn').replace(/\/+$/, '');
   const upstreamUrl = `${backendBase}/api/tips/${encodeURIComponent(slug)}/share${query}`;
   const requestProto = normalizeHeaderValue(req.headers['x-forwarded-proto'], 'https');
   const requestHost = normalizeHeaderValue(req.headers['x-forwarded-host'] || req.headers.host, 'locsang.shop');

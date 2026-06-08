@@ -80,7 +80,7 @@ const TipDetail = () => {
   const shareSiteBase = (typeof window !== 'undefined' && window.location?.origin
     ? window.location.origin
     : 'https://locsang.shop').replace(/\/+$/, '');
-  const backendShareBase = 'https://locsang-be.vercel.app';
+  const backendShareBase = 'https://locsang-be.cgnn.vn';
   const shareVersionSeed = String(item.updated_at || item.published_at || item.created_at || '');
   const shareVersion = Date.parse(shareVersionSeed);
   const shareQuery = Number.isFinite(shareVersion) ? `?v=${shareVersion}` : '';
