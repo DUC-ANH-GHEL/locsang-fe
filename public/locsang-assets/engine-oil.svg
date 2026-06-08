@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="720" viewBox="0 0 720 720" role="img" aria-label="Yanmar engine oil 10W-30">
+  <defs>
+    <linearGradient id="can" x1="130" x2="590" y1="100" y2="650" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d8d8d8"/>
+      <stop offset=".45" stop-color="#8e8e8e"/>
+      <stop offset="1" stop-color="#d4d4d4"/>
+    </linearGradient>
+    <linearGradient id="red" x1="180" x2="535" y1="310" y2="560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f01826"/>
+      <stop offset="1" stop-color="#b90010"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity=".18"/>
+    </filter>
+  </defs>
+  <rect width="720" height="720" fill="#fff"/>
+  <g filter="url(#shadow)">
+    <path d="M214 150c0-34 20-54 55-54h178c36 0 57 21 57 57v42h50c54 0 84 31 84 86v286c0 54-30 85-84 85H183c-58 0-91-33-91-91V254c0-57 32-91 91-91h31v-13Z" fill="url(#can)"/>
+    <rect x="266" y="70" width="128" height="54" rx="12" fill="#e21a26"/>
+    <rect x="282" y="52" width="96" height="34" rx="10" fill="#f13a41"/>
+    <path d="M468 204h82c30 0 50 20 50 50v18c0 29-19 49-48 49h-80c-29 0-48-19-48-48v-22c0-28 17-47 44-47Zm17 38c-13 0-22 9-22 22v3c0 12 9 20 22 20h49c13 0 22-9 22-22v-2c0-13-9-21-22-21h-49Z" fill="#f4f4f4" opacity=".9"/>
+    <path d="M190 286h321c23 0 39 16 39 39v221c0 22-16 38-39 38H190c-23 0-39-16-39-39V325c0-23 16-39 39-39Z" fill="#f9f9f9"/>
+    <path d="M151 442h399v103c0 23-16 39-39 39H190c-23 0-39-16-39-39V442Z" fill="url(#red)"/>
+    <path d="M151 402h399v57l-200 62-199-62v-57Z" fill="#d90616"/>
+    <text x="224" y="358" fill="#c90012" font-family="Arial Black, Arial, sans-serif" font-size="58" font-weight="900">YANMAR</text>
+    <text x="250" y="435" fill="#121212" font-family="Arial Black, Arial, sans-serif" font-size="70" font-weight="900">10W-30</text>
+    <text x="285" y="486" fill="#222" font-family="Arial, sans-serif" font-size="26" font-weight="700">API CI-4</text>
+    <g fill="#fff">
+      <path d="M266 498h165v23l-83 40-82-40v-23Z"/>
+      <path d="M297 514h102l-51 24-51-24Z" fill="#d90616"/>
+    </g>
+    <text x="250" y="548" fill="white" font-family="Arial Black, Arial, sans-serif" font-size="36" font-weight="900">YANMAR</text>
+    <text x="454" y="548" fill="white" font-family="Arial Black, Arial, sans-serif" font-size="46" font-weight="900">4L</text>
+  </g>
+</svg>

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="944" height="317" viewBox="0 0 944 317" role="img" aria-label="Phu tung va nhot Yanmar">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="944" y1="0" y2="317" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e30613"/>
+      <stop offset=".55" stop-color="#c90010"/>
+      <stop offset="1" stop-color="#f01424"/>
+    </linearGradient>
+  </defs>
+  <rect width="944" height="317" fill="url(#bg)"/>
+  <path d="M650 0h294v317H520L650 0Z" fill="#b90010" opacity=".26"/>
+  <path d="M830 32h114v24L810 142h-74L830 32ZM885 119h59v20l-132 82h-64l137-102Z" fill="#fff" opacity=".1"/>
+  <text x="38" y="88" fill="white" font-family="Arial Black, Arial, sans-serif" font-size="48" font-weight="900" font-style="italic">PHU TUNG &amp; NHOT</text>
+  <text x="38" y="140" fill="white" font-family="Arial Black, Arial, sans-serif" font-size="36" font-weight="900" font-style="italic">CHINH HANG YANMAR</text>
+  <g fill="white" font-family="Arial, sans-serif" font-size="22" font-weight="800">
+    <circle cx="50" cy="196" r="15"/><path d="M43 194l5 6 10-12" stroke="#e30613" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="78" y="204">CHINH HANG 100%</text>
+    <circle cx="50" cy="238" r="15"/><path d="M43 236l5 6 10-12" stroke="#e30613" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="78" y="246">BEN BI - HIEU SUAT CAO</text>
+    <circle cx="50" cy="280" r="15"/><path d="M43 278l5 6 10-12" stroke="#e30613" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="78" y="288">BAO VE DONG CO TOI UU</text>
+  </g>
+  <g transform="translate(388 50) scale(.34)"><image href="/locsang-assets/oil-filter.svg" width="640" height="640"/></g>
+  <g transform="translate(515 12) scale(.38)"><image href="/locsang-assets/hydraulic-oil.svg" width="620" height="720"/></g>
+  <g transform="translate(615 0) scale(.42)"><image href="/locsang-assets/engine-oil.svg" width="720" height="720"/></g>
+  <g transform="translate(748 44) scale(.33)"><image href="/locsang-assets/air-filter.svg" width="640" height="640"/></g>
+  <g transform="translate(520 205) scale(.34)"><image href="/locsang-assets/fan-belt.svg" width="720" height="420"/></g>
+  <g transform="translate(750 174) scale(.22)"><image href="/locsang-assets/bearing.svg" width="640" height="640"/></g>
+</svg>

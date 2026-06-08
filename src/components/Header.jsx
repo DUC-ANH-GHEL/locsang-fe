@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { FaShoppingCart, FaTrash, FaRegUserCircle } from 'react-icons/fa';
-import { Search } from 'lucide-react';
+import { ChevronLeft, Search } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useCart } from '../contexts/CartContext';
 import { useStorefrontAuth } from '../contexts/StorefrontAuthContext';
@@ -115,6 +115,7 @@ const Header = () => {
   const isTipsActive = location.pathname.startsWith('/tips');
   const isShortsActive = location.pathname.startsWith('/shorts');
   const isOrdersActive = location.pathname.startsWith('/account/orders');
+  const isProductDetailMobileHeader = /^\/products\/\d+/.test(location.pathname);
 
   return (
     <header className="fixed inset-x-0 top-0 z-50">
@@ -235,14 +236,35 @@ const Header = () => {
         className="md:hidden border-b border-[#ededed] bg-white px-4 pb-3 shadow-[0_4px_14px_rgba(0,0,0,0.04)]"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.72rem)' }}
       >
-        <div className="mx-auto flex max-w-[944px] items-center justify-between gap-3">
-          <Link to="/" className="min-w-0 flex items-center">
-            <img
-              src="/locsang-home/brand-logo.png"
-              alt="Yanmar L?c Sang"
-              className="h-[3.55rem] w-auto object-contain max-[390px]:h-[2.95rem]"
-            />
-          </Link>
+        <div className={`mx-auto flex max-w-[944px] items-center gap-3 ${isProductDetailMobileHeader ? 'justify-between' : 'justify-between'}`}>
+          {isProductDetailMobileHeader ? (
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="inline-flex h-12 w-12 shrink-0 items-center justify-center text-[#111] active:scale-[0.98] max-[390px]:h-10 max-[390px]:w-10"
+              aria-label="Quay lại"
+            >
+              <ChevronLeft size={42} strokeWidth={2.5} className="max-[390px]:h-9 max-[390px]:w-9" />
+            </button>
+          ) : (
+            <Link to="/" className="min-w-0 flex items-center">
+              <img
+                src="/locsang-assets/brand-logo.svg"
+                alt="Yanmar Lộc Sang"
+                className="h-[3.55rem] w-auto object-contain max-[390px]:h-[2.95rem]"
+              />
+            </Link>
+          )}
+
+          {isProductDetailMobileHeader && (
+            <Link to="/" className="min-w-0 flex flex-1 justify-center">
+              <img
+                src="/locsang-assets/brand-logo.svg"
+                alt="Yanmar Lộc Sang"
+                className="h-[3.5rem] w-auto object-contain max-[390px]:h-[2.85rem]"
+              />
+            </Link>
+          )}
 
           <div className="flex shrink-0 items-center gap-5 max-[390px]:gap-3">
             <button

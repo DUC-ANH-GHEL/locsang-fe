@@ -16,6 +16,7 @@ import { productService } from '../../services/productService';
 import { getProductPricing } from '../../utils/productPricing';
 import { useSEO } from '../../hooks/useSEO';
 import { useCart } from '../../contexts/CartContext';
+import { HERO_IMAGE, PRODUCT_PLACEHOLDER } from '../../data/yanmarStorefront';
 
 type HomeProduct = {
   id: string;
@@ -28,69 +29,6 @@ type HomeProduct = {
   discountLabel?: string;
   raw?: Product;
 };
-
-const ASSET_BASE = '/locsang-home';
-const HERO_IMAGE = `${ASSET_BASE}/hero-yanmar.png`;
-
-const STATIC_BEST_PRODUCTS: HomeProduct[] = [
-  {
-    id: 'oil-filter',
-    name: 'Lọc nhớt động cơ',
-    code: '119305-35151',
-    description: 'Dùng cho 3TNV88, 4TNV88',
-    price: 210000,
-    image: `${ASSET_BASE}/oil-filter.png`,
-  },
-  {
-    id: 'fan-belt',
-    name: 'Dây curoa quạt',
-    code: '119807-42290',
-    description: 'Dùng cho 3TNV84, 4TNV88',
-    price: 260000,
-    image: `${ASSET_BASE}/fan-belt.png`,
-  },
-  {
-    id: 'bearing',
-    name: 'Bạc đạn',
-    code: '129900-02840',
-    description: 'Dùng cho nhiều dòng',
-    price: 180000,
-    image: `${ASSET_BASE}/bearing.png`,
-  },
-];
-
-const STATIC_SALE_PRODUCTS: HomeProduct[] = [
-  {
-    id: 'engine-oil',
-    name: 'Nhớt động cơ 10W-30',
-    code: 'SAE 10W-30 CF-4',
-    description: 'Dùng cho động cơ Yanmar',
-    price: 425000,
-    originalPrice: 500000,
-    discountLabel: '-15%',
-    image: `${ASSET_BASE}/engine-oil.png`,
-  },
-  {
-    id: 'air-filter',
-    name: 'Lọc gió',
-    code: '119233-12580',
-    description: 'Dùng cho 3TNV88, 4TNV88',
-    price: 225000,
-    originalPrice: 250000,
-    discountLabel: '-10%',
-    image: `${ASSET_BASE}/air-filter.png`,
-  },
-  {
-    id: 'hydraulic-oil',
-    name: 'Nhớt thủy lực HM 46',
-    code: 'HM 46',
-    description: 'Dùng cho hệ thống thủy lực',
-    price: 440000,
-    originalPrice: 500000,
-    discountLabel: '-12%',
-    image: `${ASSET_BASE}/hydraulic-oil.png`,
-  },
-];
 
 const CATEGORY_LINKS = [
   { title: 'Phụ tùng', icon: Settings },
@@ -110,7 +48,7 @@ const formatVnd = (value: number) =>
 
 const toHomeProduct = (product: Product): HomeProduct => {
   const pricing = getProductPricing(product);
-  const image = product.thumbnail || product.images?.[0] || `${ASSET_BASE}/oil-filter.png`;
+  const image = product.thumbnail || product.images?.[0] || PRODUCT_PLACEHOLDER;
   const originalPrice = pricing.hasDiscount ? pricing.originalPrice : null;
   const discount =
     originalPrice && originalPrice > pricing.currentPrice
@@ -134,6 +72,8 @@ const Home = () => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useSEO({
     title: 'Phụ tùng và nhớt Yanmar chính hãng',
@@ -146,14 +86,23 @@ const Home = () => {
 
     const loadProducts = async () => {
       try {
+        setLoading(true);
         const data = await productService.getStorefrontProducts({
           status: 'active',
           limit: 24,
           page: 1,
         });
-        if (!cancelled) setProducts(Array.isArray(data) ? data : []);
+        if (!cancelled) {
+          setProducts(Array.isArray(data) ? data : []);
+          setLoadFailed(false);
+        }
       } catch {
-        if (!cancelled) setProducts([]);
+        if (!cancelled) {
+          setProducts([]);
+          setLoadFailed(true);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     };
 
@@ -166,13 +115,13 @@ const Home = () => {
   const apiProducts = useMemo(() => products.map(toHomeProduct), [products]);
 
   const bestProducts = useMemo(
-    () => (apiProducts.length ? apiProducts.slice(0, 3) : STATIC_BEST_PRODUCTS),
+    () => apiProducts.slice(0, 3),
     [apiProducts],
   );
 
   const saleProducts = useMemo(() => {
     const discounted = apiProducts.filter((product) => product.discountLabel).slice(0, 3);
-    return discounted.length >= 3 ? discounted : STATIC_SALE_PRODUCTS;
+    return discounted;
   }, [apiProducts]);
 
   const addProductToCart = (product: HomeProduct) => {
@@ -236,17 +185,21 @@ const Home = () => {
             title="Sản phẩm bán chạy"
             icon={<Flame size={24} fill="#e30613" className="text-[#e30613]" />}
             products={bestProducts}
+            loading={(loading || loadFailed) && products.length === 0}
             onAdd={addProductToCart}
             onBuy={buyNow}
           />
 
-          <ProductSection
-            title="Đang giảm giá"
-            icon={<Tag size={24} fill="#e30613" className="text-[#e30613]" />}
-            products={saleProducts}
-            onAdd={addProductToCart}
-            onBuy={buyNow}
-          />
+          {(saleProducts.length > 0 || ((loading || loadFailed) && products.length === 0)) && (
+            <ProductSection
+              title="Đang giảm giá"
+              icon={<Tag size={24} fill="#e30613" className="text-[#e30613]" />}
+              products={saleProducts}
+              loading={(loading || loadFailed) && products.length === 0}
+              onAdd={addProductToCart}
+              onBuy={buyNow}
+            />
+          )}
         </main>
       </div>
     </div>
@@ -257,11 +210,12 @@ type ProductSectionProps = {
   title: string;
   icon: React.ReactNode;
   products: HomeProduct[];
+  loading?: boolean;
   onAdd: (product: HomeProduct) => void;
   onBuy: (product: HomeProduct) => void;
 };
 
-const ProductSection = ({ title, icon, products, onAdd, onBuy }: ProductSectionProps) => (
+const ProductSection = ({ title, icon, products, loading = false, onAdd, onBuy }: ProductSectionProps) => (
   <section className="mt-5">
     <div className="mb-2.5 flex items-center justify-between">
       <div className="flex min-w-0 items-center gap-2">
@@ -280,11 +234,24 @@ const ProductSection = ({ title, icon, products, onAdd, onBuy }: ProductSectionP
     </div>
 
     <div className="grid grid-cols-3 gap-2.5 max-[390px]:gap-2">
-      {products.map((product) => (
-        <ProductCard key={product.id} product={product} onAdd={onAdd} onBuy={onBuy} />
-      ))}
+      {loading
+        ? Array.from({ length: 3 }).map((_, index) => <ProductCardSkeleton key={index} />)
+        : products.map((product) => (
+            <ProductCard key={product.id} product={product} onAdd={onAdd} onBuy={onBuy} />
+          ))}
     </div>
   </section>
+);
+
+const ProductCardSkeleton = () => (
+  <div className="rounded-xl border border-[#e3e3e3] bg-white p-2 shadow-[0_1px_5px_rgba(0,0,0,0.06)]">
+    <div className="h-[6rem] rounded-lg bg-[#f2f2f2] max-[390px]:h-[5rem]" />
+    <div className="mt-2 h-4 rounded bg-[#eeeeee]" />
+    <div className="mt-1 h-3 w-3/4 rounded bg-[#eeeeee]" />
+    <div className="mt-4 h-5 w-4/5 rounded bg-[#eeeeee]" />
+    <div className="mt-3 h-8 rounded-md bg-[#eeeeee]" />
+    <div className="mt-1.5 h-7 rounded-md bg-[#f5f5f5]" />
+  </div>
 );
 
 type ProductCardProps = {

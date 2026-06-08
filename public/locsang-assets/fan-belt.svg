@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="420" viewBox="0 0 720 420" role="img" aria-label="Yanmar fan belt">
+  <defs>
+    <filter id="shadow" x="-20%" y="-30%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#000" flood-opacity=".18"/>
+    </filter>
+  </defs>
+  <rect width="720" height="420" fill="#fff"/>
+  <g filter="url(#shadow)">
+    <path d="M137 233c-65-58-42-144 43-164 71-16 167 26 250 72 87 48 166 65 210 18 18-19 48 11 28 32-63 67-168 53-263 1-81-44-161-82-214-70-44 10-55 51-19 82 31 28 81 38 135 34 34-2 70-9 107-17 102-23 219-49 282 24 22 26-11 54-34 29-45-51-135-31-239-8-108 24-216 49-286-33Z" fill="#171717"/>
+    <path d="M168 211c-35-31-24-74 27-85 51-12 129 24 201 63 90 50 185 69 245 23" fill="none" stroke="#333" stroke-width="18" stroke-linecap="round"/>
+    <rect x="300" y="154" width="165" height="85" rx="10" transform="rotate(13 382 196)" fill="#d90616"/>
+    <text x="326" y="184" transform="rotate(13 326 184)" fill="white" font-family="Arial Black, Arial, sans-serif" font-size="24" font-weight="900">YANMAR</text>
+    <text x="316" y="216" transform="rotate(13 316 216)" fill="white" font-family="Arial, sans-serif" font-size="22" font-weight="700">25132-004800</text>
+  </g>
+</svg>
