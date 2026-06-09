@@ -34,7 +34,7 @@ type Props = {
   onRefresh: () => void;
 };
 
-const IMAGE_DEFAULT_URL = '/locsang-assets/brand-logo.svg';
+const IMAGE_DEFAULT_URL = '/favicon.svg';
 
 const formatCurrency = (value: unknown) => {
   const num = Number(value);

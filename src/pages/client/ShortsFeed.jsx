@@ -5,7 +5,7 @@ import { ChevronLeft, Play, Volume2, VolumeX } from 'lucide-react';
 import { homeContentService } from '../../services/homeContentService';
 import { useSEO } from '../../hooks/useSEO';
 
-const FALLBACK_COVER = '/locsang-assets/brand-logo.svg';
+const FALLBACK_COVER = '/favicon.svg';
 
 const parseYouTubeId = (rawUrl) => {
   const url = String(rawUrl || '').trim();

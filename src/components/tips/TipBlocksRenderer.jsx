@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-const FALLBACK_PRODUCT_IMAGE = '/locsang-assets/brand-logo.svg';
+const FALLBACK_PRODUCT_IMAGE = '/favicon.svg';
 
 const resolveVideoEmbedUrl = (url) => {
   const value = String(url || '').trim();

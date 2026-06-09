@@ -8,7 +8,7 @@ import { useSEO } from '../../hooks/useSEO';
 import { formatViDate } from '../../utils/dateTime';
 import TipBlocksRenderer, { extractTipPreviewText } from '../../components/tips/TipBlocksRenderer';
 
-const fallbackImage = '/locsang-assets/brand-logo.svg';
+const fallbackImage = '/favicon.svg';
 
 const formatDate = (value) => {
   return formatViDate(value, { dateStyle: 'full' });

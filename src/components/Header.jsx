@@ -268,7 +268,7 @@ const Header = () => {
       </div>
 
       <div
-        className="border-t-[3px] border-[#6b3a24] border-b border-[#ededed] bg-white px-5 md:hidden"
+        className="border-t-[3px] border-[#6b3a24] border-b border-[#ededed] bg-white pl-[3.25rem] pr-6 max-[390px]:pl-12 max-[390px]:pr-5 md:hidden"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.78rem)', paddingBottom: '0.78rem' }}
       >
         <div className="mx-auto flex h-[3.8rem] max-w-[944px] items-center justify-between gap-3">

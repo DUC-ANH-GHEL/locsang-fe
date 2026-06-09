@@ -1,7 +1,7 @@
 import { getProductPricing } from '../utils/productPricing';
 
 export const YANMAR_GENERATED_ASSET_BASE = '/locsang-assets';
-export const YANMAR_LOGO = `${YANMAR_GENERATED_ASSET_BASE}/brand-logo.svg`;
+export const YANMAR_LOGO = '/favicon.svg';
 export const PRODUCT_PLACEHOLDER = `${YANMAR_GENERATED_ASSET_BASE}/oil-filter.svg`;
 export const HERO_IMAGE = `${YANMAR_GENERATED_ASSET_BASE}/hero-yanmar.svg`;
 

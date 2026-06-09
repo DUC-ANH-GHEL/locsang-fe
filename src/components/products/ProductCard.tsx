@@ -8,7 +8,7 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  const imageUrl = product.images?.[0] || '/locsang-assets/brand-logo.svg';
+  const imageUrl = product.images?.[0] || '/favicon.svg';
 
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('vi-VN', {

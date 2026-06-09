@@ -675,7 +675,7 @@ const toDate = (value: any) => {
   return Number.isNaN(d.getTime()) ? new Date() : d;
 };
 
-const STORE_DEFAULT_IMAGE_URL = '/locsang-assets/brand-logo.svg';
+const STORE_DEFAULT_IMAGE_URL = '/favicon.svg';
 
 const isPlaceholderLikeImage = (url: string) => {
   const text = String(url || '').trim().toLowerCase();

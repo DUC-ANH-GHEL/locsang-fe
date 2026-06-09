@@ -9,7 +9,7 @@ import { useSEO } from '../../hooks/useSEO';
 const CHECKOUT_FORM_STORAGE_KEY = 'locsang_storefront_checkout_form_v1';
 const ORDER_HISTORY_STORAGE_KEY = 'locsang_storefront_order_history_v1';
 const ORDERS_PER_PAGE = 5;
-const IMAGE_DEFAULT_URL = '/locsang-assets/brand-logo.svg';
+const IMAGE_DEFAULT_URL = '/favicon.svg';
 
 const loadSavedReceiverPhone = () => {
   try {

@@ -6,7 +6,7 @@ import './ProductShowcaseTabs.css';
 import { FaShoppingCart } from 'react-icons/fa';
 import { useCart } from '../../contexts/CartContext';
 
-const IMAGE_DEFAULT_URL = '/locsang-assets/brand-logo.svg';
+const IMAGE_DEFAULT_URL = '/favicon.svg';
 
 function ProductShowcaseTabs() {
   const [modalImage, setModalImage] = useState(null);

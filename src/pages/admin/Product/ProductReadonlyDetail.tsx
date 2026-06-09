@@ -5,7 +5,7 @@ import Breadcrumb from '../../../components/layout/Breadcrumb';
 import { useToast } from '../../../components/Toast';
 import { productService } from '../../../services/productService';
 
-const fallbackImage = '/locsang-assets/brand-logo.svg';
+const fallbackImage = '/favicon.svg';
 
 const formatCurrency = (value: unknown) => {
   const number = Number(value);
