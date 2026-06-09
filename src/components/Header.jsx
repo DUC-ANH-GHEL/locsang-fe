@@ -283,13 +283,13 @@ const Header = () => {
             </button>
           ) : (
             <Link to="/" className="min-w-0 flex items-center">
-              <img src={BRAND_LOGO} alt="Yanmar Lộc Sang" className="h-[3.05rem] w-auto object-contain max-[390px]:h-[2.75rem]" />
+              <img src={BRAND_MARK} alt="Yanmar Lộc Sang" className="h-[3.05rem] w-auto object-contain max-[390px]:h-[2.75rem]" />
             </Link>
           )}
 
           {isProductDetailMobileHeader && (
-            <Link to="/" className="min-w-0 flex flex-1 justify-center">
-              <img src={BRAND_LOGO} alt="Yanmar Lộc Sang" className="h-[2.9rem] w-auto object-contain max-[390px]:h-[2.65rem]" />
+              <Link to="/" className="min-w-0 flex flex-1 justify-center">
+              <img src={BRAND_MARK} alt="Yanmar Lộc Sang" className="h-[2.9rem] w-auto object-contain max-[390px]:h-[2.65rem]" />
             </Link>
           )}
 
