@@ -7,7 +7,25 @@ import { useStorefrontAuth } from '../contexts/StorefrontAuthContext';
 import { homeContentService } from '../services/homeContentService';
 
 import { logo_url } from '../config/api';
-const BRAND_MARK = `${logo_url}?v=yanmar-2`;
+const BRAND_MARK = `${logo_url}?v=yanmar-3`;
+
+const BrandLockup = ({ compact = false }) => (
+  <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
+    <img
+      src={BRAND_MARK}
+      alt="Yanmar"
+      className={`${compact ? 'h-6 w-[2.65rem]' : 'h-8 w-[3.55rem]'} shrink-0 object-contain`}
+    />
+    <div className="flex flex-col items-start leading-[0.82] text-[#d50918]">
+      <span className={`${compact ? 'text-[19px]' : 'text-[25px]'} font-black italic uppercase tracking-normal`}>
+        YANMAR
+      </span>
+      <span className={`${compact ? 'text-[11px]' : 'text-[15px]'} font-black uppercase tracking-normal`}>
+        LỘC SANG
+      </span>
+    </div>
+  </div>
+);
 
 const formatVnd = (value) =>
   new Intl.NumberFormat('vi-VN', {
@@ -196,16 +214,10 @@ const Header = () => {
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 bg-white">
-      <div className="hidden border-t-[3px] border-[#6b3a24] border-b border-[#e5e5e5] bg-white md:block">
+      <div className="hidden border-b border-[#e5e5e5] bg-white md:block">
         <div className="mx-auto flex h-[4.75rem] max-w-[944px] items-center justify-between px-6">
           <Link to="/" className="flex min-w-0 items-center">
-            <div className="flex items-center gap-3">
-              <img src={BRAND_MARK} alt="Yanmar logo" className="h-[3.05rem] w-auto object-contain" />
-              <div className="ml-1 flex flex-col leading-[0.95]">
-                <span className="uppercase text-[22px] font-black italic tracking-tight text-[#d50918]">Yanmar</span>
-                <span className="-mt-0.5 uppercase text-[16px] font-black tracking-tight text-[#d50918]">Lộc Sang</span>
-              </div>
-            </div>
+            <BrandLockup />
           </Link>
 
           <nav className="flex items-center gap-7 text-[13px] font-bold text-[#444]">
@@ -268,10 +280,12 @@ const Header = () => {
       </div>
 
       <div
-        className="border-t-[3px] border-[#6b3a24] border-b border-[#ededed] bg-white pl-[3.25rem] pr-6 max-[390px]:pl-12 max-[390px]:pr-5 md:hidden"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.78rem)', paddingBottom: '0.78rem' }}
+        className={`border-b border-[#ededed] bg-white md:hidden ${
+          isProductDetailMobileHeader ? 'px-5' : 'px-[3.95rem] max-[390px]:px-[3.35rem]'
+        }`}
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
-        <div className="mx-auto flex h-[3.8rem] max-w-[944px] items-center justify-between gap-3">
+        <div className="mx-auto flex h-[5.05rem] max-w-[944px] items-center justify-between gap-5 max-[390px]:gap-4">
           {isProductDetailMobileHeader ? (
             <button
               type="button"
@@ -283,25 +297,13 @@ const Header = () => {
             </button>
           ) : (
             <Link to="/" className="min-w-0 flex items-center">
-              <div className="flex max-w-[11.5rem] items-center gap-2.5">
-                <img src={BRAND_MARK} alt="Yanmar Lộc Sang" className="h-[2.35rem] w-auto object-contain max-[390px]:h-[2.15rem]" />
-                <div className="flex flex-col leading-[0.9]">
-                  <span className="uppercase text-[24px] font-black italic tracking-tight text-[#d50918] max-[390px]:text-[21px]">Yanmar</span>
-                  <span className="-mt-0.5 uppercase text-[16px] font-black tracking-tight text-[#d50918] max-[390px]:text-[14px]">Lộc Sang</span>
-                </div>
-              </div>
+              <BrandLockup compact />
             </Link>
           )}
 
           {isProductDetailMobileHeader && (
               <Link to="/" className="min-w-0 flex flex-1 justify-center">
-              <div className="flex items-center gap-2">
-                <img src={BRAND_MARK} alt="Yanmar Lộc Sang" className="h-[2.05rem] w-auto object-contain" />
-                <div className="flex flex-col leading-[0.92]">
-                  <span className="uppercase text-[18px] font-black italic tracking-tight text-[#d50918]">Yanmar</span>
-                  <span className="-mt-0.5 uppercase text-[12px] font-black tracking-tight text-[#d50918]">Lộc Sang</span>
-                </div>
-              </div>
+              <BrandLockup compact />
             </Link>
           )}
 
@@ -309,19 +311,19 @@ const Header = () => {
             <button
               type="button"
               onClick={() => navigate('/products')}
-              className="inline-flex h-11 w-11 items-center justify-center text-[#d50918] active:scale-[0.98] max-[390px]:h-10 max-[390px]:w-10"
+              className="inline-flex h-10 w-10 items-center justify-center text-[#d50918] active:scale-[0.98]"
               aria-label="Tìm kiếm"
             >
-              <Search size={35} strokeWidth={2.5} className="max-[390px]:h-8 max-[390px]:w-8" />
+              <Search size={33} strokeWidth={2.5} />
             </button>
 
             <div className="relative" ref={mobileCartRef}>
               <button
-                className="relative inline-flex h-11 w-11 items-center justify-center text-[#d50918] active:scale-[0.98] max-[390px]:h-10 max-[390px]:w-10"
+                className="relative inline-flex h-10 w-10 items-center justify-center text-[#d50918] active:scale-[0.98]"
                 onClick={() => setCartOpen((v) => !v)}
                 aria-label="Giỏ hàng"
               >
-                <FaShoppingCart size={34} className="cart-fly-target max-[390px]:h-8 max-[390px]:w-8" />
+                <FaShoppingCart size={32} className="cart-fly-target" />
                 {cartCount > 0 && (
                   <span className="absolute right-0 top-0 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#e30613] px-1 text-[10px] font-bold leading-none text-white">
                     {cartCount}
