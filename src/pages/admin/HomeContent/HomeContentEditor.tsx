@@ -7,18 +7,7 @@ import {
   homeContentService,
 } from '../../../services/homeContentService';
 
-type EditableBannerField =
-  | 'hero_badge'
-  | 'hero_title'
-  | 'hero_headline_line1'
-  | 'hero_headline_line2'
-  | 'hero_subtitle'
-  | 'hero_description'
-  | 'hero_image_url'
-  | 'primary_cta_text'
-  | 'primary_cta_link'
-  | 'secondary_cta_text'
-  | 'secondary_cta_link';
+type EditableBannerField = 'hero_image_url';
 
 const fallbackBanner = '/locsang-assets/hero-yanmar.svg';
 const inputClass =
@@ -145,7 +134,7 @@ const HomeContentEditor = () => {
             Banner trang chủ
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Lưu nháp để kiểm tra, xuất bản để storefront lấy dữ liệu public mới.
+            Banner storefront chỉ là một ảnh. Admin thay ảnh, lưu nháp rồi xuất bản để trang chủ nhận ảnh mới.
           </p>
         </div>
 
@@ -183,50 +172,10 @@ const HomeContentEditor = () => {
         <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-gray-800 dark:text-gray-100">
             <Image size={18} />
-            Nội dung banner
+            Ảnh banner
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Nhãn nhỏ">
-              <input
-                value={draft.hero_badge}
-                onChange={(event) => updateField('hero_badge', event.target.value)}
-                className={inputClass}
-                placeholder="Yanmar Lộc Sang chính hãng"
-              />
-            </Field>
-            <Field label="Tên thương hiệu">
-              <input
-                value={draft.hero_title}
-                onChange={(event) => updateField('hero_title', event.target.value)}
-                className={inputClass}
-                placeholder="Lộc Sang"
-              />
-            </Field>
-            <Field label="Headline dòng 1">
-              <input
-                value={draft.hero_headline_line1}
-                onChange={(event) => updateField('hero_headline_line1', event.target.value)}
-                className={inputClass}
-                placeholder="Phụ tùng & nhớt"
-              />
-            </Field>
-            <Field label="Headline dòng 2">
-              <input
-                value={draft.hero_headline_line2}
-                onChange={(event) => updateField('hero_headline_line2', event.target.value)}
-                className={inputClass}
-                placeholder="chính hãng Yanmar"
-              />
-            </Field>
-            <Field label="Phụ đề">
-              <input
-                value={draft.hero_subtitle}
-                onChange={(event) => updateField('hero_subtitle', event.target.value)}
-                className={inputClass}
-                placeholder="Phụ tùng, lọc nhớt, lọc gió..."
-              />
-            </Field>
+          <div className="grid gap-4">
             <Field label="Ảnh banner">
               <div className="flex gap-2">
                 <input
@@ -246,47 +195,10 @@ const HomeContentEditor = () => {
                 </div>
               )}
             </Field>
-            <Field label="Mô tả" className="md:col-span-2">
-              <textarea
-                value={draft.hero_description}
-                onChange={(event) => updateField('hero_description', event.target.value)}
-                rows={4}
-                className={`${inputClass} min-h-[7rem] resize-y`}
-                placeholder="Mô tả ngắn cho banner"
-              />
-            </Field>
-            <Field label="Nút chính">
-              <input
-                value={draft.primary_cta_text}
-                onChange={(event) => updateField('primary_cta_text', event.target.value)}
-                className={inputClass}
-                placeholder="Mua ngay"
-              />
-            </Field>
-            <Field label="Link nút chính">
-              <input
-                value={draft.primary_cta_link}
-                onChange={(event) => updateField('primary_cta_link', event.target.value)}
-                className={inputClass}
-                placeholder="/products"
-              />
-            </Field>
-            <Field label="Nút phụ">
-              <input
-                value={draft.secondary_cta_text}
-                onChange={(event) => updateField('secondary_cta_text', event.target.value)}
-                className={inputClass}
-                placeholder="Liên hệ tư vấn"
-              />
-            </Field>
-            <Field label="Link nút phụ">
-              <input
-                value={draft.secondary_cta_link}
-                onChange={(event) => updateField('secondary_cta_link', event.target.value)}
-                className={inputClass}
-                placeholder="/contact"
-              />
-            </Field>
+
+            <p className="rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-500 dark:bg-gray-950 dark:text-gray-400">
+              Khuyến nghị dùng ảnh ngang tỉ lệ 944:317 để banner hiển thị sát mock trên mobile.
+            </p>
           </div>
         </section>
 
@@ -298,18 +210,9 @@ const HomeContentEditor = () => {
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-[#d70918] dark:border-gray-800">
               <img
                 src={previewImage}
-                alt={draft.hero_title || 'Banner Lộc Sang'}
+                alt="Banner Lộc Sang"
                 className="block aspect-[944/317] w-full object-cover"
               />
-            </div>
-            <div className="mt-4 space-y-1">
-              <div className="text-xs font-bold uppercase text-rose-600 dark:text-rose-300">
-                {draft.hero_badge}
-              </div>
-              <div className="text-lg font-black text-gray-900 dark:text-gray-100">
-                {draft.hero_headline_line1} {draft.hero_headline_line2}
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-300">{draft.hero_description}</p>
             </div>
           </section>
 
@@ -319,9 +222,9 @@ const HomeContentEditor = () => {
               {publishedAt ? `Đã xuất bản: ${new Date(publishedAt).toLocaleString('vi-VN')}` : 'Chưa có thời điểm xuất bản.'}
             </div>
             <div className="mt-3 rounded-xl bg-gray-50 p-3 dark:bg-gray-950">
-              Banner public hiện tại:{' '}
-              <span className="font-semibold text-gray-900 dark:text-gray-100">
-                {published?.hero_title || 'Lộc Sang'}
+              Ảnh public hiện tại:{' '}
+              <span className="break-all font-semibold text-gray-900 dark:text-gray-100">
+                {published?.hero_image_url || fallbackBanner}
               </span>
             </div>
           </section>

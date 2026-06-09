@@ -15,7 +15,7 @@ const ClientLayout = () => {
   return (
     <div className="min-h-screen">
       {!shouldHideHeaderFooter && <Header />}
-      <main className={shouldHideHeaderFooter ? 'min-h-screen' : 'min-h-screen pb-28 pt-[calc(env(safe-area-inset-top,0px)+5.4rem)] md:pb-0 md:pt-28'}>
+      <main className={shouldHideHeaderFooter ? 'min-h-screen' : 'min-h-screen pb-28 pt-[calc(env(safe-area-inset-top,0px)+5.4rem)] md:pb-0 md:pt-[4.95rem]'}>
         <Outlet />
       </main>
       {!shouldHideHeaderFooter && (
