@@ -675,12 +675,12 @@ const toDate = (value: any) => {
   return Number.isNaN(d.getTime()) ? new Date() : d;
 };
 
-const STORE_DEFAULT_IMAGE_URL = 'https://res.cloudinary.com/diwxfpt92/image/upload/v1770981822/logo_d2wmlf.png';
+const STORE_DEFAULT_IMAGE_URL = '/locsang-assets/brand-logo.svg';
 
 const isPlaceholderLikeImage = (url: string) => {
   const text = String(url || '').trim().toLowerCase();
   if (!text) return true;
-  return text.includes('logo_d2wmlf') || text.includes('/api/placeholder/') || text.includes('placeholder.com');
+  return text.includes('/api/placeholder/') || text.includes('placeholder.com');
 };
 
 const collectStorefrontImageCandidates = (raw: any): string[] => {

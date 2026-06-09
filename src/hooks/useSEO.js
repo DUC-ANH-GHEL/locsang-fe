@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 const SITE_NAME = 'Lộc Sang';
 const DEFAULT_DESCRIPTION = 'Lộc Sang - Mua sắm online sản phẩm chọn lọc, giá tốt và giao nhanh toàn quốc.';
-const DEFAULT_IMAGE = 'https://res.cloudinary.com/diwxfpt92/image/upload/v1770981822/logo_d2wmlf.png';
+const DEFAULT_IMAGE = '/locsang-assets/brand-logo.svg';
 const DEFAULT_URL = 'https://locsang.shop';
 
 const upsertMeta = (selector, attrs, content) => {

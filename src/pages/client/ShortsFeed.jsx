@@ -5,7 +5,7 @@ import { ChevronLeft, Play, Volume2, VolumeX } from 'lucide-react';
 import { homeContentService } from '../../services/homeContentService';
 import { useSEO } from '../../hooks/useSEO';
 
-const FALLBACK_COVER = 'https://res.cloudinary.com/diwxfpt92/image/upload/v1770981822/logo_d2wmlf.png';
+const FALLBACK_COVER = '/locsang-assets/brand-logo.svg';
 
 const parseYouTubeId = (rawUrl) => {
   const url = String(rawUrl || '').trim();

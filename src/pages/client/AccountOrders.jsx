@@ -9,7 +9,7 @@ import { useSEO } from '../../hooks/useSEO';
 const CHECKOUT_FORM_STORAGE_KEY = 'locsang_storefront_checkout_form_v1';
 const ORDER_HISTORY_STORAGE_KEY = 'locsang_storefront_order_history_v1';
 const ORDERS_PER_PAGE = 5;
-const IMAGE_DEFAULT_URL = 'https://res.cloudinary.com/diwxfpt92/image/upload/v1770981822/logo_d2wmlf.png';
+const IMAGE_DEFAULT_URL = '/locsang-assets/brand-logo.svg';
 
 const loadSavedReceiverPhone = () => {
   try {

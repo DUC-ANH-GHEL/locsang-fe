@@ -5,7 +5,7 @@ import Breadcrumb from '../../../components/layout/Breadcrumb';
 import { useToast } from '../../../components/Toast';
 import { productService } from '../../../services/productService';
 
-const fallbackImage = 'https://res.cloudinary.com/diwxfpt92/image/upload/v1770981822/logo_d2wmlf.png';
+const fallbackImage = '/locsang-assets/brand-logo.svg';
 
 const formatCurrency = (value: unknown) => {
   const number = Number(value);

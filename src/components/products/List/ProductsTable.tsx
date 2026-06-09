@@ -34,7 +34,7 @@ type Props = {
   onRefresh: () => void;
 };
 
-const IMAGE_DEFAULT_URL = 'https://res.cloudinary.com/diwxfpt92/image/upload/v1770981822/logo_d2wmlf.png';
+const IMAGE_DEFAULT_URL = '/locsang-assets/brand-logo.svg';
 
 const formatCurrency = (value: unknown) => {
   const num = Number(value);
