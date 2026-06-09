@@ -1,21 +1,34 @@
-import React, { useState, useRef } from 'react';
-import { Bell, Moon, Sun, ChevronDown, LogOut, KeyRound } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Bell, ChevronDown, KeyRound, LogOut, Menu, Moon, Sun } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { logo_url } from '../../config/api';
 import { logout } from '../../services/authService';
-import { useNavigate } from 'react-router-dom';
+import { adminNavItems } from './adminNavigation';
 
 interface HeaderProps {
   darkMode: boolean;
   toggleDarkMode: () => void;
   sidebarOpen: boolean;
+  onOpenMobileMenu: () => void;
 }
 
-const Header = ({ darkMode, toggleDarkMode, sidebarOpen }: HeaderProps) => {
+const getCurrentTitle = (pathname: string) => {
+  const match = adminNavItems
+    .filter((item) => (item.end ? pathname === item.url : pathname.startsWith(item.url)))
+    .sort((a, b) => b.url.length - a.url.length)[0];
+
+  if (pathname.includes('/create')) return 'Tạo mới';
+  if (pathname.includes('/edit') || pathname.includes('/update')) return 'Chỉnh sửa';
+  return match?.name || 'Admin';
+};
+
+const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: HeaderProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const avatarRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const title = getCurrentTitle(location.pathname);
 
-  // Đóng dropdown khi click ra ngoài
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (avatarRef.current && !avatarRef.current.contains(event.target as Node)) {
@@ -33,50 +46,68 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen }: HeaderProps) => {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 h-16 bg-white/90 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800 z-30 transition-all"
-      style={{ marginLeft: sidebarOpen ? 256 : 80 }} // 256 = w-64, 80 = w-20
+      className={`fixed left-0 right-0 top-0 z-30 border-b border-slate-200 bg-white/92 backdrop-blur-xl transition-all dark:border-slate-800 dark:bg-slate-950/88 lg:left-auto ${
+        sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
+      }`}
     >
-      <div className="h-16 px-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img src={logo_url} alt="Logo" className="h-8 w-8 rounded-full ring-1 ring-gray-200 dark:ring-gray-800" />
-          <div className="hidden sm:block">
-            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Lộc Sang</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Admin Dashboard</div>
+      <div className="flex h-[4.7rem] items-center justify-between px-4 sm:px-6 lg:h-[4.5rem]">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={onOpenMobileMenu}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 lg:hidden"
+            aria-label="Mở menu admin"
+          >
+            <Menu size={23} />
+          </button>
+
+          <img src={logo_url} alt="Lộc Sang" className="h-9 w-9 shrink-0 rounded-full bg-white object-contain ring-1 ring-slate-200 dark:ring-slate-800" />
+          <div className="min-w-0 leading-tight">
+            <div className="truncate text-base font-black text-slate-950 dark:text-white lg:text-sm">Lộc Sang</div>
+            <div className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">{title}</div>
           </div>
         </div>
-        <div className="flex items-center space-x-4">
-          <div className="relative group">
-            <Bell size={22} className="text-gray-500 dark:text-gray-400 hover:text-rose-600 dark:hover:text-rose-300 cursor-pointer transition" />
-            <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 border-2 border-white dark:border-gray-900"></span>
-          </div>
+
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
-            onClick={toggleDarkMode}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            title={darkMode ? 'Chế độ sáng' : 'Chế độ tối'}
+            type="button"
+            className="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-rose-300"
+            aria-label="Thông báo"
           >
-            {darkMode ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-gray-500" />}
+            <Bell size={20} />
+            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-rose-600 ring-2 ring-white dark:ring-slate-950" />
           </button>
+
+          <button
+            type="button"
+            onClick={toggleDarkMode}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white"
+            title={darkMode ? 'Chế độ sáng' : 'Chế độ tối'}
+            aria-label={darkMode ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
+          >
+            {darkMode ? <Sun size={20} className="text-amber-400" /> : <Moon size={20} />}
+          </button>
+
           <div className="relative" ref={avatarRef}>
             <button
-              className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-              onClick={() => setDropdownOpen((v) => !v)}
+              type="button"
+              className="flex h-10 items-center gap-2 rounded-2xl px-1.5 transition-colors hover:bg-slate-100 dark:hover:bg-slate-900"
+              onClick={() => setDropdownOpen((value) => !value)}
+              aria-label="Tài khoản admin"
             >
-              <img
-                src={logo_url}
-                alt="Admin avatar"
-                className="h-8 w-8 rounded-full ring-2 ring-rose-200 dark:ring-rose-500/30"
-              />
-              <span className="ml-1 text-sm font-medium text-gray-700 dark:text-gray-200 hidden sm:block">Admin</span>
-              <ChevronDown size={16} className="text-gray-400" />
+              <img src={logo_url} alt="Admin" className="h-8 w-8 rounded-full bg-white object-contain ring-2 ring-rose-200 dark:ring-rose-500/30" />
+              <span className="hidden text-sm font-bold text-slate-700 dark:text-slate-200 sm:block">Admin</span>
+              <ChevronDown size={16} className="hidden text-slate-400 sm:block" />
             </button>
+
             {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 z-50 animate-fadeIn">
-                <button className="w-full flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition text-sm">
+              <div className="absolute right-0 mt-3 w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white py-2 shadow-2xl shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900">
+                <button className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">
                   <KeyRound size={16} /> Đổi mật khẩu
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition text-sm"
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10"
                 >
                   <LogOut size={16} /> Đăng xuất
                 </button>

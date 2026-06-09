@@ -560,7 +560,7 @@ const Products = () => {
 
       {/* Bulk Action Bar */}
       {selectedIds.length > 0 && (
-        <div className="fixed bottom-4 left-0 right-0 z-40 px-4">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.9rem)] left-0 right-0 z-40 px-4 lg:bottom-4">
           <div className="mx-auto max-w-7xl rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
             <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Đã chọn {selectedIds.length} sản phẩm</div>
             <div className="flex flex-wrap gap-2">
