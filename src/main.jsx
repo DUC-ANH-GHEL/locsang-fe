@@ -5,6 +5,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import { ToastProvider } from './components/Toast'
 import { LoadingProvider } from './contexts/LoadingContext'
 import { StorefrontAuthProvider } from './contexts/StorefrontAuthContext'
+import { registerLocSangServiceWorker } from './services/serviceWorkerRegistration'
 import App from './App'
 import './assets/styles.css'
 
@@ -78,3 +79,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       )
     : appTree
 )
+
+registerLocSangServiceWorker()

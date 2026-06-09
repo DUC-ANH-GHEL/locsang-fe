@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   CalendarClock,
@@ -170,6 +170,7 @@ const LoadingRows = () => (
 
 const Orders = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { showToast } = useToast();
 
   const [orders, setOrders] = useState([]);
@@ -184,6 +185,7 @@ const Orders = () => {
   const [detailStatus, setDetailStatus] = useState('');
   const [bulkStatus, setBulkStatus] = useState('processing');
   const [submitting, setSubmitting] = useState(false);
+  const [openedQueryOrderId, setOpenedQueryOrderId] = useState(null);
 
   const totalPages = Math.max(1, Number(pagination.total_pages || Math.ceil(Number(pagination.total || 0) / PAGE_LIMIT) || 1));
   const headerTotalText = Number(pagination.total || 0).toLocaleString('vi-VN');
@@ -279,6 +281,46 @@ const Orders = () => {
       setDetailLoading(false);
     }
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const orderId = Number(params.get('orderId') || 0);
+    if (!orderId || openedQueryOrderId === orderId) return;
+
+    const existing = orders.find((order) => Number(order.id) === orderId);
+    if (existing) {
+      setOpenedQueryOrderId(orderId);
+      openDetail(existing);
+      return;
+    }
+
+    let active = true;
+    setOpenedQueryOrderId(orderId);
+    setDetailLoading(true);
+    setDetailOrder({ id: orderId, status: 'pending', total_amount: 0, item_count: 0 });
+    setDetailStatus('pending');
+
+    adminOrderService.getOrderById(orderId)
+      .then((response) => {
+        if (!active) return;
+        const order = response?.data;
+        setDetailOrder(order);
+        setDetailStatus(order?.status || 'pending');
+      })
+      .catch((error) => {
+        if (!active) return;
+        setDetailOrder(null);
+        handleApiError(error, 'Không mở được chi tiết đơn từ thông báo');
+      })
+      .finally(() => {
+        if (active) setDetailLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search, orders, openedQueryOrderId]);
 
   const closeDetail = () => {
     setDetailOrder(null);

@@ -1,8 +1,15 @@
-import React, { useRef, useState } from 'react';
-import { Bell, ChevronDown, KeyRound, LogOut, Menu, Moon, Sun } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Bell, BellOff, BellRing, ChevronDown, KeyRound, LogOut, Menu, Moon, Sun } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { logo_url } from '../../config/api';
 import { logout } from '../../services/authService';
+import {
+  AdminPushState,
+  getAdminPushState,
+  subscribeAdminPush,
+  unsubscribeAdminPush,
+} from '../../services/adminPushNotificationService';
+import { useToast } from '../Toast';
 import { adminNavItems } from './adminNavigation';
 
 interface HeaderProps {
@@ -22,14 +29,26 @@ const getCurrentTitle = (pathname: string) => {
   return match?.name || 'Admin';
 };
 
+const getPushTitle = (state: AdminPushState, loading: boolean) => {
+  if (loading) return 'Đang kiểm tra thông báo';
+  if (state === 'subscribed') return 'Đang nhận thông báo đơn mới. Bấm để tắt.';
+  if (state === 'denied') return 'Thông báo đang bị chặn trong trình duyệt/PWA.';
+  if (state === 'unconfigured') return 'Backend chưa cấu hình Web Push.';
+  if (state === 'unsupported') return 'Trình duyệt này chưa hỗ trợ thông báo đẩy.';
+  return 'Bật thông báo đơn hàng mới';
+};
+
 const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: HeaderProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [pushState, setPushState] = useState<AdminPushState>('default');
+  const [pushLoading, setPushLoading] = useState(false);
   const avatarRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { showToast } = useToast();
   const title = getCurrentTitle(location.pathname);
 
-  React.useEffect(() => {
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (avatarRef.current && !avatarRef.current.contains(event.target as Node)) {
         setDropdownOpen(false);
@@ -39,10 +58,61 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    const refreshPushState = async () => {
+      try {
+        const state = await getAdminPushState();
+        if (active) setPushState(state);
+      } catch {
+        if (active) setPushState('default');
+      }
+    };
+
+    refreshPushState();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const handleLogout = () => {
     logout();
     navigate('/admin/login');
   };
+
+  const handlePushClick = async () => {
+    if (pushLoading) return;
+    setPushLoading(true);
+    try {
+      if (pushState === 'subscribed') {
+        await unsubscribeAdminPush();
+        setPushState(await getAdminPushState());
+        showToast('Đã tắt thông báo đơn hàng mới trên thiết bị này.', 'success');
+        return;
+      }
+
+      await subscribeAdminPush();
+      setPushState('subscribed');
+      showToast('Đã bật thông báo đơn hàng mới cho thiết bị này.', 'success');
+    } catch (error: any) {
+      const message = error?.message || 'Không bật được thông báo. Vui lòng thử lại.';
+      showToast(message, pushState === 'denied' ? 'warning' : 'error', 6000);
+      try {
+        setPushState(await getAdminPushState());
+      } catch {
+        // keep current state
+      }
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const PushIcon = pushState === 'subscribed' ? BellRing : pushState === 'denied' ? BellOff : Bell;
+  const pushButtonClass = pushState === 'subscribed'
+    ? 'text-emerald-600 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-500/10'
+    : pushState === 'denied' || pushState === 'unconfigured'
+      ? 'text-amber-600 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-500/10'
+      : 'text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-rose-300';
 
   return (
     <header
@@ -71,11 +141,16 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
         <div className="flex items-center gap-2 sm:gap-3">
           <button
             type="button"
-            className="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-rose-300"
-            aria-label="Thông báo"
+            onClick={handlePushClick}
+            disabled={pushLoading}
+            className={`relative inline-flex h-10 w-10 items-center justify-center rounded-2xl transition-colors disabled:cursor-wait disabled:opacity-70 ${pushButtonClass}`}
+            title={getPushTitle(pushState, pushLoading)}
+            aria-label={getPushTitle(pushState, pushLoading)}
           >
-            <Bell size={20} />
-            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-rose-600 ring-2 ring-white dark:ring-slate-950" />
+            <PushIcon size={20} />
+            {pushState === 'subscribed' && (
+              <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-950" />
+            )}
           </button>
 
           <button
