@@ -6,7 +6,8 @@ import { useCart } from '../contexts/CartContext';
 import { useStorefrontAuth } from '../contexts/StorefrontAuthContext';
 import { homeContentService } from '../services/homeContentService';
 
-const BRAND_LOGO = '/locsang-assets/brand-logo.svg?v=yanmar-2';
+import { logo_url } from '../config/api';
+const BRAND_MARK = `${logo_url}?v=yanmar-2`;
 
 const formatVnd = (value) =>
   new Intl.NumberFormat('vi-VN', {
@@ -198,7 +199,13 @@ const Header = () => {
       <div className="hidden border-t-[3px] border-[#6b3a24] border-b border-[#e5e5e5] bg-white md:block">
         <div className="mx-auto flex h-[4.75rem] max-w-[944px] items-center justify-between px-6">
           <Link to="/" className="flex min-w-0 items-center">
-            <img src={BRAND_LOGO} alt="Yanmar Lộc Sang" className="h-[3.05rem] w-auto object-contain" />
+            <div className="flex items-center gap-3">
+              <img src={BRAND_MARK} alt="Yanmar logo" className="h-[3.05rem] w-auto object-contain" />
+              <div className="hidden sm:flex flex-col leading-tight">
+                <span className="text-[18px] font-extrabold text-[#d50918]">Yanmar</span>
+                <span className="text-sm font-semibold text-[#444]">Lộc Sang</span>
+              </div>
+            </div>
           </Link>
 
           <nav className="flex items-center gap-7 text-[13px] font-bold text-[#444]">
