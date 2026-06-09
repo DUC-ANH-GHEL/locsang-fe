@@ -1,4 +1,4 @@
-import { Home, LogOut, Menu, Package, ShoppingCart, Tag, X } from 'lucide-react';
+import { Home, Image, LogOut, Menu, Package, ShoppingCart, Tag, X } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { logo_url } from '../../config/api';
 import { logout } from '../../services/authService';
@@ -12,6 +12,7 @@ const navItems = [
   { name: 'Tổng quan', url: '/admin', icon: <Home size={20} />, end: true },
   { name: 'Sản phẩm', url: '/admin/products', icon: <Package size={20} /> },
   { name: 'Danh mục', url: '/admin/categories', icon: <Tag size={20} /> },
+  { name: 'Banner', url: '/admin/home-content', icon: <Image size={20} /> },
   { name: 'Đơn hàng', url: '/admin/orders', icon: <ShoppingCart size={20} /> },
 ];
 

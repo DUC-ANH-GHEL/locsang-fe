@@ -1,4 +1,17 @@
 import { apiClient } from './apiClient';
+import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
+
+const CATEGORY_PUBLIC_URL = `${String(API_BASE_URL || '').replace(/\/+$/, '')}/categories/`;
+
+export type Category = {
+  id: number;
+  name: string;
+  slug?: string | null;
+  description?: string | null;
+  image?: string | null;
+  is_active?: boolean;
+};
 
 export type CategoryCreatePayload = {
   name: string;
@@ -30,6 +43,21 @@ export const createCategory = async (payload: CategoryCreatePayload) => {
 export const getCategories = async () => {
   const response = await apiClient.get('/categories/');
   return response.data;
+};
+
+export const getPublicCategories = async (): Promise<Category[]> => {
+  const response = await axios.get(CATEGORY_PUBLIC_URL);
+  const data = Array.isArray(response.data) ? response.data : [];
+  return data
+    .map((item: any) => ({
+      id: Number(item?.id ?? 0),
+      name: String(item?.name ?? '').trim(),
+      slug: item?.slug ?? null,
+      description: item?.description ?? null,
+      image: item?.image ?? null,
+      is_active: item?.is_active ?? true,
+    }))
+    .filter((item: Category) => item.id > 0 && item.name);
 };
 
 export const getCategoryById = async (categoryId: number) => {

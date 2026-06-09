@@ -56,7 +56,7 @@ const Dashboard = () => {
 
   const cards = [
     { label: 'Đơn gần đây', value: metrics.orders, icon: <ShoppingCart size={20} />, href: '/admin/orders' },
-    { label: 'Doanh thu mẫu', value: formatCurrency(metrics.revenue), icon: <Truck size={20} />, href: '/admin/orders' },
+    { label: 'Doanh thu đơn gần đây', value: formatCurrency(metrics.revenue), icon: <Truck size={20} />, href: '/admin/orders' },
     { label: 'Sản phẩm', value: metrics.products, icon: <Package size={20} />, href: '/admin/products' },
     { label: 'Danh mục', value: metrics.categories, icon: <Tag size={20} />, href: '/admin/categories' },
   ];

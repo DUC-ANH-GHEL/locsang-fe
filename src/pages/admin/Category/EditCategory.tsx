@@ -131,7 +131,7 @@ const EditCategory = () => {
               }
             }}
             className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
-            placeholder="VD: Áo thời trang"
+            placeholder="VD: Lọc nhớt"
           />
           {errors.name && <div className="text-red-500 text-xs mt-1">{errors.name}</div>}
         </div>

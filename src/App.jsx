@@ -26,6 +26,7 @@ const Products = lazy(() => import('./pages/admin/Product/Products'));
 const OrderCreate = lazy(() => import('./pages/admin/Order/OrderCreate'));
 const Orders = lazy(() => import('./pages/admin/Orders'));
 const AdminLoginPage = lazy(() => import('./pages/admin/Login'));
+const HomeContentEditor = lazy(() => import('./pages/admin/HomeContent/HomeContentEditor'));
 const CreateProduct = lazy(() => import('./pages/admin/Product/CreateProduct'));
 const ProductReadonlyDetail = lazy(() => import('./pages/admin/Product/ProductReadonlyDetail'));
 const CreateCategory = lazy(() => import('./pages/admin/Category/CreateCategory'));
@@ -85,6 +86,7 @@ function App() {
             <Route path="categories" element={<Categories />} />
             <Route path="categories/create" element={<CreateCategory />} />
             <Route path="categories/:id/edit" element={<EditCategory />} />
+            <Route path="home-content" element={<HomeContentEditor />} />
             <Route path="orders" element={<Orders />} />
             <Route path="orders/create" element={<OrderCreate />} />
             <Route path="product/:id" element={<ProductReadonlyDetail />} />

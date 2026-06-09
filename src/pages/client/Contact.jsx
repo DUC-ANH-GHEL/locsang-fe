@@ -89,7 +89,7 @@ const Contact = () => {
 				<div className="text-center mb-10">
 					<h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900">Liên hệ Lộc Sang</h1>
 					<p className="mt-3 text-gray-600 max-w-2xl mx-auto">
-						Cần tư vấn size, chất liệu, hoặc phối outfit? Nhắn tụi mình — trả lời nhanh, tư vấn chuẩn.
+						Cần tư vấn phụ tùng, nhớt hoặc mã lọc phù hợp? Gửi thông tin để Lộc Sang hỗ trợ nhanh.
 					</p>
 				</div>
 
@@ -97,7 +97,7 @@ const Contact = () => {
 					<div className="bg-white rounded-2xl shadow p-6 sm:p-8">
 						<h2 className="text-xl font-bold text-gray-900">Gửi tin nhắn</h2>
 						<p className="mt-2 text-gray-600 text-sm">
-							Tip: nếu bạn biết giống/ cân nặng/ vòng ngực của bé thì gửi kèm để Lộc Sang chọn size nhanh hơn.
+							Gợi ý: gửi kèm mã máy, mã phụ tùng cũ hoặc nhu cầu sử dụng để Lộc Sang tư vấn chính xác hơn.
 						</p>
 
 						<form onSubmit={handleSubmit} className="mt-6 space-y-5">
@@ -178,7 +178,7 @@ const Contact = () => {
 										onChange={handleChange}
 										onBlur={handleBlur}
 										className={`w-full rounded-xl border px-4 py-2 pl-10 focus:ring-2 focus:ring-rose-500 ${errors.message ? 'border-red-400' : 'border-gray-300'}`}
-										placeholder="Mình cần tư vấn size cho bé poodle 3.2kg, vòng ngực ~38cm..."
+										placeholder="Mình cần tư vấn lọc nhớt hoặc dầu nhớt phù hợp cho máy Yanmar..."
 									/>
 								</div>
 								{errors.message && <div className="text-red-500 text-sm mt-1">{errors.message}</div>}
@@ -222,8 +222,8 @@ const Contact = () => {
 
 						<div className="rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800 p-8 text-white shadow">
 							<div className="text-sm text-white/80">Gợi ý nhanh</div>
-							<div className="mt-2 text-2xl font-extrabold">Bạn gửi ảnh bé + cân nặng</div>
-							<div className="mt-2 text-white/80">Lộc Sang sẽ tư vấn size/fit và outfit hợp vibe ngay.</div>
+							<div className="mt-2 text-2xl font-extrabold">Gửi ảnh mã phụ tùng hoặc model máy</div>
+							<div className="mt-2 text-white/80">Lộc Sang sẽ đối chiếu và tư vấn sản phẩm phù hợp.</div>
 						</div>
 					</div>
 				</div>

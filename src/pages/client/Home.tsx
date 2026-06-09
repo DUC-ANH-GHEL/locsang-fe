@@ -13,6 +13,8 @@ import {
 
 import { Product } from '../../types/product';
 import { productService } from '../../services/productService';
+import { Category, getPublicCategories } from '../../services/categoryService';
+import { HomeContentPayload, homeContentService } from '../../services/homeContentService';
 import { getProductPricing } from '../../utils/productPricing';
 import { useSEO } from '../../hooks/useSEO';
 import { useCart } from '../../contexts/CartContext';
@@ -30,7 +32,13 @@ type HomeProduct = {
   raw?: Product;
 };
 
-const CATEGORY_LINKS = [
+type CategoryLink = {
+  title: string;
+  icon: typeof Settings;
+  categoryId?: number;
+};
+
+const FALLBACK_CATEGORY_LINKS: CategoryLink[] = [
   { title: 'Phụ tùng', icon: Settings },
   { title: 'Nhớt động cơ', icon: Droplet },
   { title: 'Lọc gió & lọc nhớt', icon: Package },
@@ -68,10 +76,24 @@ const toHomeProduct = (product: Product): HomeProduct => {
   };
 };
 
+const iconForCategory = (name: string) => {
+  const normalized = name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (normalized.includes('nhot') || normalized.includes('oil')) return Droplet;
+  if (normalized.includes('loc') || normalized.includes('filter')) return Package;
+  if (normalized.includes('khuyen') || normalized.includes('sale')) return BadgePercent;
+  return Settings;
+};
+
 const Home = () => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
+  const [homeContent, setHomeContent] = useState<HomeContentPayload | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -106,7 +128,29 @@ const Home = () => {
       }
     };
 
+    const loadHomeContent = async () => {
+      try {
+        const response = await homeContentService.getPublicHomeContent();
+        if (!cancelled) setHomeContent(response.content || null);
+      } catch {
+        if (!cancelled) setHomeContent(null);
+      }
+    };
+
+    const loadCategories = async () => {
+      try {
+        const data = await getPublicCategories();
+        if (!cancelled) {
+          setCategories(data.filter((category) => category.is_active !== false));
+        }
+      } catch {
+        if (!cancelled) setCategories([]);
+      }
+    };
+
     loadProducts();
+    loadHomeContent();
+    loadCategories();
     return () => {
       cancelled = true;
     };
@@ -123,6 +167,26 @@ const Home = () => {
     const discounted = apiProducts.filter((product) => product.discountLabel).slice(0, 3);
     return discounted;
   }, [apiProducts]);
+
+  const categoryLinks = useMemo<CategoryLink[]>(() => {
+    const liveLinks = categories
+      .filter((category) => category.name)
+      .slice(0, 4)
+      .map((category) => ({
+        title: category.name,
+        icon: iconForCategory(category.name),
+        categoryId: category.id,
+      }));
+
+    return liveLinks.length > 0 ? liveLinks : FALLBACK_CATEGORY_LINKS;
+  }, [categories]);
+
+  const heroImage = homeContent?.hero_image_url?.trim() || HERO_IMAGE;
+  const heroAlt =
+    [homeContent?.hero_headline_line1, homeContent?.hero_headline_line2]
+      .filter(Boolean)
+      .join(' ')
+      .trim() || 'Phụ tùng và nhớt chính hãng Yanmar';
 
   const addProductToCart = (product: HomeProduct) => {
     addToCart({
@@ -145,8 +209,8 @@ const Home = () => {
       <div className="mx-auto w-full max-w-[944px] bg-white font-sans md:shadow-2xl md:shadow-black/10">
         <section className="overflow-hidden border-b border-[#e4e4e4] bg-[#d70918]">
           <img
-            src={HERO_IMAGE}
-            alt="Phụ tùng và nhớt chính hãng Yanmar"
+            src={heroImage}
+            alt={heroAlt}
             className="block aspect-[944/317] w-full object-cover"
           />
         </section>
@@ -163,13 +227,13 @@ const Home = () => {
           </label>
 
           <div className="mt-4 grid grid-cols-4 gap-3 max-[390px]:gap-2">
-            {CATEGORY_LINKS.map((category) => {
+            {categoryLinks.map((category) => {
               const Icon = category.icon;
               return (
                 <button
                   key={category.title}
                   type="button"
-                  onClick={() => navigate('/products')}
+                  onClick={() => navigate(category.categoryId ? `/products?categoryId=${category.categoryId}` : '/products')}
                   className="flex min-h-[5.6rem] flex-col items-center justify-center rounded-xl border border-[#e4e4e4] bg-white px-1.5 py-2 text-center shadow-[0_1px_4px_rgba(0,0,0,0.04)]"
                 >
                   <Icon size={38} strokeWidth={2.8} className="text-[#e30613]" />

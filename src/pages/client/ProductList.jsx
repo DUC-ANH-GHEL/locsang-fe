@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowDownUp, ChevronDown, Filter, ShoppingCart } from 'lucide-react';
 
 import { useCart } from '../../contexts/CartContext';
+import { getPublicCategories } from '../../services/categoryService';
 import { productService } from '../../services/productService';
 import { toProductDetailPath } from '../../utils/productUrl';
 import { getProductPricing } from '../../utils/productPricing';
@@ -15,7 +16,7 @@ import {
   toCartPayload,
 } from '../../data/yanmarStorefront';
 
-const CATEGORY_CHIPS = ['Tất cả', 'Nhớt động cơ', 'Lọc gió', 'Lọc nhớt', 'Dây curoa'];
+const FALLBACK_CATEGORY_CHIPS = ['Nhớt động cơ', 'Lọc gió', 'Lọc nhớt', 'Dây curoa'];
 
 const SORT_OPTIONS = [
   { value: 'featured', label: 'Sắp xếp' },
@@ -32,13 +33,21 @@ const normalizeText = (value) =>
 
 const ProductList = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { addToCart } = useCart();
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [activeCategory, setActiveCategory] = useState('Tất cả');
   const [sortBy, setSortBy] = useState('featured');
   const [showDiscountOnly, setShowDiscountOnly] = useState(false);
+  const selectedCategoryId = searchParams.get('categoryId') || '';
+  const selectedCategoryName = searchParams.get('category') || '';
+  const activeCategoryKey = selectedCategoryId
+    ? `id:${selectedCategoryId}`
+    : selectedCategoryName
+      ? `name:${selectedCategoryName}`
+      : 'all';
 
   useSEO({
     title: 'Phụ tùng và nhớt Yanmar',
@@ -56,6 +65,7 @@ const ProductList = () => {
           status: 'active',
           limit: 100,
           page: 1,
+          categoryId: selectedCategoryId || undefined,
         });
         if (!cancelled) {
           setProducts(Array.isArray(data) ? data : []);
@@ -75,12 +85,69 @@ const ProductList = () => {
     return () => {
       cancelled = true;
     };
+  }, [selectedCategoryId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCategories = async () => {
+      try {
+        const data = await getPublicCategories();
+        if (!cancelled) {
+          setCategories(data.filter((category) => category.is_active !== false));
+        }
+      } catch {
+        if (!cancelled) setCategories([]);
+      }
+    };
+
+    loadCategories();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  const categoryChips = useMemo(() => {
+    const liveCategories = categories
+      .filter((category) => category.name)
+      .map((category) => ({
+        key: `id:${category.id}`,
+        label: category.name,
+        categoryId: String(category.id),
+      }));
+
+    if (liveCategories.length > 0) {
+      return [{ key: 'all', label: 'Tất cả' }, ...liveCategories];
+    }
+
+    return [
+      { key: 'all', label: 'Tất cả' },
+      ...FALLBACK_CATEGORY_CHIPS.map((label) => ({
+        key: `name:${label}`,
+        label,
+        categoryName: label,
+      })),
+    ];
+  }, [categories]);
+
+  const selectCategory = (category) => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('categoryId');
+    next.delete('category');
+
+    if (category.categoryId) {
+      next.set('categoryId', category.categoryId);
+    } else if (category.categoryName) {
+      next.set('category', category.categoryName);
+    }
+
+    setSearchParams(next);
+  };
+
   const visibleProducts = useMemo(() => {
-    const categoryToken = normalizeText(activeCategory);
     let next = products.filter((product) => {
-      if (activeCategory === 'Tất cả') return true;
+      if (!selectedCategoryName) return true;
+      const categoryToken = normalizeText(selectedCategoryName);
       const haystack = normalizeText(`${product?.category_name || ''} ${product?.name || ''} ${product?.description || ''}`);
       return haystack.includes(categoryToken);
     });
@@ -99,7 +166,7 @@ const ProductList = () => {
     }
 
     return next;
-  }, [activeCategory, showDiscountOnly, sortBy, products]);
+  }, [selectedCategoryName, showDiscountOnly, sortBy, products]);
 
   const addProduct = (product) => {
     addToCart(toCartPayload(product, 1));
@@ -118,20 +185,20 @@ const ProductList = () => {
         </h1>
 
         <div className="mt-5 flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {CATEGORY_CHIPS.map((category) => {
-            const active = category === activeCategory;
+          {categoryChips.map((category) => {
+            const active = category.key === activeCategoryKey;
             return (
               <button
-                key={category}
+                key={category.key}
                 type="button"
-                onClick={() => setActiveCategory(category)}
+                onClick={() => selectCategory(category)}
                 className={`shrink-0 rounded-xl border px-5 py-2.5 text-[1.05rem] font-bold transition max-[390px]:px-4 max-[390px]:text-[0.92rem] ${
                   active
                     ? 'border-[#e30613] bg-[#e30613] text-white shadow-[0_8px_20px_rgba(227,6,19,0.18)]'
                     : 'border-[#d6d6d6] bg-white text-[#202020]'
                 }`}
               >
-                {category}
+                {category.label}
               </button>
             );
           })}
@@ -193,7 +260,7 @@ const ProductList = () => {
             <button
               type="button"
               onClick={() => {
-                setActiveCategory('Tất cả');
+                setSearchParams(new URLSearchParams());
                 setShowDiscountOnly(false);
               }}
               className="mt-4 rounded-xl bg-[#e30613] px-5 py-2.5 text-sm font-black text-white"
