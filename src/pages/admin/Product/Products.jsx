@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductsTable from '../../../components/products/List/ProductsTable';
 import FilterBar from '../../../components/products/List/FillterBar';
@@ -29,7 +29,6 @@ const DEFAULT_COLUMNS = {
   category: true,
 };
 
-const PANCAKE_CATALOG_READ_ONLY = true;
 
 const Products = () => {
   const navigate = useNavigate();
@@ -65,9 +64,6 @@ const Products = () => {
   });
 
   const importInputRef = useRef(null);
-  const [syncingPancake, setSyncingPancake] = useState(false);
-  const [pancakeSyncConfig, setPancakeSyncConfig] = useState({ max_pages: 10, page_size: 100 });
-  const [lastPancakeSync, setLastPancakeSync] = useState(null);
 
   const totalPages = useMemo(() => {
     const t = Number(pagination.total || 0);
@@ -136,13 +132,13 @@ const Products = () => {
     } catch (error) {
       const parsed = parseApiError(error);
       if (parsed?.status === 401) {
-        showToast('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.', 'error', 5000);
+        showToast('PhiÃªn Ä‘Äƒng nháº­p háº¿t háº¡n. Vui lÃ²ng Ä‘Äƒng nháº­p láº¡i.', 'error', 5000);
         logout();
         const current = `${window.location.pathname}${window.location.search}`;
         window.location.href = `/admin/login?redirect=${encodeURIComponent(current)}`;
         return;
       }
-      showToast(parsed?.message || 'Không tải được danh sách sản phẩm', 'error', 6000);
+      showToast(parsed?.message || 'KhÃ´ng táº£i Ä‘Æ°á»£c danh sÃ¡ch sáº£n pháº©m', 'error', 6000);
     } finally {
       setLoading(false);
     }
@@ -222,7 +218,7 @@ const Products = () => {
   const handleExportCsv = (mode) => {
     const list = mode === 'selected' ? items.filter((x) => selectedIds.includes(x.id)) : items;
     if (list.length === 0) {
-      showToast('Không có dữ liệu để export', 'warning');
+      showToast('KhÃ´ng cÃ³ dá»¯ liá»‡u Ä‘á»ƒ export', 'warning');
       return;
     }
     const header = [
@@ -301,10 +297,10 @@ const Products = () => {
       const text = await file.text();
       const rows = parseCsv(text);
       if (rows.length === 0) {
-        showToast('CSV rỗng', 'warning');
+        showToast('CSV rá»—ng', 'warning');
         return;
       }
-      if (!window.confirm(`Import ${rows.length} dòng từ CSV?`)) return;
+      if (!window.confirm(`Import ${rows.length} dÃ²ng tá»« CSV?`)) return;
 
       let ok = 0;
       let fail = 0;
@@ -355,65 +351,32 @@ const Products = () => {
         }
       }
 
-      showToast(`Import xong. Thành công: ${ok}, lỗi: ${fail}`, fail > 0 ? 'warning' : 'success', 7000);
+      showToast(`Import xong. ThÃ nh cÃ´ng: ${ok}, lá»—i: ${fail}`, fail > 0 ? 'warning' : 'success', 7000);
       fetchAdminProducts();
     } catch {
-      showToast('Không import được CSV', 'error');
+      showToast('KhÃ´ng import Ä‘Æ°á»£c CSV', 'error');
     }
   };
 
   const bulkUpdate = async (action, data) => {
     try {
       await productService.bulkUpdateProducts({ ids: selectedIds, action, data });
-      showToast('Cập nhật hàng loạt thành công', 'success');
+      showToast('Cáº­p nháº­t hÃ ng loáº¡t thÃ nh cÃ´ng', 'success');
       setSelectedIds([]);
       fetchAdminProducts();
     } catch (error) {
       const parsed = parseApiError(error);
       if (parsed?.status === 404) {
-        showToast('Backend chưa hỗ trợ bulk update (/admin/products/bulk)', 'error', 7000);
+        showToast('Backend chÆ°a há»— trá»£ bulk update (/admin/products/bulk)', 'error', 7000);
         return;
       }
-      showToast(parsed?.message || 'Bulk update thất bại', 'error', 7000);
+      showToast(parsed?.message || 'Bulk update tháº¥t báº¡i', 'error', 7000);
     }
   };
 
   const [bulkStatus, setBulkStatus] = useState('active');
   const [bulkCategory, setBulkCategory] = useState('');
   const [bulkAffiliate, setBulkAffiliate] = useState('');
-
-  const handleSyncPancakeProducts = async () => {
-    const max_pages = Number(pancakeSyncConfig?.max_pages ?? 10);
-    const page_size = Number(pancakeSyncConfig?.page_size ?? 100);
-    const safeMaxPages = Number.isFinite(max_pages) ? Math.max(1, Math.min(200, Math.trunc(max_pages))) : 10;
-    const safePageSize = Number.isFinite(page_size) ? Math.max(1, Math.min(200, Math.trunc(page_size))) : 100;
-
-    setSyncingPancake(true);
-    try {
-      const result = await productService.syncPancakeProducts({
-        max_pages: safeMaxPages,
-        page_size: safePageSize,
-      });
-      setLastPancakeSync(result?.summary ?? null);
-
-      const summary = result?.summary ?? {};
-      showToast(
-        `Sync Pancake xong: +${Number(summary.created_products ?? 0)} mới, cập nhật ${Number(summary.updated_products ?? 0)} sản phẩm`,
-        'success',
-        7000
-      );
-      fetchAdminProducts();
-    } catch (error) {
-      const parsed = parseApiError(error);
-      if (parsed?.status === 404) {
-        showToast('Backend chưa có endpoint sync Pancake products', 'error', 7000);
-      } else {
-        showToast(parsed?.message || 'Sync sản phẩm từ Pancake thất bại', 'error', 7000);
-      }
-    } finally {
-      setSyncingPancake(false);
-    }
-  };
 
   const currentPageItemsCount = items?.length ?? 0;
 
@@ -436,34 +399,6 @@ const Products = () => {
         </div>
         <div className="flex flex-wrap gap-2">
           <input
-            type="number"
-            min={1}
-            max={200}
-            value={pancakeSyncConfig.max_pages}
-            onChange={(e) => setPancakeSyncConfig((prev) => ({ ...prev, max_pages: e.target.value }))}
-            className="w-24 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-            placeholder="Pages"
-            title="Số trang Pancake cần sync"
-          />
-          <input
-            type="number"
-            min={1}
-            max={200}
-            value={pancakeSyncConfig.page_size}
-            onChange={(e) => setPancakeSyncConfig((prev) => ({ ...prev, page_size: e.target.value }))}
-            className="w-24 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-            placeholder="Size"
-            title="Số bản ghi mỗi trang"
-          />
-          <button
-            type="button"
-            disabled={syncingPancake}
-            onClick={handleSyncPancakeProducts}
-            className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 px-4 py-2 text-sm font-semibold text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 disabled:opacity-60"
-          >
-            {syncingPancake ? 'Đang sync Pancake...' : 'Sync Pancake'}
-          </button>
-          <input
             ref={importInputRef}
             type="file"
             accept=".csv,text/csv"
@@ -476,10 +411,24 @@ const Products = () => {
           />
           <button
             type="button"
+            onClick={() => importInputRef.current?.click()}
+            className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            Import CSV
+          </button>
+          <button
+            type="button"
             onClick={() => handleExportCsv('all')}
             className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/admin/products/create')}
+            className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700"
+          >
+            Tạo sản phẩm
           </button>
         </div>
       </div>
@@ -512,44 +461,11 @@ const Products = () => {
           }}
         />
 
-        {lastPancakeSync && (
-          <div className="mt-4 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-900/20 p-4">
-            <div className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Kết quả sync Pancake gần nhất</div>
-            <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-emerald-900 dark:text-emerald-100">
-              <div>Sản phẩm đã sync: {Number(lastPancakeSync.synced_products ?? 0)}</div>
-              <div>Sản phẩm tạo mới: {Number(lastPancakeSync.created_products ?? 0)}</div>
-              <div>Sản phẩm cập nhật: {Number(lastPancakeSync.updated_products ?? 0)}</div>
-              <div>Biến thể lấy về: {Number(lastPancakeSync.fetched_variations ?? 0)}</div>
-              <div>Biến thể tạo mới: {Number(lastPancakeSync.created_variants ?? 0)}</div>
-              <div>Biến thể cập nhật: {Number(lastPancakeSync.updated_variants ?? 0)}</div>
-              <div>Biến thể inactivate: {Number(lastPancakeSync.inactivated_variants ?? 0)}</div>
-              <div>Combo lấy về: {Number(lastPancakeSync.fetched_combos ?? 0)}</div>
-              <div>SP có combo: {Number(lastPancakeSync.products_with_combo ?? 0)}</div>
-              <div>Khuyến mãi lấy về: {Number(lastPancakeSync.fetched_promotions ?? 0)}</div>
-              <div>SP có khuyến mãi: {Number(lastPancakeSync.products_with_promotions ?? 0)}</div>
-              <div>SP có KM (active API): {Number(lastPancakeSync.products_with_active_promotions ?? 0)}</div>
-              <div>KM map được target: {Number(lastPancakeSync.promotions_with_targets ?? 0)}</div>
-              <div>KM chưa map target: {Number(lastPancakeSync.promotions_without_targets ?? 0)}</div>
-              <div>Sản phẩm bị gỡ: {Number(lastPancakeSync.deleted_products ?? 0)}</div>
-            </div>
-          </div>
-        )}
-
-        {PANCAKE_CATALOG_READ_ONLY && (
-          <div className="mt-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-900/20 p-4">
-            <div className="text-sm font-semibold text-blue-900 dark:text-blue-100">Catalog đang ở chế độ đồng bộ Pancake</div>
-            <div className="mt-1 text-sm text-blue-800 dark:text-blue-200">
-              Tạo/Sửa/Xoá sản phẩm thủ công đã tạm khóa. Vui lòng dùng nút Sync Pancake để cập nhật dữ liệu.
-            </div>
-          </div>
-        )}
-
         {/* Data Table */}
         <div className="mt-6">
           <ProductsTable
             items={items}
             loading={loading}
-            readOnlyCatalog={PANCAKE_CATALOG_READ_ONLY}
             selectedIds={selectedIds}
             onToggleSelect={onToggleSelect}
             onToggleSelectAll={onToggleSelectAll}
@@ -566,18 +482,18 @@ const Products = () => {
         {/* Empty state */}
         {!loading && items.length === 0 && (
           <div className="py-16 text-center">
-            <div className="text-lg font-bold text-gray-900 dark:text-gray-100">Bạn chưa có sản phẩm nào</div>
-            <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">Hãy bấm Sync Pancake để lấy sản phẩm về hệ thống.</div>
+            <div className="text-lg font-bold text-gray-900 dark:text-gray-100">Báº¡n chÆ°a cÃ³ sáº£n pháº©m nÃ o</div>
+            <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">Hãy tạo sản phẩm mới hoặc import CSV để bắt đầu quản lý catalog.</div>
           </div>
         )}
 
         {/* Pagination */}
         <div className="mt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            Hiển thị {currentPageItemsCount} / {headerTotalText} sản phẩm
+            Hiá»ƒn thá»‹ {currentPageItemsCount} / {headerTotalText} sáº£n pháº©m
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="text-sm text-gray-600 dark:text-gray-300">Hiển thị</div>
+            <div className="text-sm text-gray-600 dark:text-gray-300">Hiá»ƒn thá»‹</div>
             <select
               value={pagination.limit}
               onChange={(e) => setPagination((p) => ({ ...p, page: 1, limit: Number(e.target.value) }))}
@@ -595,7 +511,7 @@ const Products = () => {
               disabled={pagination.page <= 1}
               className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 disabled:opacity-50"
             >
-              ≪
+              â‰ª
             </button>
             <button
               type="button"
@@ -636,33 +552,33 @@ const Products = () => {
               disabled={pagination.page >= totalPages}
               className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 disabled:opacity-50"
             >
-              ≫
+              â‰«
             </button>
           </div>
         </div>
       </div>
 
       {/* Bulk Action Bar */}
-      {selectedIds.length > 0 && !PANCAKE_CATALOG_READ_ONLY && (
+      {selectedIds.length > 0 && (
         <div className="fixed bottom-4 left-0 right-0 z-40 px-4">
           <div className="mx-auto max-w-7xl rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Đã chọn {selectedIds.length} sản phẩm</div>
+            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">ÄÃ£ chá»n {selectedIds.length} sáº£n pháº©m</div>
             <div className="flex flex-wrap gap-2">
               <select
                 value={bulkStatus}
                 onChange={(e) => setBulkStatus(e.target.value)}
                 className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
               >
-                <option value="active">Đang bán</option>
-                <option value="draft">Nháp</option>
-                <option value="discontinued">Ngừng bán</option>
+                <option value="active">Äang bÃ¡n</option>
+                <option value="draft">NhÃ¡p</option>
+                <option value="discontinued">Ngá»«ng bÃ¡n</option>
               </select>
               <button
                 type="button"
                 onClick={() => bulkUpdate('status', { status: bulkStatus })}
                 className="rounded-xl border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-semibold"
               >
-                Đổi trạng thái
+                Äá»•i tráº¡ng thÃ¡i
               </button>
 
               <select
@@ -670,7 +586,7 @@ const Products = () => {
                 onChange={(e) => setBulkCategory(e.target.value)}
                 className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
               >
-                <option value="">Gán danh mục...</option>
+                <option value="">GÃ¡n danh má»¥c...</option>
                 {categories.map((c) => (
                   <option key={c.id} value={String(c.id)}>
                     {c.name}
@@ -683,7 +599,7 @@ const Products = () => {
                 onClick={() => bulkUpdate('category', { category_id: Number(bulkCategory) })}
                 className="rounded-xl border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-semibold disabled:opacity-60"
               >
-                Gán danh mục
+                GÃ¡n danh má»¥c
               </button>
 
               <input
@@ -712,12 +628,12 @@ const Products = () => {
               <button
                 type="button"
                 onClick={() => {
-                  if (!window.confirm(`Chuyển ${selectedIds.length} sản phẩm sang Ngừng bán?`)) return;
+                  if (!window.confirm(`Chuyá»ƒn ${selectedIds.length} sáº£n pháº©m sang Ngá»«ng bÃ¡n?`)) return;
                   bulkUpdate('delete', { soft: true });
                 }}
                 className="rounded-xl bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-sm font-semibold"
               >
-                Xoá
+                XoÃ¡
               </button>
             </div>
           </div>

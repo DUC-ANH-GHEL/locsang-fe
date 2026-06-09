@@ -33,7 +33,6 @@ const loadGuestOrdersFromLocal = () => {
       .map((item) => ({
         id: Number(item?.id || 0),
         tracking_code: item?.trackingCode || item?.tracking_code || null,
-        pancake_order_id: item?.pancakeOrderId || item?.pancake_order_id || null,
         status: String(item?.status || 'pending'),
         payment_status: String(item?.paymentStatus || item?.payment_status || 'pending'),
         payment_method: String(item?.paymentMethod || item?.payment_method || 'cod'),
@@ -68,7 +67,6 @@ const saveGuestOrdersToLocal = (orders) => {
     const serialized = deduped.slice(0, 30).map((order) => ({
       id: order.id,
       trackingCode: order.tracking_code,
-      pancakeOrderId: order.pancake_order_id,
       status: order.status,
       paymentStatus: order.payment_status,
       paymentMethod: order.payment_method,
@@ -427,8 +425,8 @@ const AccountOrders = () => {
 
                 <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                   <div>
-                    <div className="text-gray-500">Mã đối chiếu</div>
-                    <div className="font-medium text-gray-800">{order.pancake_order_id || '-'}</div>
+                    <div className="text-gray-500">Mã đơn</div>
+                    <div className="font-medium text-gray-800">{order.tracking_code || `#${order.id}`}</div>
                   </div>
                   <div>
                     <div className="text-gray-500">Thanh toán</div>

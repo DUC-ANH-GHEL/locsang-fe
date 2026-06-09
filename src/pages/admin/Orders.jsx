@@ -11,22 +11,17 @@ const statusFilterOptions = [
 ];
 
 const statusActionCatalog = {
-	confirm: { key: 'confirm', label: 'Xác nhận đơn hàng', pancakeStatus: '1', localStatus: 'processing' },
-	pack: { key: 'pack', label: 'Đang đóng hàng', pancakeStatus: '1', localStatus: 'processing' },
-	waitShip: { key: 'waitShip', label: 'Chờ chuyển hàng', pancakeStatus: '1', localStatus: 'processing' },
-	send: { key: 'send', label: 'Gửi hàng đi', pancakeStatus: '2', localStatus: 'shipped' },
-	received: { key: 'received', label: 'Khách đã nhận được', pancakeStatus: '3', localStatus: 'delivered' },
-	paid: { key: 'paid', label: 'Đã thu tiền', pancakeStatus: '3', localStatus: 'delivered' },
-	returned: { key: 'returned', label: 'Khách trả lại', pancakeStatus: '5', localStatus: 'cancelled' },
-	refundAll: { key: 'refundAll', label: 'Đã hoàn toàn bộ', pancakeStatus: '5', localStatus: 'cancelled' },
-	cancel: { key: 'cancel', label: 'Huỷ đơn', pancakeStatus: '4', localStatus: 'cancelled' },
+	processing: { key: 'processing', label: 'Đang xử lý', localStatus: 'processing' },
+	shipped: { key: 'shipped', label: 'Đang giao hàng', localStatus: 'shipped' },
+	delivered: { key: 'delivered', label: 'Đã giao', localStatus: 'delivered' },
+	cancelled: { key: 'cancelled', label: 'Huỷ đơn', localStatus: 'cancelled' },
 };
 
 const statusTransitionByLocal = {
-	pending: ['confirm', 'pack', 'waitShip', 'send', 'cancel'],
-	processing: ['pack', 'waitShip', 'send', 'received', 'cancel'],
-	shipped: ['received', 'returned', 'refundAll', 'cancel'],
-	delivered: ['paid', 'returned', 'refundAll', 'send', 'cancel'],
+	pending: ['processing', 'shipped', 'cancelled'],
+	processing: ['shipped', 'delivered', 'cancelled'],
+	shipped: ['delivered', 'cancelled'],
+	delivered: ['shipped', 'cancelled'],
 	cancelled: [],
 };
 
@@ -83,7 +78,7 @@ const Orders = () => {
 	const [updating, setUpdating] = useState(false);
 	const [quickUpdatingId, setQuickUpdatingId] = useState(null);
 	const [error, setError] = useState('');
-	const [bulkStatus, setBulkStatus] = useState('confirm');
+	const [bulkStatus, setBulkStatus] = useState('processing');
 
 	const [search, setSearch] = useState('');
 	const [status, setStatus] = useState('');
@@ -134,7 +129,7 @@ const Orders = () => {
 			setUpdating(true);
 			const selectedAction = statusActionCatalog[statusValue];
 			const payload = action === 'status'
-				? { ids: selectedOrderIds, action: 'status', status: selectedAction?.pancakeStatus || '1' }
+				? { ids: selectedOrderIds, action: 'status', status: selectedAction?.localStatus || 'processing' }
 				: { ids: selectedOrderIds, action: 'soft_delete' };
 
 			await adminOrderService.bulkOrders(payload);
@@ -207,7 +202,7 @@ const Orders = () => {
 		);
 
 		try {
-			const res = await adminOrderService.updateOrder(numericOrderId, { status: selectedAction.pancakeStatus });
+			const res = await adminOrderService.updateOrder(numericOrderId, { status: selectedAction.localStatus });
 			const updated = res?.data;
 			if (updated) {
 				setOrders((prev) => prev.map((o) => (Number(o.id) === numericOrderId ? { ...o, ...updated } : o)));
@@ -466,7 +461,7 @@ const Orders = () => {
 										const selectedAction = statusActionCatalog[actionKey];
 										if (!selectedAction) return;
 										setSelectedOrder((prev) => ({ ...prev, status: selectedAction.localStatus }));
-										handleUpdateOrder({ status: selectedAction.pancakeStatus });
+										handleUpdateOrder({ status: selectedAction.localStatus });
 									}}
 									disabled={updating}
 									className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2"

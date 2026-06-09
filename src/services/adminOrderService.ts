@@ -2,7 +2,6 @@ import { apiClient } from './apiClient';
 
 export type AdminOrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 export type AdminPaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
-export type AdminPancakeStatusCode = '-1' | '0' | '1' | '2' | '3' | '4' | '5';
 
 export type AdminOrderListItem = {
   id: number;

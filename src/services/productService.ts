@@ -62,38 +62,6 @@ export type AdminProductListItem = {
   brand?: string | null;
   affiliate?: number | null;
   featured?: boolean | null;
-  pancake_product_id?: string | null;
-  pancake_overview?: {
-    pancake_product_id?: string | null;
-    display_id?: string | null;
-    code?: string | null;
-    keyword?: string | null;
-    product_type?: string | null;
-    supplier?: string | null;
-    warehouse?: string | null;
-    import_link?: string | null;
-    internal_note?: string | null;
-    short_note?: string | null;
-    description?: string | null;
-    seo_slug?: string | null;
-    is_hidden?: boolean | null;
-    is_commerce?: boolean | null;
-    is_sell_negative?: boolean | null;
-    is_weighted_pricing?: boolean | null;
-    hide_name_when_print?: boolean | null;
-    skip_print_when_order?: boolean | null;
-    out_of_stock_alert?: boolean | null;
-    out_of_stock_alert_value?: number | null;
-    created_at?: string | null;
-    updated_at?: string | null;
-    materials?: string[];
-    attributes?: any[];
-    promotions?: any[];
-    gift_products?: any[];
-    categories?: string[];
-    tags?: string[];
-    raw?: any;
-  } | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -134,33 +102,9 @@ const getProductThumb = (product: any): string | undefined => {
     if (typeof mediaUrl === 'string' && mediaUrl.trim()) return mediaUrl;
   }
 
-  const raw = product?.pancake_overview?.raw;
-  const fromRaw =
-    raw?.image_url
-    || raw?.image
-    || raw?.thumbnail
-    || raw?._image
-    || raw?.avatar
-    || raw?.photo;
-  if (typeof fromRaw === 'string' && fromRaw.trim()) return fromRaw;
-
-  const rawImages = Array.isArray(raw?.images) ? raw.images : [];
-  for (const item of rawImages) {
-    if (typeof item === 'string' && item.trim()) return item;
-    if (item && typeof item === 'object') {
-      const url = item.url || item.image_url || item.src;
-      if (typeof url === 'string' && url.trim()) return url;
-    }
-  }
-
   const variants = Array.isArray(product?.variants) ? product.variants : [];
   for (const v of variants) {
-    const variantThumb =
-      v?.image_url
-      || v?.image
-      || v?.thumbnail
-      || v?.pancake_overview?.raw?.image_url
-      || v?.pancake_overview?.raw?.image;
+    const variantThumb = v?.image_url || v?.image || v?.thumbnail;
     if (typeof variantThumb === 'string' && variantThumb.trim()) return variantThumb;
   }
 
@@ -505,18 +449,6 @@ export const getProductVariants = async (productId: number) => {
 export const updateVariantPartial = async (variantId: number, patch: any) => {
   // Expected by PRD (admin endpoint). Backend may not be available yet.
   const response = await apiClient.patch(`/admin/products/variants/${variantId}`, patch);
-  return response.data;
-};
-
-export const syncPancakeProducts = async (params?: { max_pages?: number; page_size?: number }) => {
-  const maxPagesRaw = Number(params?.max_pages ?? 10);
-  const pageSizeRaw = Number(params?.page_size ?? 100);
-  const max_pages = Number.isFinite(maxPagesRaw) ? Math.max(1, Math.min(200, Math.trunc(maxPagesRaw))) : 10;
-  const page_size = Number.isFinite(pageSizeRaw) ? Math.max(1, Math.min(200, Math.trunc(pageSizeRaw))) : 100;
-
-  const response = await apiClient.post('/admin/products/sync/pancake', undefined, {
-    params: { max_pages, page_size },
-  });
   return response.data;
 };
 
@@ -925,7 +857,6 @@ const normalizePublicProduct = (raw: any): Product => {
               return {
                 label: String(item?.label ?? item?.name ?? 'Sản phẩm combo'),
                 quantity: Math.max(1, Number(item?.quantity ?? 1)),
-                pancake_product_id: item?.pancakeProductId ?? item?.pancake_product_id ?? null,
                 local_product_id: Number.isFinite(localProductId) && localProductId > 0 ? localProductId : null,
                 local_product_slug: item?.localProductSlug ?? item?.local_product_slug ?? null,
                 image: item?.image ?? null,
@@ -956,7 +887,6 @@ const normalizePublicProduct = (raw: any): Product => {
               return {
                 label: String(item?.label ?? item?.name ?? 'Sản phẩm khuyến mãi'),
                 quantity: Math.max(1, Number(item?.quantity ?? 1)),
-                pancake_product_id: item?.pancakeProductId ?? item?.pancake_product_id ?? null,
                 local_product_id: Number.isFinite(localProductId) && localProductId > 0 ? localProductId : null,
                 local_product_slug: item?.localProductSlug ?? item?.local_product_slug ?? null,
                 image: item?.image ?? null,
@@ -1040,8 +970,6 @@ export const productService = {
   getProductVariants: async (productId: number) => getProductVariants(productId),
 
   updateVariantPartial: async (variantId: number, patch: any) => updateVariantPartial(variantId, patch),
-
-  syncPancakeProducts: async (params?: { max_pages?: number; page_size?: number }) => syncPancakeProducts(params),
 
   /**
    * Get product by ID

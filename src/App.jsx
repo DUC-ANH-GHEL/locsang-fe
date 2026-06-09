@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react'
+﻿import { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate  } from 'react-router-dom'
 // import jwt_decode from 'jwt-decode';
 
@@ -31,17 +31,6 @@ const ProductReadonlyDetail = lazy(() => import('./pages/admin/Product/ProductRe
 const CreateCategory = lazy(() => import('./pages/admin/Category/CreateCategory'));
 const Categories = lazy(() => import('./pages/admin/Category/Categories'));
 const EditCategory = lazy(() => import('./pages/admin/Category/EditCategory'));
-const TipsList = lazy(() => import('./pages/admin/Tips/TipsList'));
-const TipEditor = lazy(() => import('./pages/admin/Tips/TipEditor'));
-const TipCategories = lazy(() => import('./pages/admin/Tips/TipCategories'));
-const TipCategoryEditor = lazy(() => import('./pages/admin/Tips/TipCategoryEditor'));
-const CustomerStoriesList = lazy(() => import('./pages/admin/CustomerStories/CustomerStoriesList'));
-const CustomerStoryEditor = lazy(() => import('./pages/admin/CustomerStories/CustomerStoryEditor'));
-const ShortsManager = lazy(() => import('./pages/admin/ShortsManager'));
-const CommunityManager = lazy(() => import('./pages/admin/CommunityManager'));
-const HeaderManager = lazy(() => import('./pages/admin/HeaderManager'));
-const FooterManager = lazy(() => import('./pages/admin/FooterManager'));
-const Contacts = lazy(() => import('./pages/admin/Contacts'));
 
 
 
@@ -96,22 +85,7 @@ function App() {
             <Route path="categories" element={<Categories />} />
             <Route path="categories/create" element={<CreateCategory />} />
             <Route path="categories/:id/edit" element={<EditCategory />} />
-            <Route path="tips" element={<TipsList />} />
-            <Route path="tips/categories" element={<TipCategories />} />
-            <Route path="tips/categories/create" element={<TipCategoryEditor />} />
-            <Route path="tips/categories/:id/edit" element={<TipCategoryEditor />} />
-            <Route path="tips/create" element={<TipEditor />} />
-            <Route path="tips/:id/edit" element={<TipEditor />} />
-            <Route path="customer-stories" element={<CustomerStoriesList />} />
-            <Route path="customer-stories/create" element={<CustomerStoryEditor />} />
-            <Route path="customer-stories/:id/edit" element={<CustomerStoryEditor />} />
-            <Route path="shorts" element={<ShortsManager />} />
-            <Route path="community" element={<CommunityManager />} />
-            <Route path="contacts" element={<Contacts />} />
-            <Route path="header" element={<HeaderManager />} />
-            <Route path="footer" element={<FooterManager />} />
             <Route path="orders" element={<Orders />} />
-            <Route path="order" element={<OrderCreate />} />
             <Route path="orders/create" element={<OrderCreate />} />
             <Route path="product/:id" element={<ProductReadonlyDetail />} />
           </Route>

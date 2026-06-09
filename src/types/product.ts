@@ -52,7 +52,6 @@ export type ProductRatingSummary = {
 export type ProductComboItem = {
   label: string;
   quantity: number;
-  pancake_product_id?: string | null;
   local_product_id?: number | null;
   local_product_slug?: string | null;
   image?: string | null;
@@ -69,7 +68,6 @@ export type ProductComboOffer = {
 export type ProductPromotionItem = {
   label: string;
   quantity: number;
-  pancake_product_id?: string | null;
   local_product_id?: number | null;
   local_product_slug?: string | null;
   image?: string | null;

@@ -26,9 +26,7 @@ export type StorefrontOrderItem = {
 export type StorefrontOrder = {
   id: number;
   tracking_code?: string | null;
-  pancake_order_id?: string | null;
   status: string;
-  pancake_status_raw?: unknown;
   payment_status: string;
   payment_method: string;
   receiver_name?: string | null;
