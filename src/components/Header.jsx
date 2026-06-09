@@ -6,7 +6,7 @@ import { useCart } from '../contexts/CartContext';
 import { useStorefrontAuth } from '../contexts/StorefrontAuthContext';
 import { homeContentService } from '../services/homeContentService';
 
-const BRAND_LOGO = '/locsang-assets/brand-logo.svg';
+const BRAND_LOGO = '/locsang-assets/brand-logo.svg?v=yanmar-2';
 
 const formatVnd = (value) =>
   new Intl.NumberFormat('vi-VN', {
@@ -198,7 +198,7 @@ const Header = () => {
       <div className="hidden border-t-[3px] border-[#6b3a24] border-b border-[#e5e5e5] bg-white md:block">
         <div className="mx-auto flex h-[4.75rem] max-w-[944px] items-center justify-between px-6">
           <Link to="/" className="flex min-w-0 items-center">
-            <img src={BRAND_LOGO} alt="Yanmar Lộc Sang" className="h-[2.75rem] w-auto object-contain" />
+            <img src={BRAND_LOGO} alt="Yanmar Lộc Sang" className="h-[3.05rem] w-auto object-contain" />
           </Link>
 
           <nav className="flex items-center gap-7 text-[13px] font-bold text-[#444]">
@@ -276,13 +276,13 @@ const Header = () => {
             </button>
           ) : (
             <Link to="/" className="min-w-0 flex items-center">
-              <img src={BRAND_LOGO} alt="Yanmar Lộc Sang" className="h-[2.55rem] w-auto object-contain max-[390px]:h-[2.25rem]" />
+              <img src={BRAND_LOGO} alt="Yanmar Lộc Sang" className="h-[3.05rem] w-auto object-contain max-[390px]:h-[2.75rem]" />
             </Link>
           )}
 
           {isProductDetailMobileHeader && (
             <Link to="/" className="min-w-0 flex flex-1 justify-center">
-              <img src={BRAND_LOGO} alt="Yanmar Lộc Sang" className="h-[2.5rem] w-auto object-contain max-[390px]:h-[2.2rem]" />
+              <img src={BRAND_LOGO} alt="Yanmar Lộc Sang" className="h-[2.9rem] w-auto object-contain max-[390px]:h-[2.65rem]" />
             </Link>
           )}
 

@@ -1,11 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="420" height="140" viewBox="0 0 420 140" role="img" aria-label="Yanmar Lộc Sang">
-  <rect width="420" height="140" fill="white"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="70" viewBox="0 0 220 70" role="img" aria-label="YANMAR Lộc Sang">
+  <rect width="220" height="70" fill="none"/>
   <g fill="#d90616">
-    <path d="M22 34h126v17L85 80 22 51V34Z"/>
-    <path d="M22 62h126v17l-63 29-63-29V62Z"/>
-    <path d="M53 50h64L85 65 53 50Z" fill="white"/>
-    <path d="M53 78h64L85 93 53 78Z" fill="white"/>
+    <path d="M4 18h54v8L31 39 4 26V18Z"/>
+    <path d="M4 33h54v8L31 54 4 41V33Z"/>
+    <path d="M17 25h28L31 32 17 25Z" fill="#fff"/>
+    <path d="M17 40h28L31 47 17 40Z" fill="#fff"/>
   </g>
-  <text x="172" y="55" fill="#d90616" font-family="Arial Black, Arial, sans-serif" font-size="42" font-weight="900" letter-spacing="1">YANMAR</text>
-  <text x="172" y="102" fill="#d90616" font-family="Arial Black, Arial, sans-serif" font-size="34" font-weight="900" letter-spacing="1">LỘC SANG</text>
+  <g fill="#d90616" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-style="italic">
+    <text x="70" y="29" font-size="24" letter-spacing="-1.2">YANMAR</text>
+    <text x="70" y="51" font-size="18" letter-spacing="-0.2">LỘC SANG</text>
+  </g>
 </svg>

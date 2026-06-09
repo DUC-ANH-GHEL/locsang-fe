@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 160 160" role="img" aria-label="Yanmar">
-  <rect width="160" height="160" rx="32" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 160 160" role="img" aria-label="YANMAR">
+  <rect width="160" height="160" fill="#ffffff"/>
   <g fill="#d90616">
-    <path d="M28 34h104v22L80 80 28 56V34Z"/>
-    <path d="M28 76h104v22l-52 24-52-24V76Z"/>
-    <path d="M54 53h52L80 65 54 53Z" fill="#ffffff"/>
-    <path d="M54 95h52l-26 12-26-12Z" fill="#ffffff"/>
+    <path d="M22 39h116v18L80 84 22 57V39Z"/>
+    <path d="M22 73h116v18l-58 30-58-30V73Z"/>
+    <path d="M51 56h58L80 70 51 56Z" fill="#fff"/>
+    <path d="M51 90h58l-29 15-29-15Z" fill="#fff"/>
   </g>
 </svg>
