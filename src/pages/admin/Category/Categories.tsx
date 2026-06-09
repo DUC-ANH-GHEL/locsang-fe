@@ -87,12 +87,12 @@ const Categories = () => {
             <div className="text-sm text-gray-500 dark:text-gray-400">Quản lý</div>
             <h1 className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">Danh mục</h1>
           </div>
-          {/* <button
+          <button
             onClick={() => navigate('/admin/categories/create')}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 font-semibold shadow-sm transition-colors"
           >
             <Plus size={18} /> Tạo danh mục
-          </button> */}
+          </button>
         </div>
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
@@ -170,7 +170,14 @@ const Categories = () => {
                 {filtered.length === 0 && !loading && (
                   <tr>
                     <td colSpan={5} className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
-                      Không có danh mục.
+                      <div>Không có danh mục.</div>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/admin/categories/create')}
+                        className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-rose-700"
+                      >
+                        <Plus size={18} /> Tạo danh mục đầu tiên
+                      </button>
                     </td>
                   </tr>
                 )}
