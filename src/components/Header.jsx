@@ -15,13 +15,13 @@ const formatVnd = (value) =>
   }).format(Number(value || 0));
 
 const DEFAULT_HEADER_CONTENT = {
-  header_brand_name: 'L?c Sang',
-  header_brand_tagline: 'Ph? t?ng v? nh?t Yanmar ch?nh h?ng',
-  header_nav_shop_text: 'C?a h?ng',
-  header_nav_new_arrivals_text: 'H?ng m?i v?',
-  header_nav_tips_text: 'C?m nang',
-  header_nav_shorts_text: 'L?c Sang Shorts',
-  header_nav_orders_text: '??n h?ng',
+  header_brand_name: 'Lộc Sang',
+  header_brand_tagline: 'Phụ tùng và nhớt Yanmar chính hãng',
+  header_nav_shop_text: 'Cửa hàng',
+  header_nav_new_arrivals_text: 'Hàng mới về',
+  header_nav_tips_text: 'Cẩm nang',
+  header_nav_shorts_text: 'Lộc Sang Shorts',
+  header_nav_orders_text: 'Đơn hàng',
 };
 
 const resolveStorefrontAvatar = (user) => {
@@ -271,7 +271,7 @@ const Header = () => {
               type="button"
               onClick={() => navigate('/products')}
               className="inline-flex h-12 w-12 items-center justify-center text-[#d50918] active:scale-[0.98] max-[390px]:h-10 max-[390px]:w-10"
-              aria-label="T?m ki?m"
+              aria-label="Tìm kiếm"
             >
               <Search size={38} strokeWidth={2.5} className="max-[390px]:h-8 max-[390px]:w-8" />
             </button>
@@ -280,7 +280,7 @@ const Header = () => {
               <button
                 className="relative inline-flex h-12 w-12 items-center justify-center text-[#d50918] active:scale-[0.98] max-[390px]:h-10 max-[390px]:w-10"
                 onClick={() => setCartOpen((v) => !v)}
-                aria-label="Gi? h?ng"
+                aria-label="Giỏ hàng"
               >
                 <FaShoppingCart size={35} className="cart-fly-target max-[390px]:h-8 max-[390px]:w-8" />
                 {cartCount > 0 && (
@@ -291,9 +291,9 @@ const Header = () => {
               </button>
               {cartOpen && (
                 <div className="absolute right-0 mt-2 w-[min(92vw,20rem)] animate-fadeIn rounded-2xl border border-black/10 bg-white py-2 shadow-2xl z-50">
-                  <div className="border-b border-gray-100 px-4 py-2 text-base font-bold text-[#d50918]">Gi? h?ng</div>
+                  <div className="border-b border-gray-100 px-4 py-2 text-base font-bold text-[#d50918]">Giỏ hàng</div>
                   {cart.length === 0 ? (
-                    <div className="px-4 py-5 text-center text-sm text-gray-500">Ch?a c? s?n ph?m n?o</div>
+                    <div className="px-4 py-5 text-center text-sm text-gray-500">Chưa có sản phẩm nào</div>
                   ) : (
                     <>
                       <ul className="max-h-56 divide-y divide-gray-100 overflow-y-auto">
@@ -304,7 +304,7 @@ const Header = () => {
                               <div className="text-xs font-semibold text-gray-900 break-words leading-snug">{item.title}</div>
                               {item.variant_label && (
                                 <div className="mt-0.5 text-[11px] text-gray-500 break-words leading-snug">
-                                  Ph?n lo?i: <span className="font-medium text-gray-700">{item.variant_label}</span>
+                                  Phân loại: <span className="font-medium text-gray-700">{item.variant_label}</span>
                                 </div>
                               )}
                               <div className="text-[11px] text-gray-500">SL: {item.quantity} x {formatVnd(item.price)}</div>
@@ -326,14 +326,14 @@ const Header = () => {
                                 </button>
                               </div>
                             </div>
-                            <button className="p-1 text-red-500 hover:text-red-700" onClick={() => removeFromCart(item.item_key)} title="X?a">
+                            <button className="p-1 text-red-500 hover:text-red-700" onClick={() => removeFromCart(item.item_key)} title="Xóa">
                               <FaTrash />
                             </button>
                           </li>
                         ))}
                       </ul>
                       <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2">
-                        <span className="text-sm font-semibold text-gray-700">T?ng:</span>
+                        <span className="text-sm font-semibold text-gray-700">Tổng:</span>
                         <span className="font-bold text-[#d50918]">{formatVnd(total)}</span>
                       </div>
                       <div className="flex gap-2 px-4 pb-2">
@@ -344,9 +344,9 @@ const Header = () => {
                             navigate('/checkout');
                           }}
                         >
-                          Thanh to?n
+                          Thanh toán
                         </button>
-                        <button className="rounded-xl bg-gray-200 px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-300" onClick={clearCart}>X?a</button>
+                        <button className="rounded-xl bg-gray-200 px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-300" onClick={clearCart}>Xóa</button>
                       </div>
                     </>
                   )}

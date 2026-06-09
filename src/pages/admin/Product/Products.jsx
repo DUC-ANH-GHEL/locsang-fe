@@ -132,13 +132,13 @@ const Products = () => {
     } catch (error) {
       const parsed = parseApiError(error);
       if (parsed?.status === 401) {
-        showToast('PhiÃªn Ä‘Äƒng nháº­p háº¿t háº¡n. Vui lÃ²ng Ä‘Äƒng nháº­p láº¡i.', 'error', 5000);
+        showToast('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.', 'error', 5000);
         logout();
         const current = `${window.location.pathname}${window.location.search}`;
         window.location.href = `/admin/login?redirect=${encodeURIComponent(current)}`;
         return;
       }
-      showToast(parsed?.message || 'KhÃ´ng táº£i Ä‘Æ°á»£c danh sÃ¡ch sáº£n pháº©m', 'error', 6000);
+      showToast(parsed?.message || 'Không tải được danh sách sản phẩm', 'error', 6000);
     } finally {
       setLoading(false);
     }
@@ -218,7 +218,7 @@ const Products = () => {
   const handleExportCsv = (mode) => {
     const list = mode === 'selected' ? items.filter((x) => selectedIds.includes(x.id)) : items;
     if (list.length === 0) {
-      showToast('KhÃ´ng cÃ³ dá»¯ liá»‡u Ä‘á»ƒ export', 'warning');
+      showToast('Không có dữ liệu để export', 'warning');
       return;
     }
     const header = [
@@ -297,10 +297,10 @@ const Products = () => {
       const text = await file.text();
       const rows = parseCsv(text);
       if (rows.length === 0) {
-        showToast('CSV rá»—ng', 'warning');
+        showToast('CSV rỗng', 'warning');
         return;
       }
-      if (!window.confirm(`Import ${rows.length} dÃ²ng tá»« CSV?`)) return;
+      if (!window.confirm(`Import ${rows.length} dòng từ CSV?`)) return;
 
       let ok = 0;
       let fail = 0;
@@ -351,26 +351,26 @@ const Products = () => {
         }
       }
 
-      showToast(`Import xong. ThÃ nh cÃ´ng: ${ok}, lá»—i: ${fail}`, fail > 0 ? 'warning' : 'success', 7000);
+      showToast(`Import xong. Thành công: ${ok}, lỗi: ${fail}`, fail > 0 ? 'warning' : 'success', 7000);
       fetchAdminProducts();
     } catch {
-      showToast('KhÃ´ng import Ä‘Æ°á»£c CSV', 'error');
+      showToast('Không import được CSV', 'error');
     }
   };
 
   const bulkUpdate = async (action, data) => {
     try {
       await productService.bulkUpdateProducts({ ids: selectedIds, action, data });
-      showToast('Cáº­p nháº­t hÃ ng loáº¡t thÃ nh cÃ´ng', 'success');
+      showToast('Cập nhật hàng loạt thành công', 'success');
       setSelectedIds([]);
       fetchAdminProducts();
     } catch (error) {
       const parsed = parseApiError(error);
       if (parsed?.status === 404) {
-        showToast('Backend chÆ°a há»— trá»£ bulk update (/admin/products/bulk)', 'error', 7000);
+        showToast('Backend chưa hỗ trợ bulk update (/admin/products/bulk)', 'error', 7000);
         return;
       }
-      showToast(parsed?.message || 'Bulk update tháº¥t báº¡i', 'error', 7000);
+      showToast(parsed?.message || 'Bulk update thất bại', 'error', 7000);
     }
   };
 
@@ -482,7 +482,7 @@ const Products = () => {
         {/* Empty state */}
         {!loading && items.length === 0 && (
           <div className="py-16 text-center">
-            <div className="text-lg font-bold text-gray-900 dark:text-gray-100">Báº¡n chÆ°a cÃ³ sáº£n pháº©m nÃ o</div>
+            <div className="text-lg font-bold text-gray-900 dark:text-gray-100">Bạn chưa có sản phẩm nào</div>
             <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">Hãy tạo sản phẩm mới hoặc import CSV để bắt đầu quản lý catalog.</div>
           </div>
         )}
@@ -490,10 +490,10 @@ const Products = () => {
         {/* Pagination */}
         <div className="mt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            Hiá»ƒn thá»‹ {currentPageItemsCount} / {headerTotalText} sáº£n pháº©m
+            Hiển thị {currentPageItemsCount} / {headerTotalText} sản phẩm
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="text-sm text-gray-600 dark:text-gray-300">Hiá»ƒn thá»‹</div>
+            <div className="text-sm text-gray-600 dark:text-gray-300">Hiển thị</div>
             <select
               value={pagination.limit}
               onChange={(e) => setPagination((p) => ({ ...p, page: 1, limit: Number(e.target.value) }))}
@@ -511,7 +511,7 @@ const Products = () => {
               disabled={pagination.page <= 1}
               className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 disabled:opacity-50"
             >
-              â‰ª
+              &laquo;
             </button>
             <button
               type="button"
@@ -552,7 +552,7 @@ const Products = () => {
               disabled={pagination.page >= totalPages}
               className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 disabled:opacity-50"
             >
-              â‰«
+              &raquo;
             </button>
           </div>
         </div>
@@ -562,23 +562,23 @@ const Products = () => {
       {selectedIds.length > 0 && (
         <div className="fixed bottom-4 left-0 right-0 z-40 px-4">
           <div className="mx-auto max-w-7xl rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">ÄÃ£ chá»n {selectedIds.length} sáº£n pháº©m</div>
+            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Đã chọn {selectedIds.length} sản phẩm</div>
             <div className="flex flex-wrap gap-2">
               <select
                 value={bulkStatus}
                 onChange={(e) => setBulkStatus(e.target.value)}
                 className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
               >
-                <option value="active">Äang bÃ¡n</option>
-                <option value="draft">NhÃ¡p</option>
-                <option value="discontinued">Ngá»«ng bÃ¡n</option>
+                <option value="active">Đang bán</option>
+                <option value="draft">Nháp</option>
+                <option value="discontinued">Ngừng bán</option>
               </select>
               <button
                 type="button"
                 onClick={() => bulkUpdate('status', { status: bulkStatus })}
                 className="rounded-xl border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-semibold"
               >
-                Äá»•i tráº¡ng thÃ¡i
+                Đổi trạng thái
               </button>
 
               <select
@@ -586,7 +586,7 @@ const Products = () => {
                 onChange={(e) => setBulkCategory(e.target.value)}
                 className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
               >
-                <option value="">GÃ¡n danh má»¥c...</option>
+                <option value="">Gán danh mục...</option>
                 {categories.map((c) => (
                   <option key={c.id} value={String(c.id)}>
                     {c.name}
@@ -599,7 +599,7 @@ const Products = () => {
                 onClick={() => bulkUpdate('category', { category_id: Number(bulkCategory) })}
                 className="rounded-xl border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-semibold disabled:opacity-60"
               >
-                GÃ¡n danh má»¥c
+                Gán danh mục
               </button>
 
               <input
@@ -628,12 +628,12 @@ const Products = () => {
               <button
                 type="button"
                 onClick={() => {
-                  if (!window.confirm(`Chuyá»ƒn ${selectedIds.length} sáº£n pháº©m sang Ngá»«ng bÃ¡n?`)) return;
+                  if (!window.confirm(`Chuyển ${selectedIds.length} sản phẩm sang Ngừng bán?`)) return;
                   bulkUpdate('delete', { soft: true });
                 }}
                 className="rounded-xl bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-sm font-semibold"
               >
-                XoÃ¡
+                Xoá
               </button>
             </div>
           </div>
