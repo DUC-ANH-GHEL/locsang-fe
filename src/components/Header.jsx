@@ -201,9 +201,9 @@ const Header = () => {
           <Link to="/" className="flex min-w-0 items-center">
             <div className="flex items-center gap-3">
               <img src={BRAND_MARK} alt="Yanmar logo" className="h-[3.05rem] w-auto object-contain" />
-              <div className="hidden sm:flex flex-col leading-tight">
-                <span className="text-[18px] font-extrabold text-[#d50918]">Yanmar</span>
-                <span className="text-sm font-semibold text-[#444]">Lộc Sang</span>
+              <div className="flex flex-col leading-tight ml-2">
+                <span className="text-[16px] sm:text-[18px] font-extrabold text-[#d50918]">Yanmar</span>
+                <span className="text-xs sm:text-sm font-semibold text-[#444]">Lộc Sang</span>
               </div>
             </div>
           </Link>
@@ -283,7 +283,13 @@ const Header = () => {
             </button>
           ) : (
             <Link to="/" className="min-w-0 flex items-center">
-              <img src={BRAND_MARK} alt="Yanmar Lộc Sang" className="h-[3.05rem] w-auto object-contain max-[390px]:h-[2.75rem]" />
+              <div className="flex items-center gap-2">
+                <img src={BRAND_MARK} alt="Yanmar Lộc Sang" className="h-[2.6rem] w-auto object-contain max-[390px]:h-[2.2rem]" />
+                <div className="flex flex-col leading-tight">
+                  <span className="text-[15px] font-extrabold text-[#d50918]">Yanmar</span>
+                  <span className="text-[12px] font-semibold text-[#444]">Lộc Sang</span>
+                </div>
+              </div>
             </Link>
           )}
 
