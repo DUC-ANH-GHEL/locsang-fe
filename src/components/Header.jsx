@@ -201,9 +201,9 @@ const Header = () => {
           <Link to="/" className="flex min-w-0 items-center">
             <div className="flex items-center gap-3">
               <img src={BRAND_MARK} alt="Yanmar logo" className="h-[3.05rem] w-auto object-contain" />
-              <div className="flex flex-col leading-tight ml-2">
-                <span className="text-[16px] sm:text-[18px] font-extrabold text-[#d50918]">Yanmar</span>
-                <span className="text-xs sm:text-sm font-semibold text-[#444]">Lộc Sang</span>
+              <div className="ml-1 flex flex-col leading-[0.95]">
+                <span className="uppercase text-[22px] font-black italic tracking-tight text-[#d50918]">Yanmar</span>
+                <span className="-mt-0.5 uppercase text-[16px] font-black tracking-tight text-[#d50918]">Lộc Sang</span>
               </div>
             </div>
           </Link>
@@ -283,11 +283,11 @@ const Header = () => {
             </button>
           ) : (
             <Link to="/" className="min-w-0 flex items-center">
-              <div className="flex items-center gap-2">
-                <img src={BRAND_MARK} alt="Yanmar Lộc Sang" className="h-[2.6rem] w-auto object-contain max-[390px]:h-[2.2rem]" />
-                <div className="flex flex-col leading-tight">
-                  <span className="text-[15px] font-extrabold text-[#d50918]">Yanmar</span>
-                  <span className="text-[12px] font-semibold text-[#444]">Lộc Sang</span>
+              <div className="flex max-w-[11.5rem] items-center gap-2.5">
+                <img src={BRAND_MARK} alt="Yanmar Lộc Sang" className="h-[2.35rem] w-auto object-contain max-[390px]:h-[2.15rem]" />
+                <div className="flex flex-col leading-[0.9]">
+                  <span className="uppercase text-[24px] font-black italic tracking-tight text-[#d50918] max-[390px]:text-[21px]">Yanmar</span>
+                  <span className="-mt-0.5 uppercase text-[16px] font-black tracking-tight text-[#d50918] max-[390px]:text-[14px]">Lộc Sang</span>
                 </div>
               </div>
             </Link>
@@ -295,7 +295,13 @@ const Header = () => {
 
           {isProductDetailMobileHeader && (
               <Link to="/" className="min-w-0 flex flex-1 justify-center">
-              <img src={BRAND_MARK} alt="Yanmar Lộc Sang" className="h-[2.9rem] w-auto object-contain max-[390px]:h-[2.65rem]" />
+              <div className="flex items-center gap-2">
+                <img src={BRAND_MARK} alt="Yanmar Lộc Sang" className="h-[2.05rem] w-auto object-contain" />
+                <div className="flex flex-col leading-[0.92]">
+                  <span className="uppercase text-[18px] font-black italic tracking-tight text-[#d50918]">Yanmar</span>
+                  <span className="-mt-0.5 uppercase text-[12px] font-black tracking-tight text-[#d50918]">Lộc Sang</span>
+                </div>
+              </div>
             </Link>
           )}
 
