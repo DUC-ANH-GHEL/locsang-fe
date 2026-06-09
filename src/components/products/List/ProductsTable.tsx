@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Edit3, Eye, PackageOpen, PencilLine, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../../services/authService';
 import { productService } from '../../../services/productService';
@@ -30,7 +31,6 @@ type Props = {
   onToggleSelectAll: (checked: boolean) => void;
   sort: string;
   onSortChange: (next: string) => void;
-  columnVisibility: { profit: boolean; category: boolean };
   onRefresh: () => void;
 };
 
@@ -39,7 +39,7 @@ const IMAGE_DEFAULT_URL = '/favicon.svg';
 const formatCurrency = (value: unknown) => {
   const num = Number(value);
   if (!Number.isFinite(num)) return '-';
-  return num.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+  return num.toLocaleString('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
 };
 
 const formatRange = (min?: number | null, max?: number | null) => {
@@ -53,28 +53,33 @@ const formatRange = (min?: number | null, max?: number | null) => {
 };
 
 const getCategoryLabel = (category: AdminListItem['category']) => {
-  if (!category) return '-';
-  if (typeof category === 'string') return category;
-  return typeof category.name === 'string' && category.name.trim() ? category.name : '-';
+  if (!category) return 'Chưa phân loại';
+  if (typeof category === 'string') return category || 'Chưa phân loại';
+  return typeof category.name === 'string' && category.name.trim() ? category.name : 'Chưa phân loại';
 };
 
 const StatusPill = ({ value }: { value?: string | null }) => {
-  const v = String(value || '').toLowerCase();
+  const current = String(value || '').toLowerCase();
   const map: Record<string, { label: string; cls: string }> = {
-    active: { label: 'Đang bán', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
-    draft: { label: 'Nháp', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' },
-    discontinued: { label: 'Ngừng bán', cls: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
-    inactive: { label: 'Ngừng bán', cls: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+    active: { label: 'Đang bán', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-200 dark:ring-emerald-500/20' },
+    draft: { label: 'Nháp', cls: 'bg-amber-50 text-amber-800 ring-amber-100 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20' },
+    discontinued: { label: 'Ngừng bán', cls: 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700' },
+    inactive: { label: 'Ngừng bán', cls: 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700' },
   };
-  const def = map[v] || { label: value || '-', cls: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' };
-  return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${def.cls}`}>{def.label}</span>;
+  const fallback = map[current] || { label: value || '-', cls: 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700' };
+  return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-black ring-1 ${fallback.cls}`}>{fallback.label}</span>;
 };
 
-const StockCell = ({ total }: { total?: number | null }) => {
-  const t = Number(total ?? 0);
-  const cls = t <= 0 ? 'text-red-600' : t <= 5 ? 'text-amber-600' : 'text-emerald-700 dark:text-emerald-300';
-  const label = t <= 0 ? 'Hết hàng' : t <= 5 ? `Sắp hết (${t})` : `${t}`;
-  return <div className={`text-sm font-semibold ${cls}`}>{label}</div>;
+const StockBadge = ({ total }: { total?: number | null }) => {
+  const stock = Number(total ?? 0);
+  const cls =
+    stock <= 0
+      ? 'bg-rose-50 text-rose-700 ring-rose-100 dark:bg-rose-500/10 dark:text-rose-200 dark:ring-rose-500/20'
+      : stock <= 5
+        ? 'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20'
+        : 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-200 dark:ring-emerald-500/20';
+  const label = stock <= 0 ? 'Hết hàng' : stock <= 5 ? `Sắp hết: ${stock}` : `${stock} còn`;
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ring-1 ${cls}`}>{label}</span>;
 };
 
 const sortOptions = [
@@ -89,6 +94,65 @@ const sortOptions = [
   { value: 'updated_desc', label: 'Cập nhật gần đây' },
 ];
 
+const IconButton = ({
+  label,
+  children,
+  onClick,
+  danger,
+  disabled,
+}: {
+  label: string;
+  children: React.ReactNode;
+  onClick: () => void;
+  danger?: boolean;
+  disabled?: boolean;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    title={label}
+    className={
+      'inline-flex h-10 w-10 items-center justify-center rounded-2xl border text-sm font-black transition disabled:opacity-50 ' +
+      (danger
+        ? 'border-red-100 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300'
+        : 'border-slate-200 bg-white text-slate-700 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-rose-500/30 dark:hover:bg-rose-500/10 dark:hover:text-rose-200')
+    }
+  >
+    {children}
+  </button>
+);
+
+const ProductIdentity = ({ product }: { product: AdminListItem }) => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <button
+        type="button"
+        onClick={() => navigate(`/admin/product/${product.id}`)}
+        className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
+      >
+        <img src={product.thumbnail || IMAGE_DEFAULT_URL} alt={product.name} className="h-full w-full object-cover" />
+      </button>
+      <div className="min-w-0">
+        <button
+          type="button"
+          onClick={() => navigate(`/admin/product/${product.id}`)}
+          className="block max-w-[28rem] truncate text-left text-sm font-black text-slate-950 hover:text-rose-700 dark:text-white dark:hover:text-rose-200"
+        >
+          {product.name}
+        </button>
+        <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+          <span>SKU: {product.sku || '-'}</span>
+          <span>Slug: {product.slug || '-'}</span>
+        </div>
+        <div className="mt-2 text-xs font-bold text-slate-600 dark:text-slate-300">{getCategoryLabel(product.category)}</div>
+      </div>
+    </div>
+  );
+};
+
 const ProductsTable = ({
   items,
   loading,
@@ -97,7 +161,6 @@ const ProductsTable = ({
   onToggleSelectAll,
   sort,
   onSortChange,
-  columnVisibility,
   onRefresh,
 }: Props) => {
   const navigate = useNavigate();
@@ -112,7 +175,7 @@ const ProductsTable = ({
 
   const allSelected = useMemo(() => {
     if (!items?.length) return false;
-    return items.every((p) => selectedIds.includes(p.id));
+    return items.every((product) => selectedIds.includes(product.id));
   }, [items, selectedIds]);
 
   const handleAuthOrToast = (error: unknown, fallbackMessage: string) => {
@@ -129,21 +192,21 @@ const ProductsTable = ({
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) return;
+    if (!window.confirm('Bạn có chắc chắn muốn xoá sản phẩm này?')) return;
     setDeletingId(id);
     try {
       await productService.deleteProduct(id);
-      showToast('Đã xóa sản phẩm', 'success');
+      showToast('Đã xoá sản phẩm', 'success');
       onRefresh();
     } catch (error) {
-      handleAuthOrToast(error, 'Không xóa được sản phẩm');
+      handleAuthOrToast(error, 'Không xoá được sản phẩm');
     } finally {
       setDeletingId(null);
     }
   };
 
   const updateStatusInline = async (id: number, nextStatus: string) => {
-    setStatusBusy((p) => ({ ...p, [id]: true }));
+    setStatusBusy((prev) => ({ ...prev, [id]: true }));
     try {
       await productService.updateProductPartial(id, { status: nextStatus });
       showToast('Đã cập nhật trạng thái', 'success');
@@ -151,107 +214,87 @@ const ProductsTable = ({
     } catch (error) {
       handleAuthOrToast(error, 'Không cập nhật được trạng thái');
     } finally {
-      setStatusBusy((p) => ({ ...p, [id]: false }));
+      setStatusBusy((prev) => ({ ...prev, [id]: false }));
     }
   };
 
   if (loading) {
     return (
-      <div className="animate-pulse">
-        <div className="mb-3 h-10 rounded-xl bg-gray-100 dark:bg-gray-800" />
-        <div className="mb-3 h-10 rounded-xl bg-gray-100 dark:bg-gray-800" />
-        <div className="h-10 rounded-xl bg-gray-100 dark:bg-gray-800" />
+      <div className="space-y-3">
+        {[0, 1, 2].map((item) => (
+          <div key={item} className="h-24 animate-pulse rounded-3xl bg-slate-100 dark:bg-slate-800" />
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800">
-      <div className="flex flex-col gap-2 bg-gray-50 px-4 py-3 dark:bg-gray-950 md:flex-row md:items-center md:justify-between">
-        <label className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
-          <input type="checkbox" checked={allSelected} onChange={(e) => onToggleSelectAll(e.target.checked)} />
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/60 md:flex-row md:items-center md:justify-between">
+        <label className="flex items-center gap-3 text-sm font-bold text-slate-600 dark:text-slate-300">
+          <input type="checkbox" checked={allSelected} onChange={(event) => onToggleSelectAll(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-rose-600" />
           Chọn tất cả
-          {selectedIds.length > 0 && <span className="font-semibold text-gray-900 dark:text-gray-100">({selectedIds.length} đã chọn)</span>}
+          {selectedIds.length > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-black text-rose-700 dark:bg-rose-500/10 dark:text-rose-200">{selectedIds.length} đã chọn</span>}
         </label>
+
         <div className="flex items-center gap-2">
-          <div className="text-sm text-gray-600 dark:text-gray-300">Sắp xếp</div>
+          <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Sắp xếp</span>
           <select
             value={sort}
-            onChange={(e) => onSortChange(e.target.value)}
-            className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/30 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+            onChange={(event) => onSortChange(event.target.value)}
+            className="h-10 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
           >
-            {sortOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
         </div>
       </div>
 
-      <div className="hidden overflow-x-auto md:block">
-        <table className="min-w-full divide-y divide-gray-200 bg-white dark:divide-gray-800 dark:bg-gray-900">
-          <thead>
+      <div className="hidden xl:block">
+        <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+          <thead className="bg-white dark:bg-slate-900">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"> </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Sản phẩm</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Giá</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Tồn kho</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Biến thể</th>
-              {columnVisibility.profit && <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Lợi nhuận</th>}
-              {columnVisibility.category && <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Danh mục</th>}
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Trạng thái</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Thao tác</th>
+              <th className="w-10 px-4 py-3 text-left" />
+              <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-400">Sản phẩm</th>
+              <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-400">Giá & lợi nhuận</th>
+              <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-400">Kho</th>
+              <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-400">Trạng thái</th>
+              <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-wide text-slate-400">Thao tác</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-            {items.map((p) => (
-              <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-950/40">
-                <td className="px-4 py-3">
-                  <input type="checkbox" checked={selectedIds.includes(p.id)} onChange={(e) => onToggleSelect(p.id, e.target.checked)} />
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {items.map((product) => (
+              <tr key={product.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-950/50">
+                <td className="px-4 py-4 align-middle">
+                  <input type="checkbox" checked={selectedIds.includes(product.id)} onChange={(event) => onToggleSelect(product.id, event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-rose-600" />
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/admin/product/${p.id}`)}
-                      className="h-12 w-12 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800"
-                      title="Xem chi tiết sản phẩm"
-                    >
-                      <img src={p.thumbnail || IMAGE_DEFAULT_URL} alt={p.name} className="h-full w-full object-cover" />
-                    </button>
-                    <div className="min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/admin/product/${p.id}`)}
-                        className="truncate font-semibold text-gray-900 hover:text-rose-600 dark:text-gray-100"
-                      >
-                        {p.name}
-                      </button>
-                      <div className="truncate text-xs text-gray-500">SKU: {p.sku || '-'} | Slug: {p.slug || '-'}</div>
-                    </div>
+                <td className="px-4 py-4">
+                  <ProductIdentity product={product} />
+                </td>
+                <td className="px-4 py-4">
+                  <div className="text-sm font-black text-slate-950 dark:text-white">{formatRange(product.price_min, product.price_max)}</div>
+                  <div className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Lãi: {formatCurrency(product.profit_min)}
+                    {Number.isFinite(Number(product.margin_percent)) ? ` | Margin ${Number(product.margin_percent).toFixed(1)}%` : ''}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-800 dark:text-gray-200">{formatRange(p.price_min, p.price_max)}</td>
-                <td className="px-4 py-3">
-                  <StockCell total={p.stock_total} />
+                <td className="px-4 py-4">
+                  <div className="space-y-2">
+                    <StockBadge total={product.stock_total} />
+                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400">{Number(product.variant_count ?? 0)} biến thể</div>
+                  </div>
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-800 dark:text-gray-200">{Number(p.variant_count ?? 0)}</td>
-                {columnVisibility.profit && (
-                  <td className="px-4 py-3 text-sm text-gray-800 dark:text-gray-200">
-                    <div className="font-semibold">{formatCurrency(p.profit_min)}</div>
-                    {Number.isFinite(Number(p.margin_percent)) && <div className="text-xs text-gray-500">Margin: {Number(p.margin_percent).toFixed(1)}%</div>}
-                  </td>
-                )}
-                {columnVisibility.category && <td className="px-4 py-3 text-sm text-gray-800 dark:text-gray-200">{getCategoryLabel(p.category)}</td>}
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <StatusPill value={p.status} />
+                <td className="px-4 py-4">
+                  <div className="flex flex-col items-start gap-2">
+                    <StatusPill value={product.status} />
                     <select
-                      value={String(p.status || 'active').toLowerCase()}
-                      disabled={Boolean(statusBusy[p.id])}
-                      onChange={(e) => updateStatusInline(p.id, e.target.value)}
-                      className="rounded-xl border border-gray-300 bg-gray-50 px-2 py-1 text-xs text-gray-900 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/30 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                      value={String(product.status || 'active').toLowerCase()}
+                      disabled={Boolean(statusBusy[product.id])}
+                      onChange={(event) => updateStatusInline(product.id, event.target.value)}
+                      className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-xs font-bold text-slate-900 outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
                     >
                       <option value="active">Đang bán</option>
                       <option value="draft">Nháp</option>
@@ -259,22 +302,20 @@ const ProductsTable = ({
                     </select>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-4">
                   <div className="flex justify-end gap-2">
-                    <button type="button" onClick={() => setQuickEdit({ open: true, item: p, saving: false })} className="rounded-xl border border-gray-300 px-3 py-1.5 text-sm font-semibold dark:border-gray-700">
-                      Sửa nhanh
-                    </button>
-                    <button type="button" onClick={() => navigate(`/admin/product/update/${p.id}`)} className="rounded-xl border border-gray-300 px-3 py-1.5 text-sm font-semibold dark:border-gray-700">
-                      Sửa
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(p.id)}
-                      disabled={deletingId === p.id}
-                      className="rounded-xl bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-                    >
-                      {deletingId === p.id ? 'Đang xóa...' : 'Xóa'}
-                    </button>
+                    <IconButton label="Xem chi tiết" onClick={() => navigate(`/admin/product/${product.id}`)}>
+                      <Eye size={17} />
+                    </IconButton>
+                    <IconButton label="Sửa nhanh" onClick={() => setQuickEdit({ open: true, item: product, saving: false })}>
+                      <Edit3 size={17} />
+                    </IconButton>
+                    <IconButton label="Sửa sản phẩm" onClick={() => navigate(`/admin/product/update/${product.id}`)}>
+                      <PencilLine size={17} />
+                    </IconButton>
+                    <IconButton label="Xoá" onClick={() => handleDelete(product.id)} danger disabled={deletingId === product.id}>
+                      <Trash2 size={17} />
+                    </IconButton>
                   </div>
                 </td>
               </tr>
@@ -283,42 +324,72 @@ const ProductsTable = ({
         </table>
       </div>
 
-      <div className="divide-y divide-gray-200 bg-white dark:divide-gray-800 dark:bg-gray-900 md:hidden">
-        {items.map((p) => (
-          <div key={p.id} className="p-4">
+      <div className="divide-y divide-slate-100 dark:divide-slate-800 xl:hidden">
+        {items.map((product) => (
+          <article key={product.id} className="p-4">
             <div className="flex items-start gap-3">
-              <input type="checkbox" checked={selectedIds.includes(p.id)} onChange={(e) => onToggleSelect(p.id, e.target.checked)} className="mt-1" />
-              <button type="button" onClick={() => navigate(`/admin/product/${p.id}`)} className="h-16 w-16 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
-                <img src={p.thumbnail || IMAGE_DEFAULT_URL} alt={p.name} className="h-full w-full object-cover" />
+              <input type="checkbox" checked={selectedIds.includes(product.id)} onChange={(event) => onToggleSelect(product.id, event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-rose-600" />
+              <button type="button" onClick={() => navigate(`/admin/product/${product.id}`)} className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
+                <img src={product.thumbnail || IMAGE_DEFAULT_URL} alt={product.name} className="h-full w-full object-cover" />
               </button>
               <div className="min-w-0 flex-1">
-                <button type="button" onClick={() => navigate(`/admin/product/${p.id}`)} className="truncate font-semibold text-gray-900 hover:text-rose-600 dark:text-gray-100">
-                  {p.name}
+                <button type="button" onClick={() => navigate(`/admin/product/${product.id}`)} className="line-clamp-2 text-left text-sm font-black leading-snug text-slate-950 dark:text-white">
+                  {product.name}
                 </button>
-                <div className="truncate text-xs text-gray-500">SKU: {p.sku || '-'} | Slug: {p.slug || '-'}</div>
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">{formatRange(p.price_min, p.price_max)}</div>
-                  <StatusPill value={p.status} />
+                <div className="mt-1 truncate text-xs font-medium text-slate-500 dark:text-slate-400">SKU: {product.sku || '-'} | Slug: {product.slug || '-'}</div>
+                <div className="mt-2 text-xs font-bold text-slate-600 dark:text-slate-300">{getCategoryLabel(product.category)}</div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-950">
+                <div className="text-[11px] font-black uppercase tracking-wide text-slate-400">Giá bán</div>
+                <div className="mt-1 text-sm font-black text-slate-950 dark:text-white">{formatRange(product.price_min, product.price_max)}</div>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-950">
+                <div className="text-[11px] font-black uppercase tracking-wide text-slate-400">Kho</div>
+                <div className="mt-1">
+                  <StockBadge total={product.stock_total} />
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <StockCell total={p.stock_total} />
-                  <div className="text-sm text-gray-700 dark:text-gray-200">Biến thể: {Number(p.variant_count ?? 0)}</div>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setQuickEdit({ open: true, item: p, saving: false })} className="rounded-xl border border-gray-300 px-3 py-1.5 text-sm font-semibold dark:border-gray-700">
-                    Sửa nhanh
-                  </button>
-                  <button type="button" onClick={() => navigate(`/admin/product/update/${p.id}`)} className="rounded-xl border border-gray-300 px-3 py-1.5 text-sm font-semibold dark:border-gray-700">
-                    Sửa
-                  </button>
-                  <button type="button" onClick={() => handleDelete(p.id)} disabled={deletingId === p.id} className="rounded-xl bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
-                    {deletingId === p.id ? 'Đang xóa...' : 'Xóa'}
-                  </button>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-950">
+                <div className="text-[11px] font-black uppercase tracking-wide text-slate-400">Biến thể</div>
+                <div className="mt-1 text-sm font-black text-slate-950 dark:text-white">{Number(product.variant_count ?? 0)}</div>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-950">
+                <div className="text-[11px] font-black uppercase tracking-wide text-slate-400">Trạng thái</div>
+                <div className="mt-1">
+                  <StatusPill value={product.status} />
                 </div>
               </div>
             </div>
-          </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" onClick={() => navigate(`/admin/product/${product.id}`)} className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 px-3 text-sm font-black text-slate-700 dark:border-slate-700 dark:text-slate-200">
+                <Eye size={16} />
+                Chi tiết
+              </button>
+              <button type="button" onClick={() => setQuickEdit({ open: true, item: product, saving: false })} className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 px-3 text-sm font-black text-slate-700 dark:border-slate-700 dark:text-slate-200">
+                <Edit3 size={16} />
+                Sửa nhanh
+              </button>
+              <button type="button" onClick={() => navigate(`/admin/product/update/${product.id}`)} className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-3 text-sm font-black text-white dark:bg-white dark:text-slate-950">
+                <PencilLine size={16} />
+                Sửa
+              </button>
+              <button type="button" onClick={() => handleDelete(product.id)} disabled={deletingId === product.id} className="inline-flex h-10 w-12 items-center justify-center rounded-2xl bg-red-600 text-white disabled:opacity-50">
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </article>
         ))}
+
+        {items.length === 0 && (
+          <div className="flex flex-col items-center justify-center px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+            <PackageOpen size={30} />
+            <div className="mt-2 text-sm font-bold">Không có sản phẩm phù hợp.</div>
+          </div>
+        )}
       </div>
 
       <QuickEditModal
@@ -333,7 +404,7 @@ const ProductsTable = ({
         onClose={() => setQuickEdit({ open: false, item: null, saving: false })}
         onSave={async (next: QuickEditValues) => {
           if (!quickEdit.item) return;
-          setQuickEdit((p) => ({ ...p, saving: true }));
+          setQuickEdit((prev) => ({ ...prev, saving: true }));
           try {
             await productService.updateProductPartial(quickEdit.item.id, {
               ...(next.price !== undefined ? { price: Number(next.price) } : {}),
@@ -346,7 +417,7 @@ const ProductsTable = ({
             onRefresh();
           } catch (error) {
             handleAuthOrToast(error, 'Không lưu được sửa nhanh');
-            setQuickEdit((p) => ({ ...p, saving: false }));
+            setQuickEdit((prev) => ({ ...prev, saving: false }));
           }
         }}
       />

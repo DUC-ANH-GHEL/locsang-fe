@@ -1,6 +1,5 @@
-import * as React from 'react';
-
 import { useEffect, useMemo, useState } from 'react';
+import { Filter, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
 import { useDebounce } from '../../../hooks/useDebounce';
 
 export type ProductListFilters = {
@@ -17,7 +16,6 @@ export type ProductListFilters = {
 };
 
 export type CategoryOption = { id: number; name: string };
-export type SavedFilter = { name: string; filters: ProductListFilters };
 
 type Props = {
   filters: ProductListFilters;
@@ -26,11 +24,6 @@ type Props = {
   categories: CategoryOption[];
   activeTab: string;
   onTabChange: (key: string) => void;
-  columnVisibility: { profit: boolean; category: boolean };
-  onColumnVisibilityChange: (next: { profit: boolean; category: boolean }) => void;
-  savedFilters: SavedFilter[];
-  onSaveCurrentFilter: () => void;
-  onApplySavedFilter: (index: number) => void;
 };
 
 const tabs = [
@@ -41,19 +34,12 @@ const tabs = [
   { key: 'featured', label: 'Nổi bật' },
 ];
 
-const FillterBar = ({
-  filters,
-  onChange,
-  onReset,
-  categories,
-  activeTab,
-  onTabChange,
-  columnVisibility,
-  onColumnVisibilityChange,
-  savedFilters,
-  onSaveCurrentFilter,
-  onApplySavedFilter,
-}: Props) => {
+const selectClass =
+  'h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
+
+const labelClass = 'mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-400';
+
+const FillterBar = ({ filters, onChange, onReset, categories, activeTab, onTabChange }: Props) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [searchDraft, setSearchDraft] = useState(filters.search || '');
   const debouncedSearch = useDebounce(searchDraft, 300);
@@ -67,74 +53,83 @@ const FillterBar = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
-  const canReset = useMemo(() => {
-    return Object.entries(filters).some(([k, v]) => {
-      if (k === 'search') return String(v || '').trim().length > 0;
-      return String(v || '').trim().length > 0 && v !== 'all';
-    });
+  const activeFilterCount = useMemo(() => {
+    return Object.entries(filters).filter(([key, value]) => {
+      if (key === 'search') return String(value || '').trim().length > 0;
+      return String(value || '').trim().length > 0 && value !== 'all';
+    }).length;
   }, [filters]);
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-        <div className="flex-1">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+        <label className="relative min-w-0 flex-1">
+          <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={searchDraft}
-            onChange={(e) => setSearchDraft(e.target.value)}
-            placeholder="Tìm theo tên, SKU, slug..."
-            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500"
+            onChange={(event) => setSearchDraft(event.target.value)}
+            placeholder="Tìm theo tên, SKU hoặc slug..."
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-12 pr-4 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-rose-500 focus:bg-white focus:ring-2 focus:ring-rose-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:bg-slate-900"
           />
-        </div>
+        </label>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => setShowAdvanced((v) => !v)}
-            className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-200"
+            onClick={() => setShowAdvanced((value) => !value)}
+            className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-800 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-900 sm:flex-none"
           >
-            Bộ lọc nâng cao
+            <SlidersHorizontal size={18} />
+            Bộ lọc
+            {activeFilterCount > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[11px] text-white">
+                {activeFilterCount}
+              </span>
+            )}
           </button>
 
-          {canReset && (
+          {activeFilterCount > 0 && (
             <button
               type="button"
               onClick={onReset}
-              className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-200"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
             >
+              <RotateCcw size={17} />
               Reset
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => (
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        {tabs.map((tab) => (
           <button
-            key={t.key}
+            key={tab.key}
             type="button"
-            onClick={() => onTabChange(t.key)}
+            onClick={() => onTabChange(tab.key)}
             className={
-              'rounded-xl px-4 py-2 text-sm font-semibold border transition ' +
-              (activeTab === t.key
-                ? 'bg-rose-600 text-white border-rose-600'
-                : 'bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800')
+              'h-10 shrink-0 rounded-2xl border px-4 text-sm font-black transition ' +
+              (activeTab === tab.key
+                ? 'border-rose-600 bg-rose-600 text-white shadow-[0_10px_22px_rgba(225,29,72,0.20)]'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900')
             }
           >
-            {t.label}
+            {tab.label}
           </button>
         ))}
       </div>
 
       {showAdvanced && (
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
+          <div className="mb-4 flex items-center gap-2 text-sm font-black text-slate-800 dark:text-slate-100">
+            <Filter size={18} className="text-rose-600" />
+            Bộ lọc nâng cao
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Trạng thái</label>
-              <select
-                value={filters.status}
-                onChange={(e) => onChange({ status: e.target.value as ProductListFilters['status'] })}
-                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500"
-              >
+              <label className={labelClass}>Trạng thái</label>
+              <select value={filters.status} onChange={(event) => onChange({ status: event.target.value as ProductListFilters['status'] })} className={selectClass}>
                 <option value="all">Tất cả</option>
                 <option value="active">Đang bán</option>
                 <option value="draft">Nháp</option>
@@ -143,51 +138,20 @@ const FillterBar = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Danh mục</label>
-              <select
-                value={filters.category_id}
-                onChange={(e) => onChange({ category_id: e.target.value })}
-                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500"
-              >
-                <option value="">Tất cả</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={String(c.id)}>
-                    {c.name}
+              <label className={labelClass}>Danh mục</label>
+              <select value={filters.category_id} onChange={(event) => onChange({ category_id: event.target.value })} className={selectClass}>
+                <option value="">Tất cả danh mục</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={String(category.id)}>
+                    {category.name}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Brand</label>
-              <input
-                value={filters.brand}
-                onChange={(e) => onChange({ brand: e.target.value })}
-                placeholder="Brand"
-                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Có biến thể</label>
-              <select
-                value={filters.has_variants}
-                onChange={(e) => onChange({ has_variants: e.target.value as ProductListFilters['has_variants'] })}
-                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500"
-              >
-                <option value="all">Tất cả</option>
-                <option value="true">Có</option>
-                <option value="false">Không</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Tồn kho</label>
-              <select
-                value={filters.stock_status}
-                onChange={(e) => onChange({ stock_status: e.target.value as ProductListFilters['stock_status'] })}
-                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500"
-              >
+              <label className={labelClass}>Tồn kho</label>
+              <select value={filters.stock_status} onChange={(event) => onChange({ stock_status: event.target.value as ProductListFilters['stock_status'] })} className={selectClass}>
                 <option value="all">Tất cả</option>
                 <option value="in_stock">Còn hàng</option>
                 <option value="low">Sắp hết</option>
@@ -196,97 +160,35 @@ const FillterBar = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Affiliate</label>
-              <select
-                value={filters.has_affiliate}
-                onChange={(e) => onChange({ has_affiliate: e.target.value as ProductListFilters['has_affiliate'] })}
-                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500"
-              >
+              <label className={labelClass}>Biến thể</label>
+              <select value={filters.has_variants} onChange={(event) => onChange({ has_variants: event.target.value as ProductListFilters['has_variants'] })} className={selectClass}>
                 <option value="all">Tất cả</option>
-                <option value="true">Có</option>
-                <option value="false">Không</option>
+                <option value="true">Có biến thể</option>
+                <option value="false">Không biến thể</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Giá từ</label>
-              <input
-                value={filters.min_price}
-                onChange={(e) => onChange({ min_price: e.target.value })}
-                inputMode="numeric"
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500"
-              />
+              <label className={labelClass}>Thương hiệu</label>
+              <input value={filters.brand} onChange={(event) => onChange({ brand: event.target.value })} placeholder="VD: Yanmar" className={selectClass} />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Giá đến</label>
-              <input
-                value={filters.max_price}
-                onChange={(e) => onChange({ max_price: e.target.value })}
-                inputMode="numeric"
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500"
-              />
+              <label className={labelClass}>Giá từ</label>
+              <input value={filters.min_price} onChange={(event) => onChange({ min_price: event.target.value })} inputMode="numeric" className={selectClass} />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Nổi bật</label>
-              <select
-                value={filters.featured}
-                onChange={(e) => onChange({ featured: e.target.value as ProductListFilters['featured'] })}
-                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500"
-              >
+              <label className={labelClass}>Giá đến</label>
+              <input value={filters.max_price} onChange={(event) => onChange({ max_price: event.target.value })} inputMode="numeric" className={selectClass} />
+            </div>
+
+            <div>
+              <label className={labelClass}>Nổi bật</label>
+              <select value={filters.featured} onChange={(event) => onChange({ featured: event.target.value as ProductListFilters['featured'] })} className={selectClass}>
                 <option value="all">Tất cả</option>
                 <option value="true">Nổi bật</option>
-                <option value="false">Không</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                <input
-                  type="checkbox"
-                  checked={columnVisibility.category}
-                  onChange={(e) => onColumnVisibilityChange({ ...columnVisibility, category: e.target.checked })}
-                />
-                Hiện cột danh mục
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                <input
-                  type="checkbox"
-                  checked={columnVisibility.profit}
-                  onChange={(e) => onColumnVisibilityChange({ ...columnVisibility, profit: e.target.checked })}
-                />
-                Hiện cột lợi nhuận
-              </label>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-semibold"
-                onClick={onSaveCurrentFilter}
-              >
-                Lưu filter
-              </button>
-
-              <select
-                value=""
-                onChange={(e) => {
-                  const idx = Number(e.target.value);
-                  if (!Number.isFinite(idx)) return;
-                  onApplySavedFilter(idx);
-                  e.target.value = '';
-                }}
-                className="rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500"
-              >
-                <option value="">Áp dụng filter đã lưu</option>
-                {savedFilters.map((sf, idx) => (
-                  <option key={`${sf.name}-${idx}`} value={String(idx)}>
-                    {sf.name}
-                  </option>
-                ))}
+                <option value="false">Không nổi bật</option>
               </select>
             </div>
           </div>

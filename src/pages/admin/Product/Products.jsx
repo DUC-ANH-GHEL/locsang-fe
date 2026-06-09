@@ -1,5 +1,6 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, CheckCircle2, Layers3, Package, Plus } from 'lucide-react';
 import ProductsTable from '../../../components/products/List/ProductsTable';
 import FilterBar from '../../../components/products/List/FillterBar';
 import { productService } from '../../../services/productService';
@@ -7,9 +8,6 @@ import { useToast } from '../../../components/Toast';
 import { parseApiError } from '../../../utils/apiError';
 import { logout } from '../../../services/authService';
 import { getCategories } from '../../../services/categoryService';
-
-const STORAGE_SAVED_FILTERS = 'locsang_admin_product_saved_filters_v1';
-const STORAGE_COLUMNS = 'locsang_admin_product_columns_v1';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -24,12 +22,6 @@ const DEFAULT_FILTERS = {
   featured: 'all',
 };
 
-const DEFAULT_COLUMNS = {
-  profit: true,
-  category: true,
-};
-
-
 const Products = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -38,70 +30,61 @@ const Products = () => {
   const [items, setItems] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
   const [sort, setSort] = useState('created_desc');
-
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [activeTab, setActiveTab] = useState('all');
-
   const [selectedIds, setSelectedIds] = useState([]);
   const [categories, setCategories] = useState([]);
-
-  const [columnVisibility, setColumnVisibility] = useState(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_COLUMNS);
-      return raw ? { ...DEFAULT_COLUMNS, ...JSON.parse(raw) } : DEFAULT_COLUMNS;
-    } catch {
-      return DEFAULT_COLUMNS;
-    }
-  });
-
-  const [savedFilters, setSavedFilters] = useState(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_SAVED_FILTERS);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const importInputRef = useRef(null);
+  const [bulkStatus, setBulkStatus] = useState('active');
+  const [bulkCategory, setBulkCategory] = useState('');
+  const [bulkAffiliate, setBulkAffiliate] = useState('');
 
   const totalPages = useMemo(() => {
-    const t = Number(pagination.total || 0);
-    const l = Number(pagination.limit || 20);
-    return Math.max(1, Math.ceil(t / l));
+    const total = Number(pagination.total || 0);
+    const limit = Number(pagination.limit || 20);
+    return Math.max(1, Math.ceil(total / limit));
   }, [pagination.total, pagination.limit]);
 
-  const headerTotalText = useMemo(() => {
-    return Number(pagination.total || 0).toLocaleString('vi-VN');
-  }, [pagination.total]);
+  const headerTotalText = useMemo(
+    () => Number(pagination.total || 0).toLocaleString('vi-VN'),
+    [pagination.total],
+  );
+
+  const currentPageItemsCount = items?.length ?? 0;
+
+  const pageSummary = useMemo(() => {
+    const active = items.filter((item) => String(item.status || '').toLowerCase() === 'active').length;
+    const lowStock = items.filter((item) => Number(item.stock_total ?? 0) > 0 && Number(item.stock_total ?? 0) <= 5).length;
+    const outStock = items.filter((item) => Number(item.stock_total ?? 0) <= 0).length;
+    const variants = items.reduce((sum, item) => sum + Number(item.variant_count ?? 0), 0);
+
+    return [
+      { label: 'Đang bán', value: active, icon: CheckCircle2, tone: 'emerald' },
+      { label: 'Sắp hết', value: lowStock, icon: AlertTriangle, tone: 'amber' },
+      { label: 'Hết hàng', value: outStock, icon: AlertTriangle, tone: 'rose' },
+      { label: 'Biến thể', value: variants, icon: Layers3, tone: 'slate' },
+    ];
+  }, [items]);
+
+  const visiblePages = useMemo(() => {
+    const page = pagination.page;
+    const out = [];
+    const start = Math.max(1, page - 2);
+    const end = Math.min(totalPages, page + 2);
+    for (let i = start; i <= end; i += 1) out.push(i);
+    return out;
+  }, [pagination.page, totalPages]);
 
   useEffect(() => {
     (async () => {
       try {
         const data = await getCategories();
         const list = Array.isArray(data) ? data : [];
-        setCategories(list.map((c) => ({ id: Number(c.id), name: String(c.name ?? '') })));
+        setCategories(list.map((category) => ({ id: Number(category.id), name: String(category.name ?? '') })));
       } catch {
         setCategories([]);
       }
     })();
   }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_COLUMNS, JSON.stringify(columnVisibility));
-    } catch {
-      // ignore
-    }
-  }, [columnVisibility]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_SAVED_FILTERS, JSON.stringify(savedFilters));
-    } catch {
-      // ignore
-    }
-  }, [savedFilters]);
 
   const fetchAdminProducts = async () => {
     setLoading(true);
@@ -122,12 +105,12 @@ const Products = () => {
         sort,
       };
       const res = await productService.getAdminProducts(query);
-      setItems(res.data || []);
-      setPagination((p) => ({
-        ...p,
-        page: Number(res.pagination?.page ?? p.page),
-        limit: Number(res.pagination?.limit ?? p.limit),
-        total: Number(res.pagination?.total ?? 0),
+      setItems(Array.isArray(res?.data) ? res.data : []);
+      setPagination((prev) => ({
+        ...prev,
+        page: Number(res?.pagination?.page ?? prev.page),
+        limit: Number(res?.pagination?.limit ?? prev.limit),
+        total: Number(res?.pagination?.total ?? 0),
       }));
     } catch (error) {
       const parsed = parseApiError(error);
@@ -139,6 +122,7 @@ const Products = () => {
         return;
       }
       showToast(parsed?.message || 'Không tải được danh sách sản phẩm', 'error', 6000);
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -150,7 +134,7 @@ const Products = () => {
   }, [filters, pagination.page, pagination.limit, sort]);
 
   const setFilterPatch = (patch) => {
-    setPagination((p) => ({ ...p, page: 1 }));
+    setPagination((prev) => ({ ...prev, page: 1 }));
     setFilters((prev) => ({ ...prev, ...patch }));
   };
 
@@ -158,7 +142,7 @@ const Products = () => {
     setActiveTab('all');
     setSelectedIds([]);
     setSort('created_desc');
-    setPagination((p) => ({ ...p, page: 1, limit: 20 }));
+    setPagination((prev) => ({ ...prev, page: 1, limit: 20 }));
     setFilters(DEFAULT_FILTERS);
   };
 
@@ -195,167 +179,8 @@ const Products = () => {
   };
 
   const onToggleSelectAll = (checked) => {
-    if (checked) setSelectedIds(items.map((x) => x.id));
+    if (checked) setSelectedIds(items.map((item) => item.id));
     else setSelectedIds([]);
-  };
-
-  const downloadCsv = (rows, filename) => {
-    const escape = (v) => {
-      const s = String(v ?? '');
-      if (s.includes('"') || s.includes(',') || s.includes('\n')) return `"${s.replaceAll('"', '""')}"`;
-      return s;
-    };
-    const csv = rows.map((r) => r.map(escape).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleExportCsv = (mode) => {
-    const list = mode === 'selected' ? items.filter((x) => selectedIds.includes(x.id)) : items;
-    if (list.length === 0) {
-      showToast('Không có dữ liệu để export', 'warning');
-      return;
-    }
-    const header = [
-      'id',
-      'name',
-      'sku',
-      'slug',
-      'price_min',
-      'price_max',
-      'stock_total',
-      'variant_count',
-      'status',
-      'category',
-    ];
-    const rows = [header];
-    for (const p of list) {
-      rows.push([
-        p.id,
-        p.name,
-        p.sku ?? '',
-        p.slug ?? '',
-        p.price_min ?? '',
-        p.price_max ?? '',
-        p.stock_total ?? '',
-        p.variant_count ?? '',
-        p.status ?? '',
-        p.category ?? '',
-      ]);
-    }
-    downloadCsv(rows, `locsang-products-${mode}-${Date.now()}.csv`);
-  };
-
-  const parseCsv = (text) => {
-    const lines = text.split(/\r?\n/).filter((x) => x.trim().length > 0);
-    if (lines.length === 0) return [];
-
-    const parseLine = (line) => {
-      const out = [];
-      let cur = '';
-      let inQuotes = false;
-      for (let i = 0; i < line.length; i++) {
-        const ch = line[i];
-        if (ch === '"') {
-          if (inQuotes && line[i + 1] === '"') {
-            cur += '"';
-            i++;
-          } else {
-            inQuotes = !inQuotes;
-          }
-          continue;
-        }
-        if (ch === ',' && !inQuotes) {
-          out.push(cur);
-          cur = '';
-          continue;
-        }
-        cur += ch;
-      }
-      out.push(cur);
-      return out;
-    };
-
-    const header = parseLine(lines[0]).map((x) => x.trim());
-    const rows = [];
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseLine(lines[i]);
-      const row = {};
-      for (let j = 0; j < header.length; j++) row[header[j]] = values[j];
-      rows.push(row);
-    }
-    return rows;
-  };
-
-  const handleImportCsv = async (file) => {
-    try {
-      const text = await file.text();
-      const rows = parseCsv(text);
-      if (rows.length === 0) {
-        showToast('CSV rỗng', 'warning');
-        return;
-      }
-      if (!window.confirm(`Import ${rows.length} dòng từ CSV?`)) return;
-
-      let ok = 0;
-      let fail = 0;
-      for (const r of rows) {
-        try {
-          const name = String(r.name ?? '').trim();
-          const sku = String(r.sku ?? '').trim();
-          const slug = String(r.slug ?? '').trim() || name.toLowerCase().replace(/\s+/g, '-');
-          const price = Number(r.price ?? r.price_min ?? 0);
-          const stock = Number(r.stock ?? r.stock_total ?? 0);
-          const category_id = Number(r.category_id ?? filters.category_id ?? 0);
-          if (!name || !sku || !slug || !Number.isFinite(price) || price <= 0 || !Number.isFinite(category_id) || category_id <= 0) {
-            fail++;
-            continue;
-          }
-
-          await productService.createProduct({
-            name,
-            slug,
-            description: String(r.description ?? ''),
-            sku,
-            price,
-            sale_price: null,
-            currency: 'VND',
-            affiliate: Number(r.affiliate ?? 0) || 0,
-            stock: Number.isFinite(stock) ? stock : 0,
-            weight: 0,
-            length: 0,
-            width: 0,
-            height: 0,
-            is_active: true,
-            category_id,
-            brand: String(r.brand ?? ''),
-            material: String(r.material ?? ''),
-            size: String(r.size ?? ''),
-            color: String(r.color ?? ''),
-            pet_type: String(r.pet_type ?? ''),
-            season: String(r.season ?? ''),
-            labels: [],
-            images: [],
-            specs: [],
-            metaTitle: '',
-            metaDescription: '',
-          });
-          ok++;
-        } catch {
-          fail++;
-        }
-      }
-
-      showToast(`Import xong. Thành công: ${ok}, lỗi: ${fail}`, fail > 0 ? 'warning' : 'success', 7000);
-      fetchAdminProducts();
-    } catch {
-      showToast('Không import được CSV', 'error');
-    }
   };
 
   const bulkUpdate = async (action, data) => {
@@ -366,103 +191,71 @@ const Products = () => {
       fetchAdminProducts();
     } catch (error) {
       const parsed = parseApiError(error);
-      if (parsed?.status === 404) {
-        showToast('Backend chưa hỗ trợ bulk update (/admin/products/bulk)', 'error', 7000);
-        return;
-      }
       showToast(parsed?.message || 'Bulk update thất bại', 'error', 7000);
     }
   };
 
-  const [bulkStatus, setBulkStatus] = useState('active');
-  const [bulkCategory, setBulkCategory] = useState('');
-  const [bulkAffiliate, setBulkAffiliate] = useState('');
-
-  const currentPageItemsCount = items?.length ?? 0;
-
-  const visiblePages = useMemo(() => {
-    const p = pagination.page;
-    const out = [];
-    const start = Math.max(1, p - 2);
-    const end = Math.min(totalPages, p + 2);
-    for (let i = start; i <= end; i++) out.push(i);
-    return out;
-  }, [pagination.page, totalPages]);
-
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-        <div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">Quản lý sản phẩm</div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">Tổng: {headerTotalText} sản phẩm</div>
+    <div className="space-y-5">
+      <section className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-5 border-b border-slate-100 p-4 dark:border-slate-800 sm:p-5 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-rose-700 dark:bg-rose-500/10 dark:text-rose-200">
+              <Package size={14} />
+              Catalog
+            </div>
+            <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">Quản lý sản phẩm</h1>
+            <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+              Tổng {headerTotalText} sản phẩm. Theo dõi giá, tồn kho, biến thể và trạng thái bán hàng trong một màn.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:w-[30rem]">
+            {pageSummary.map((item) => {
+              const Icon = item.icon;
+              const toneClass =
+                item.tone === 'emerald'
+                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200'
+                  : item.tone === 'amber'
+                    ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-200'
+                    : item.tone === 'rose'
+                      ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-200'
+                      : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200';
+
+              return (
+                <div key={item.label} className={`rounded-2xl px-3 py-3 ${toneClass}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wide opacity-75">{item.label}</span>
+                    <Icon size={15} />
+                  </div>
+                  <div className="mt-2 text-2xl font-black leading-none">{item.value}</div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <input
-            ref={importInputRef}
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleImportCsv(file);
-              e.target.value = '';
-            }}
+
+        <div className="space-y-4 p-4 sm:p-5">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => navigate('/admin/products/create')}
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-rose-600 px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(225,29,72,0.22)] transition hover:bg-rose-700 sm:w-auto"
+            >
+              <Plus size={18} />
+              Tạo sản phẩm
+            </button>
+          </div>
+
+          <FilterBar
+            filters={filters}
+            onChange={setFilterPatch}
+            onReset={resetFilters}
+            categories={categories}
+            activeTab={activeTab}
+            onTabChange={applyTab}
           />
-          <button
-            type="button"
-            onClick={() => importInputRef.current?.click()}
-            className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            Import CSV
-          </button>
-          <button
-            type="button"
-            onClick={() => handleExportCsv('all')}
-            className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            Export CSV
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/admin/products/create')}
-            className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700"
-          >
-            Tạo sản phẩm
-          </button>
-        </div>
-      </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
-        {/* Filter & Search */}
-        <FilterBar
-          filters={filters}
-          onChange={setFilterPatch}
-          onReset={resetFilters}
-          categories={categories}
-          activeTab={activeTab}
-          onTabChange={applyTab}
-          columnVisibility={columnVisibility}
-          onColumnVisibilityChange={setColumnVisibility}
-          savedFilters={savedFilters}
-          onSaveCurrentFilter={() => {
-            const name = window.prompt('Tên filter?');
-            if (!name) return;
-            setSavedFilters((prev) => [{ name, filters }, ...(prev ?? [])].slice(0, 20));
-            showToast('Đã lưu filter', 'success');
-          }}
-          onApplySavedFilter={(idx) => {
-            const preset = savedFilters?.[idx];
-            if (!preset) return;
-            setActiveTab('all');
-            setPagination((p) => ({ ...p, page: 1 }));
-            setFilters(preset.filters);
-            showToast(`Đã áp dụng: ${preset.name}`, 'success');
-          }}
-        />
-
-        {/* Data Table */}
-        <div className="mt-6">
           <ProductsTable
             items={items}
             loading={loading}
@@ -471,167 +264,112 @@ const Products = () => {
             onToggleSelectAll={onToggleSelectAll}
             sort={sort}
             onSortChange={(next) => {
-              setPagination((p) => ({ ...p, page: 1 }));
+              setPagination((prev) => ({ ...prev, page: 1 }));
               setSort(next);
             }}
-            columnVisibility={columnVisibility}
             onRefresh={fetchAdminProducts}
           />
-        </div>
 
-        {/* Empty state */}
-        {!loading && items.length === 0 && (
-          <div className="py-16 text-center">
-            <div className="text-lg font-bold text-gray-900 dark:text-gray-100">Bạn chưa có sản phẩm nào</div>
-            <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">Hãy tạo sản phẩm mới hoặc import CSV để bắt đầu quản lý catalog.</div>
-          </div>
-        )}
+          {!loading && items.length === 0 && (
+            <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-5 py-14 text-center dark:border-slate-700 dark:bg-slate-950/50">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-rose-600 shadow-sm dark:bg-slate-900">
+                <Package size={28} />
+              </div>
+              <div className="mt-4 text-lg font-black text-slate-950 dark:text-white">Bạn chưa có sản phẩm nào</div>
+              <div className="mx-auto mt-2 max-w-md text-sm font-medium text-slate-500 dark:text-slate-400">
+                Tạo sản phẩm thủ công để đưa dữ liệu lên storefront Lộc Sang.
+              </div>
+            </div>
+          )}
 
-        {/* Pagination */}
-        <div className="mt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Hiển thị {currentPageItemsCount} / {headerTotalText} sản phẩm
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="text-sm text-gray-600 dark:text-gray-300">Hiển thị</div>
-            <select
-              value={pagination.limit}
-              onChange={(e) => setPagination((p) => ({ ...p, page: 1, limit: Number(e.target.value) }))}
-              className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-            >
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-            <div className="text-sm text-gray-600 dark:text-gray-300">/ trang</div>
-
-            <button
-              type="button"
-              onClick={() => setPagination((p) => ({ ...p, page: 1 }))}
-              disabled={pagination.page <= 1}
-              className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 disabled:opacity-50"
-            >
-              &laquo;
-            </button>
-            <button
-              type="button"
-              onClick={() => setPagination((p) => ({ ...p, page: Math.max(1, p.page - 1) }))}
-              disabled={pagination.page <= 1}
-              className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 disabled:opacity-50"
-            >
-              &lt;
-            </button>
-
-            {visiblePages.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPagination((x) => ({ ...x, page: p }))}
-                className={
-                  'px-3 py-2 rounded-xl border text-sm font-semibold ' +
-                  (p === pagination.page
-                    ? 'bg-rose-600 text-white border-rose-600'
-                    : 'border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200')
-                }
+          <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
+            <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
+              Hiển thị <span className="font-black text-slate-900 dark:text-white">{currentPageItemsCount}</span> / {headerTotalText} sản phẩm
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Mỗi trang</span>
+              <select
+                value={pagination.limit}
+                onChange={(event) => setPagination((prev) => ({ ...prev, page: 1, limit: Number(event.target.value) }))}
+                className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
               >
-                {p}
-              </button>
-            ))}
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
 
-            <button
-              type="button"
-              onClick={() => setPagination((p) => ({ ...p, page: Math.min(totalPages, p.page + 1) }))}
-              disabled={pagination.page >= totalPages}
-              className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 disabled:opacity-50"
-            >
-              &gt;
-            </button>
-            <button
-              type="button"
-              onClick={() => setPagination((p) => ({ ...p, page: totalPages }))}
-              disabled={pagination.page >= totalPages}
-              className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 disabled:opacity-50"
-            >
-              &raquo;
-            </button>
+              <button type="button" onClick={() => setPagination((prev) => ({ ...prev, page: 1 }))} disabled={pagination.page <= 1} className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200">
+                &laquo;
+              </button>
+              <button type="button" onClick={() => setPagination((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))} disabled={pagination.page <= 1} className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200">
+                &lt;
+              </button>
+
+              {visiblePages.map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  onClick={() => setPagination((prev) => ({ ...prev, page: pageNumber }))}
+                  className={
+                    'h-10 min-w-10 rounded-xl border px-3 text-sm font-black ' +
+                    (pageNumber === pagination.page
+                      ? 'border-rose-600 bg-rose-600 text-white'
+                      : 'border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-200')
+                  }
+                >
+                  {pageNumber}
+                </button>
+              ))}
+
+              <button type="button" onClick={() => setPagination((prev) => ({ ...prev, page: Math.min(totalPages, prev.page + 1) }))} disabled={pagination.page >= totalPages} className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200">
+                &gt;
+              </button>
+              <button type="button" onClick={() => setPagination((prev) => ({ ...prev, page: totalPages }))} disabled={pagination.page >= totalPages} className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200">
+                &raquo;
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Bulk Action Bar */}
       {selectedIds.length > 0 && (
         <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.9rem)] left-0 right-0 z-40 px-4 lg:bottom-4">
-          <div className="mx-auto max-w-7xl rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Đã chọn {selectedIds.length} sản phẩm</div>
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
+            <div className="text-sm font-black text-slate-950 dark:text-white">Đã chọn {selectedIds.length} sản phẩm</div>
             <div className="flex flex-wrap gap-2">
-              <select
-                value={bulkStatus}
-                onChange={(e) => setBulkStatus(e.target.value)}
-                className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-              >
+              <select value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold dark:border-slate-700 dark:bg-slate-950">
                 <option value="active">Đang bán</option>
                 <option value="draft">Nháp</option>
                 <option value="discontinued">Ngừng bán</option>
               </select>
-              <button
-                type="button"
-                onClick={() => bulkUpdate('status', { status: bulkStatus })}
-                className="rounded-xl border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-semibold"
-              >
+              <button type="button" onClick={() => bulkUpdate('status', { status: bulkStatus })} className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-black dark:border-slate-700">
                 Đổi trạng thái
               </button>
 
-              <select
-                value={bulkCategory}
-                onChange={(e) => setBulkCategory(e.target.value)}
-                className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-              >
+              <select value={bulkCategory} onChange={(event) => setBulkCategory(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold dark:border-slate-700 dark:bg-slate-950">
                 <option value="">Gán danh mục...</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={String(c.id)}>
-                    {c.name}
+                {categories.map((category) => (
+                  <option key={category.id} value={String(category.id)}>
+                    {category.name}
                   </option>
                 ))}
               </select>
-              <button
-                type="button"
-                disabled={!bulkCategory}
-                onClick={() => bulkUpdate('category', { category_id: Number(bulkCategory) })}
-                className="rounded-xl border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-semibold disabled:opacity-60"
-              >
+              <button type="button" disabled={!bulkCategory} onClick={() => bulkUpdate('category', { category_id: Number(bulkCategory) })} className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-black disabled:opacity-50 dark:border-slate-700">
                 Gán danh mục
               </button>
 
-              <input
-                value={bulkAffiliate}
-                onChange={(e) => setBulkAffiliate(e.target.value)}
-                inputMode="numeric"
-                placeholder="Affiliate %"
-                className="w-32 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-              />
-              <button
-                type="button"
-                disabled={!bulkAffiliate}
-                onClick={() => bulkUpdate('affiliate', { affiliate: Number(bulkAffiliate) })}
-                className="rounded-xl border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-semibold disabled:opacity-60"
-              >
-                Set affiliate %
+              <input value={bulkAffiliate} onChange={(event) => setBulkAffiliate(event.target.value)} inputMode="numeric" placeholder="Affiliate %" className="h-10 w-32 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold dark:border-slate-700 dark:bg-slate-950" />
+              <button type="button" disabled={!bulkAffiliate} onClick={() => bulkUpdate('affiliate', { affiliate: Number(bulkAffiliate) })} className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-black disabled:opacity-50 dark:border-slate-700">
+                Set %
               </button>
 
-              <button
-                type="button"
-                onClick={() => handleExportCsv('selected')}
-                className="rounded-xl border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-semibold"
-              >
-                Export
-              </button>
               <button
                 type="button"
                 onClick={() => {
                   if (!window.confirm(`Chuyển ${selectedIds.length} sản phẩm sang Ngừng bán?`)) return;
                   bulkUpdate('delete', { soft: true });
                 }}
-                className="rounded-xl bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-sm font-semibold"
+                className="h-10 rounded-xl bg-red-600 px-4 text-sm font-black text-white hover:bg-red-700"
               >
                 Xoá
               </button>
