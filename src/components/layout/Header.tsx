@@ -1,15 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, BellOff, BellRing, ChevronDown, KeyRound, LogOut, Menu, Moon, Sun } from 'lucide-react';
+import { Bell, ChevronDown, KeyRound, LogOut, Menu, Moon, Settings, Sun } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { logo_url } from '../../config/api';
 import { logout } from '../../services/authService';
-import {
-  AdminPushState,
-  getAdminPushState,
-  subscribeAdminPush,
-  unsubscribeAdminPush,
-} from '../../services/adminPushNotificationService';
-import { useToast } from '../Toast';
+import { AdminNotification, adminNotificationService } from '../../services/adminNotificationService';
 import { adminNavItems } from './adminNavigation';
 
 interface HeaderProps {
@@ -29,29 +23,53 @@ const getCurrentTitle = (pathname: string) => {
   return match?.name || 'Admin';
 };
 
-const getPushTitle = (state: AdminPushState, loading: boolean) => {
-  if (loading) return 'Đang kiểm tra thông báo';
-  if (state === 'subscribed') return 'Đang nhận thông báo đơn mới. Bấm để tắt.';
-  if (state === 'denied') return 'Thông báo đang bị chặn trong trình duyệt/PWA.';
-  if (state === 'unconfigured') return 'Backend chưa cấu hình Web Push.';
-  if (state === 'unsupported') return 'Trình duyệt này chưa hỗ trợ thông báo đẩy.';
-  return 'Bật thông báo đơn hàng mới';
+const formatNotificationTime = (value?: string | null) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+  });
 };
 
 const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: HeaderProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [pushState, setPushState] = useState<AdminPushState>('default');
-  const [pushLoading, setPushLoading] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const avatarRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { showToast } = useToast();
   const title = getCurrentTitle(location.pathname);
+
+  const loadNotifications = async () => {
+    setNotificationsLoading(true);
+    try {
+      const response = await adminNotificationService.list(20);
+      setNotifications(Array.isArray(response.data) ? response.data : []);
+      setUnreadCount(Number(response.unread_count || 0));
+    } catch {
+      setNotifications([]);
+      setUnreadCount(0);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (avatarRef.current && !avatarRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (avatarRef.current && !avatarRef.current.contains(target)) {
         setDropdownOpen(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(target)) {
+        setNotificationOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -59,20 +77,9 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
   }, []);
 
   useEffect(() => {
-    let active = true;
-    const refreshPushState = async () => {
-      try {
-        const state = await getAdminPushState();
-        if (active) setPushState(state);
-      } catch {
-        if (active) setPushState('default');
-      }
-    };
-
-    refreshPushState();
-    return () => {
-      active = false;
-    };
+    loadNotifications();
+    const timer = window.setInterval(loadNotifications, 30000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const handleLogout = () => {
@@ -80,39 +87,25 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
     navigate('/admin/login');
   };
 
-  const handlePushClick = async () => {
-    if (pushLoading) return;
-    setPushLoading(true);
-    try {
-      if (pushState === 'subscribed') {
-        await unsubscribeAdminPush();
-        setPushState(await getAdminPushState());
-        showToast('Đã tắt thông báo đơn hàng mới trên thiết bị này.', 'success');
-        return;
-      }
-
-      await subscribeAdminPush();
-      setPushState('subscribed');
-      showToast('Đã bật thông báo đơn hàng mới cho thiết bị này.', 'success');
-    } catch (error: any) {
-      const message = error?.message || 'Không bật được thông báo. Vui lòng thử lại.';
-      showToast(message, pushState === 'denied' ? 'warning' : 'error', 6000);
-      try {
-        setPushState(await getAdminPushState());
-      } catch {
-        // keep current state
-      }
-    } finally {
-      setPushLoading(false);
+  const openNotification = async (notification: AdminNotification) => {
+    if (!notification.read_at) {
+      setUnreadCount((value) => Math.max(0, value - 1));
+      setNotifications((prev) => prev.map((item) => (item.id === notification.id ? { ...item, read_at: new Date().toISOString() } : item)));
+      adminNotificationService.markRead(notification.id).catch(() => loadNotifications());
     }
+    setNotificationOpen(false);
+    if (notification.url) navigate(notification.url);
   };
 
-  const PushIcon = pushState === 'subscribed' ? BellRing : pushState === 'denied' ? BellOff : Bell;
-  const pushButtonClass = pushState === 'subscribed'
-    ? 'text-emerald-600 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-500/10'
-    : pushState === 'denied' || pushState === 'unconfigured'
-      ? 'text-amber-600 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-500/10'
-      : 'text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-rose-300';
+  const markAllRead = async () => {
+    setUnreadCount(0);
+    setNotifications((prev) => prev.map((item) => ({ ...item, read_at: item.read_at || new Date().toISOString() })));
+    try {
+      await adminNotificationService.markAllRead();
+    } catch {
+      loadNotifications();
+    }
+  };
 
   return (
     <header
@@ -139,19 +132,89 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            type="button"
-            onClick={handlePushClick}
-            disabled={pushLoading}
-            className={`relative inline-flex h-10 w-10 items-center justify-center rounded-2xl transition-colors disabled:cursor-wait disabled:opacity-70 ${pushButtonClass}`}
-            title={getPushTitle(pushState, pushLoading)}
-            aria-label={getPushTitle(pushState, pushLoading)}
-          >
-            <PushIcon size={20} />
-            {pushState === 'subscribed' && (
-              <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-950" />
+          <div className="relative" ref={notificationRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setNotificationOpen((value) => !value);
+                if (!notificationOpen) loadNotifications();
+              }}
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-rose-300"
+              title="Thông báo"
+              aria-label="Mở danh sách thông báo"
+            >
+              <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-black text-white ring-2 ring-white dark:ring-slate-950">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {notificationOpen && (
+              <div className="absolute right-[-3.25rem] mt-3 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/12 dark:border-slate-800 dark:bg-slate-900 sm:right-0">
+                <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                  <div>
+                    <div className="text-sm font-black text-slate-950 dark:text-white">Thông báo</div>
+                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{unreadCount} thông báo chưa đọc</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/admin/settings')}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-2xl text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                    aria-label="Cài đặt thông báo"
+                  >
+                    <Settings size={18} />
+                  </button>
+                </div>
+
+                <div className="max-h-[26rem] overflow-y-auto p-2">
+                  {notificationsLoading && notifications.length === 0 ? (
+                    <div className="space-y-2 p-2">
+                      {[0, 1, 2].map((item) => (
+                        <div key={item} className="h-20 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+                      ))}
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="px-4 py-10 text-center">
+                      <div className="text-sm font-black text-slate-900 dark:text-white">Chưa có thông báo</div>
+                      <div className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Đơn hàng mới sẽ xuất hiện ở đây.</div>
+                    </div>
+                  ) : (
+                    notifications.map((notification) => {
+                      const unread = !notification.read_at;
+                      return (
+                        <button
+                          key={notification.id}
+                          type="button"
+                          onClick={() => openNotification(notification)}
+                          className="flex w-full gap-3 rounded-2xl px-3 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/70"
+                        >
+                          <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${unread ? 'bg-rose-600' : 'bg-slate-300 dark:bg-slate-700'}`} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-black text-slate-950 dark:text-white">{notification.title}</span>
+                            <span className="mt-1 line-clamp-2 block text-xs font-medium leading-5 text-slate-500 dark:text-slate-400">{notification.body}</span>
+                            <span className="mt-1 block text-[11px] font-bold text-slate-400">{formatNotificationTime(notification.created_at)}</span>
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                {notifications.length > 0 && (
+                  <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+                    <button type="button" onClick={markAllRead} className="text-xs font-black text-slate-500 hover:text-rose-600 dark:text-slate-400">
+                      Đánh dấu đã đọc
+                    </button>
+                    <button type="button" onClick={() => navigate('/admin/settings')} className="text-xs font-black text-rose-600 hover:text-rose-700">
+                      Cài đặt thông báo
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
-          </button>
+          </div>
 
           <button
             type="button"
@@ -179,6 +242,15 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
               <div className="absolute right-0 mt-3 w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white py-2 shadow-2xl shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900">
                 <button className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">
                   <KeyRound size={16} /> Đổi mật khẩu
+                </button>
+                <button
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    navigate('/admin/settings');
+                  }}
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <Settings size={16} /> Cài đặt
                 </button>
                 <button
                   onClick={handleLogout}

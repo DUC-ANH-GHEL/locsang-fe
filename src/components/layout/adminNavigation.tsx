@@ -1,4 +1,4 @@
-import { Home, Image, Package, ShoppingCart, Tag } from 'lucide-react';
+import { Home, Image, Package, Settings, ShoppingCart, Tag } from 'lucide-react';
 
 export const adminNavItems = [
   { name: 'Tổng quan', url: '/admin', icon: Home, end: true },
@@ -6,6 +6,7 @@ export const adminNavItems = [
   { name: 'Danh mục', url: '/admin/categories', icon: Tag },
   { name: 'Banner', url: '/admin/home-content', icon: Image },
   { name: 'Đơn hàng', url: '/admin/orders', icon: ShoppingCart },
+  { name: 'Cài đặt', url: '/admin/settings', icon: Settings },
 ];
 
 export const adminBottomNavItems = [
