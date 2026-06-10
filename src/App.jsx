@@ -83,7 +83,7 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="products" element={<Products />} />
             <Route path="products/create" element={<CreateProduct />} />
-            <Route path="product/update/:id" element={<Navigate to="/admin/products" replace />} />
+            <Route path="product/update/:id" element={<CreateProduct />} />
             <Route path="categories" element={<Categories />} />
             <Route path="categories/create" element={<CreateCategory />} />
             <Route path="categories/:id/edit" element={<EditCategory />} />

@@ -114,6 +114,7 @@ export interface Product {
   pet_type?: PetType | null;
   season?: Season | null;
   tags?: string[];
+  specifications?: Array<{ label: string; value: string }>;
   has_variants?: boolean;
   product_status?: ProductStatus;
   featured?: boolean;

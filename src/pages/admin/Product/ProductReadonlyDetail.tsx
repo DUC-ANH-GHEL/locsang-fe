@@ -72,7 +72,11 @@ const ProductReadonlyDetail = () => {
 
   const images = useMemo(() => getImageList(product), [product]);
   const variants = Array.isArray(product?.variants) ? product.variants : [];
-  const specs = Array.isArray(product?.specs) ? product.specs : [];
+  const specs = Array.isArray(product?.specifications)
+    ? product.specifications
+    : Array.isArray(product?.specs)
+      ? product.specs
+      : [];
 
   if (loading) {
     return <div className="p-6 text-sm text-gray-500">Đang tải sản phẩm...</div>;

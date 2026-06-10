@@ -66,6 +66,56 @@ export type AdminProductListItem = {
   updated_at?: string | null;
 };
 
+export type AdminProductSpecification = {
+  label: string;
+  value: string;
+};
+
+export type AdminProductMedia = {
+  url: string;
+  type?: 'image' | 'video';
+  sort_order?: number;
+};
+
+export type AdminProductVariantPayload = {
+  id?: number;
+  sku: string;
+  price: number;
+  compare_price?: number | null;
+  cost_price?: number | null;
+  stock: number;
+  manage_stock?: boolean;
+  allow_backorder?: boolean;
+  status?: AdminProductStatus | 'inactive';
+  attribute_values?: Record<string, string>;
+  image_url?: string | null;
+};
+
+export type AdminProductPayload = {
+  name: string;
+  slug: string;
+  short_description?: string | null;
+  description?: string | null;
+  status: AdminProductStatus;
+  featured?: boolean;
+  category_id: number;
+  brand?: string | null;
+  tags?: string[];
+  specifications?: AdminProductSpecification[];
+  has_variants: boolean;
+  shipping?: {
+    weight?: number;
+    length?: number;
+    width?: number;
+    height?: number;
+  };
+  media?: AdminProductMedia[];
+  attributes?: Array<{ id?: number; name: string; values: string[] }>;
+  variants: AdminProductVariantPayload[];
+  deleted_variant_ids?: number[];
+  deleted_attribute_ids?: number[];
+};
+
 export type AdminProductsResponse = {
   data: AdminProductListItem[];
   pagination: {
@@ -346,6 +396,28 @@ export const getAdminProducts = async (query: AdminProductsQuery): Promise<Admin
 
     throw error;
   }
+};
+
+export const uploadAdminProductImage = async (file: File): Promise<{ url: string; public_id?: string | null }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post('/admin/products/upload-image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return {
+    url: String(response.data?.url || ''),
+    public_id: response.data?.public_id ?? null,
+  };
+};
+
+export const createAdminProduct = async (payload: AdminProductPayload) => {
+  const response = await apiClient.post('/admin/products', payload);
+  return response.data;
+};
+
+export const updateAdminProduct = async (productId: number, payload: Partial<AdminProductPayload>) => {
+  const response = await apiClient.put(`/admin/products/${productId}`, payload);
+  return response.data;
 };
 
 export const bulkUpdateProducts = async (payload: {
@@ -754,6 +826,12 @@ const normalizePublicProduct = (raw: any): Product => {
     : Array.isArray(raw?.promotion_offers)
       ? raw.promotion_offers
       : [];
+  const specifications = (Array.isArray(raw?.specifications) ? raw.specifications : [])
+    .map((item: any) => ({
+      label: String(item?.label ?? item?.key ?? item?.name ?? '').trim(),
+      value: String(item?.value ?? '').trim(),
+    }))
+    .filter((item: { label: string; value: string }) => item.label && item.value);
 
   return {
     id: Number(raw?.id ?? 0),
@@ -790,6 +868,7 @@ const normalizePublicProduct = (raw: any): Product => {
     has_variants: hasVariants,
     featured: Boolean(raw?.featured ?? false),
     tags: Array.isArray(raw?.tags) ? raw.tags : [],
+    specifications,
     variants: Array.isArray(rawVariants)
       ? rawVariants.map((v: any) => ({
           id: toNumberOrUndefined(v?.id),

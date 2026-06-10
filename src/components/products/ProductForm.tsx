@@ -1,86 +1,28 @@
 import * as React from 'react';
-
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  BadgeCheck,
+  Image as ImageIcon,
+  Package,
+  Plus,
+  Save,
+  Settings2,
+  Trash2,
+} from 'lucide-react';
 
 import ImageUploader from './ImageUploader';
-import LoadingOverlay from '../common/LoadingOverlay';
 import { useToast } from '../Toast';
-import { logo_url } from '../../config/api';
-import { parseApiError } from '../../utils/apiError';
-import { logout } from '../../services/authService';
-import { createProduct, getProductById, updateProduct } from '../../services/productService';
 import { getCategories as getCategoriesApi } from '../../services/categoryService';
-
-type ProductStatus = 'draft' | 'active' | 'discontinued';
-
-type PetType = 'dog' | 'cat' | 'both';
-type Season = 'winter' | 'summer' | 'all_season';
-
-type AttributeDef = {
-  id: string;
-  name: string;
-  values: string[];
-};
-
-type VariantRow = {
-  id: string;
-  image?: File | string | null;
-  attributes: Record<string, string>; // attributeName -> value
-  sku: string;
-  price: string;
-  cost_price: string;
-  stock: string;
-  status: 'active' | 'inactive';
-};
-
-type ProductDraft = {
-  // TAB 1
-  name: string;
-  slug: string;
-  short_description: string;
-  description: string; // rich text html
-  video_url: string;
-  category_id: string;
-  brand: string;
-  pet_type: PetType;
-  season: Season;
-  tags: string[];
-  status: ProductStatus;
-
-  // TAB 2
-  has_variants: boolean;
-  // simple product
-  sku: string;
-  price: string;
-  compare_price: string;
-  cost_price: string;
-  manage_stock: boolean;
-  stock: string;
-  allow_backorder: boolean;
-
-  // variants
-  attributes: AttributeDef[];
-  variants: VariantRow[];
-  sku_pattern: string;
-  manage_stock_by_variant: boolean;
-
-  // TAB 3
-  meta_title: string;
-  meta_description: string;
-  seo_slug: string;
-
-  weight_gram: string;
-  length_cm: string;
-  width_cm: string;
-  height_cm: string;
-
-  low_stock_threshold: string;
-  featured: boolean;
-  display_order: string;
-};
+import {
+  AdminProductPayload,
+  AdminProductStatus,
+  createAdminProduct,
+  getProductById,
+  updateAdminProduct,
+  uploadAdminProductImage,
+} from '../../services/productService';
 
 type ProductFormProps = {
   id: number | null;
@@ -89,46 +31,107 @@ type ProductFormProps = {
   readOnly?: boolean;
 };
 
-const DEFAULT_DRAFT: ProductDraft = {
+type CategoryOption = {
+  id: number;
+  name: string;
+};
+
+type SpecificationDraft = {
+  localId: string;
+  label: string;
+  value: string;
+};
+
+type VariantDraft = {
+  localId: string;
+  id?: number;
+  name: string;
+  sku: string;
+  price: string;
+  comparePrice: string;
+  costPrice: string;
+  stock: string;
+  status: 'active' | 'inactive';
+  imageUrl: string;
+};
+
+type ProductDraft = {
+  name: string;
+  slug: string;
+  sku: string;
+  categoryId: string;
+  status: AdminProductStatus;
+  featured: boolean;
+  brand: string;
+  shortDescription: string;
+  description: string;
+  price: string;
+  comparePrice: string;
+  costPrice: string;
+  stock: string;
+  weight: string;
+  length: string;
+  width: string;
+  height: string;
+  hasVariants: boolean;
+  variants: VariantDraft[];
+  specifications: SpecificationDraft[];
+};
+
+type FormErrors = Record<string, string>;
+
+const makeId = () =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+const emptyDraft: ProductDraft = {
   name: '',
   slug: '',
-  short_description: '',
-  description: '',
-  video_url: '',
-  category_id: '',
-  brand: '',
-  pet_type: 'both',
-  season: 'all_season',
-  tags: [],
-  status: 'draft',
-
-  has_variants: false,
   sku: '',
-  price: '',
-  compare_price: '',
-  cost_price: '',
-  manage_stock: true,
-  stock: '0',
-  allow_backorder: false,
-
-  attributes: [],
-  variants: [],
-  sku_pattern: '{{product_code}}-{{attribute_values}}',
-  manage_stock_by_variant: true,
-
-  meta_title: '',
-  meta_description: '',
-  seo_slug: '',
-
-  weight_gram: '0',
-  length_cm: '0',
-  width_cm: '0',
-  height_cm: '0',
-
-  low_stock_threshold: '',
+  categoryId: '',
+  status: 'draft',
   featured: false,
-  display_order: '',
+  brand: 'Yanmar',
+  shortDescription: '',
+  description: '',
+  price: '',
+  comparePrice: '',
+  costPrice: '',
+  stock: '0',
+  weight: '0',
+  length: '0',
+  width: '0',
+  height: '0',
+  hasVariants: false,
+  variants: [],
+  specifications: [
+    { localId: makeId(), label: 'Xuất xứ', value: '' },
+    { localId: makeId(), label: 'Dùng cho', value: '' },
+  ],
 };
+
+const statusOptions: Array<{ value: AdminProductStatus; label: string; hint: string }> = [
+  { value: 'active', label: 'Đang bán', hint: 'Hiển thị trên storefront và có thể đặt hàng' },
+  { value: 'draft', label: 'Nháp', hint: 'Lưu nội bộ, chưa bán' },
+  { value: 'discontinued', label: 'Ngừng bán', hint: 'Giữ dữ liệu nhưng không bán' },
+];
+
+const currencyFormatter = new Intl.NumberFormat('vi-VN');
+
+const newSpec = (): SpecificationDraft => ({ localId: makeId(), label: '', value: '' });
+
+const newVariant = (skuPrefix = ''): VariantDraft => ({
+  localId: makeId(),
+  name: '',
+  sku: skuPrefix ? `${skuPrefix}-` : '',
+  price: '',
+  comparePrice: '',
+  costPrice: '',
+  stock: '0',
+  status: 'active',
+  imageUrl: '',
+});
 
 const slugify = (value: string) =>
   value
@@ -142,1874 +145,874 @@ const slugify = (value: string) =>
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
 
-const uniq = (list: string[]) => {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const x of list) {
-    const k = x.trim();
-    if (!k) continue;
-    const key = k.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(k);
+const toNumber = (value: string, fallback = 0) => {
+  const cleaned = String(value || '').replace(/[^\d.-]/g, '');
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const toOptionalNumber = (value: string) => {
+  const cleaned = String(value || '').trim();
+  if (!cleaned) return null;
+  return toNumber(cleaned);
+};
+
+const getErrorMessage = (error: any) => {
+  const data = error?.response?.data;
+  const detail = data?.detail;
+  const message = data?.message || detail?.message || detail || error?.message;
+  const text = typeof message === 'string' ? message : 'Không lưu được sản phẩm. Vui lòng kiểm tra lại dữ liệu.';
+
+  if (data?.error_code === 'SLUG_DUPLICATE' || text.toLowerCase().includes('slug')) {
+    return 'Slug đã tồn tại. Vui lòng đổi slug hoặc đổi tên sản phẩm.';
   }
-  return out;
-};
-
-const newId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-const normalizeAttrName = (name: string) => name.trim().toLowerCase();
-const isColorAttr = (name: string) => {
-  const n = normalizeAttrName(name);
-  return n === 'màu' || n === 'mau' || n === 'color' || n === 'colour';
-};
-
-const cartesian = (attrs: AttributeDef[]): Array<Record<string, string>> => {
-  const clean = attrs
-    .map((a) => ({ name: a.name.trim(), values: uniq(a.values) }))
-    .filter((a) => a.name && a.values.length > 0);
-
-  if (clean.length === 0) return [];
-
-  let acc: Array<Record<string, string>> = [{}];
-  for (const a of clean) {
-    const next: Array<Record<string, string>> = [];
-    for (const combo of acc) {
-      for (const v of a.values) {
-        next.push({ ...combo, [a.name]: v });
-      }
-    }
-    acc = next;
-    if (acc.length > 200) return acc; // early exit for UX
+  if (data?.error_code === 'SKU_DUPLICATE' || text.toLowerCase().includes('sku')) {
+    return 'SKU đã tồn tại. Vui lòng dùng mã phụ tùng khác.';
   }
-
-  return acc;
+  return text;
 };
 
-const buildVariantKey = (attributes: Record<string, string>) => {
-  const keys = Object.keys(attributes)
-    .map((k) => k.trim())
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b));
-  return keys.map((k) => `${k}=${attributes[k]}`).join('|');
-};
+const normalizeProduct = (raw: any) => raw?.data ?? raw;
 
-const applySkuPattern = (pattern: string, productCode: string, attributes: Record<string, string>) => {
-  const values = Object.keys(attributes)
-    .map((k) => attributes[k])
-    .filter(Boolean);
-  const joined = values
-    .join('-')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-    .toUpperCase();
-
-  return pattern
-    .replaceAll('{{product_code}}', (productCode || '').toUpperCase())
-    .replaceAll('{{attribute_values}}', joined)
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-};
-
-const TagInput = ({
-  value,
-  onChange,
-  placeholder,
-  disabled,
-  maxItems,
-  onLimitReached,
-}: {
-  value: string[];
-  onChange: (next: string[]) => void;
-  placeholder?: string;
-  disabled?: boolean;
-  maxItems?: number;
-  onLimitReached?: () => void;
-}) => {
-  const [text, setText] = useState('');
-
-  const commit = () => {
-    const v = text.trim();
-    if (!v) return;
-    const next = uniq([...value, v]);
-    if (typeof maxItems === 'number' && maxItems > 0 && next.length > maxItems) {
-      onLimitReached?.();
-      return;
-    }
-    onChange(next);
-    setText('');
+const extractImageUrls = (product: any): string[] => {
+  const urls: string[] = [];
+  const push = (value: any) => {
+    const url = typeof value === 'string' ? value : value?.url || value?.image_url;
+    const normalized = String(url || '').trim();
+    if (normalized && !urls.includes(normalized)) urls.push(normalized);
   };
 
-  return (
-    <div className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2">
-      <div className="flex flex-wrap gap-2">
-        {value.map((t) => (
-          <span
-            key={t.toLowerCase()}
-            className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200"
-          >
-            {t}
-            <button
-              type="button"
-              disabled={disabled}
-              className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-              onClick={() => onChange(value.filter((x) => x.toLowerCase() !== t.toLowerCase()))}
-            >
-              ×
-            </button>
-          </span>
-        ))}
-        <input
-          disabled={disabled}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={() => commit()}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              commit();
-            }
-            if (e.key === ',') {
-              e.preventDefault();
-              commit();
-            }
-            if (e.key === 'Backspace' && !text && value.length > 0) {
-              onChange(value.slice(0, -1));
-            }
-          }}
-          className="min-w-[160px] flex-1 bg-transparent outline-none text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
-          placeholder={placeholder}
-        />
-      </div>
-    </div>
-  );
+  if (Array.isArray(product?.media)) product.media.forEach(push);
+  if (Array.isArray(product?.images)) product.images.forEach(push);
+  push(product?.thumbnail);
+  return urls;
 };
 
-const TABS = [
-  { key: 'basic', label: 'Thông tin cơ bản' },
-  { key: 'variants', label: 'Biến thể & Giá' },
-  { key: 'seo', label: 'SEO & Nâng cao' },
-] as const;
+const normalizeSpecs = (product: any): SpecificationDraft[] => {
+  const raw = Array.isArray(product?.specifications)
+    ? product.specifications
+    : Array.isArray(product?.specs)
+      ? product.specs
+      : [];
 
-const MAX_PRODUCT_IMAGES = 9;
+  const specs = raw
+    .map((item: any) => ({
+      localId: makeId(),
+      label: String(item?.label || item?.key || item?.name || '').trim(),
+      value: String(item?.value || '').trim(),
+    }))
+    .filter((item: SpecificationDraft) => item.label || item.value);
+
+  return specs.length > 0 ? specs : emptyDraft.specifications.map((item) => ({ ...item, localId: makeId() }));
+};
+
+const normalizeVariant = (variant: any, index: number): VariantDraft => {
+  const attrs = variant?.attribute_values || variant?.attributeValues || {};
+  const attrName = Object.values(attrs).filter(Boolean).join(' / ');
+  return {
+    localId: makeId(),
+    id: Number.isFinite(Number(variant?.id)) ? Number(variant.id) : undefined,
+    name: String(variant?.variant_name || variant?.variantName || attrName || '').trim(),
+    sku: String(variant?.sku || '').trim(),
+    price: variant?.price !== undefined && variant?.price !== null ? String(variant.price) : '',
+    comparePrice:
+      variant?.compare_price !== undefined && variant?.compare_price !== null
+        ? String(variant.compare_price)
+        : variant?.comparePrice !== undefined && variant?.comparePrice !== null
+          ? String(variant.comparePrice)
+          : '',
+    costPrice:
+      variant?.cost_price !== undefined && variant?.cost_price !== null
+        ? String(variant.cost_price)
+        : variant?.costPrice !== undefined && variant?.costPrice !== null
+          ? String(variant.costPrice)
+          : '',
+    stock: variant?.stock !== undefined && variant?.stock !== null ? String(variant.stock) : '0',
+    status: variant?.status === 'inactive' || variant?.is_active === false ? 'inactive' : 'active',
+    imageUrl: String(variant?.image_url || variant?.imageUrl || '').trim(),
+  };
+};
+
+const FieldError = ({ message }: { message?: string }) =>
+  message ? <div className="mt-1 text-sm font-semibold text-red-600">{message}</div> : null;
+
+const sectionClass =
+  'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none sm:p-5';
+
+const labelClass = 'mb-1 block text-sm font-bold text-slate-900 dark:text-slate-100';
+const inputClass =
+  'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-rose-500 focus:ring-4 focus:ring-rose-100 disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-rose-500/15';
 
 const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormProps) => {
   const { showToast } = useToast();
+  const [draft, setDraft] = useState<ProductDraft>(() => ({ ...emptyDraft, specifications: emptyDraft.specifications.map((item) => ({ ...item, localId: makeId() })) }));
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [existingVariantIds, setExistingVariantIds] = useState<number[]>([]);
+  const [existingAttributeIds, setExistingAttributeIds] = useState<number[]>([]);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [slugTouched, setSlugTouched] = useState(Boolean(id));
+  const [loading, setLoading] = useState(Boolean(id));
+  const [saving, setSaving] = useState(false);
 
-  const [tab, setTab] = useState<(typeof TABS)[number]['key']>('basic');
-  const [loading, setLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [draft, setDraft] = useState<ProductDraft>(DEFAULT_DRAFT);
+  const disabled = readOnly || saving;
+  const initialImages = useMemo(() => [...existingImages, ...imageFiles], [existingImages, imageFiles]);
 
-  const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
+  const completion = useMemo(() => {
+    const checks = [
+      Boolean(draft.name.trim()),
+      Boolean(draft.sku.trim()),
+      Boolean(draft.categoryId),
+      Boolean(existingImages.length + imageFiles.length),
+      toNumber(draft.price) > 0,
+      Number.isInteger(toNumber(draft.stock)) && toNumber(draft.stock) >= 0,
+    ];
+    const done = checks.filter(Boolean).length;
+    return Math.round((done / checks.length) * 100);
+  }, [draft.categoryId, draft.name, draft.price, draft.sku, draft.stock, existingImages.length, imageFiles.length]);
 
-  // images: first item is primary
-  const [imagesFiles, setImagesFiles] = useState<File[]>([]);
-  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
-
-  const [dirty, setDirty] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
-  const lastLoadedRef = useRef(false);
-  const autosaveRef = useRef<number | null>(null);
-
-  const [attributesLocked, setAttributesLocked] = useState(false);
-  const [confirmEditAttributes, setConfirmEditAttributes] = useState(false);
-  const [applyBulkToAll, setApplyBulkToAll] = useState(false);
-  const [variantImageAttrName, setVariantImageAttrName] = useState<string>('');
-
-  const slugAutoRef = useRef({
-    initialized: false,
-    slugLocked: false,
-    seoLocked: false,
-    lastAutoSlug: '',
-    lastAutoSeoSlug: '',
-  });
-
-  const draftKey = useMemo(() => (id ? `locsang_admin_product_draft_v1:${id}` : 'locsang_admin_product_draft_v1:new'), [id]);
-
-  // Profit/margin (simple)
-  const simpleProfit = useMemo(() => {
-    const price = Number(draft.price || 0);
-    const cost = Number(draft.cost_price || 0);
-    if (!Number.isFinite(price) || !Number.isFinite(cost)) return 0;
+  const profitPreview = useMemo(() => {
+    const price = toNumber(draft.price);
+    const cost = toOptionalNumber(draft.costPrice);
+    if (!price || cost === null) return null;
     return price - cost;
-  }, [draft.price, draft.cost_price]);
+  }, [draft.price, draft.costPrice]);
 
-  const simpleMargin = useMemo(() => {
-    const price = Number(draft.price || 0);
-    if (!price) return 0;
-    return (simpleProfit / price) * 100;
-  }, [draft.price, simpleProfit]);
-
-  const totalVariantStock = useMemo(() => {
-    if (!draft.manage_stock_by_variant) return 0;
-    return draft.variants.reduce((sum, v) => {
-      const s = Number(v.stock || 0);
-      return sum + (Number.isFinite(s) ? s : 0);
-    }, 0);
-  }, [draft.variants, draft.manage_stock_by_variant]);
-
-  const skuExample = useMemo(() => {
-    const productCode = draft.sku.trim();
-    const pattern = draft.sku_pattern || '{{product_code}}-{{attribute_values}}';
-    if (!productCode) return '';
-
-    const firstVariantAttrs = draft.variants?.[0]?.attributes;
-    if (firstVariantAttrs && Object.keys(firstVariantAttrs).length > 0) {
-      return applySkuPattern(pattern, productCode, firstVariantAttrs);
-    }
-
-    const exampleAttrs: Record<string, string> = {};
-    for (const a of draft.attributes) {
-      const name = a.name.trim();
-      if (!name) continue;
-      const first = uniq(a.values)[0];
-      if (!first) continue;
-      exampleAttrs[name] = first;
-    }
-    if (Object.keys(exampleAttrs).length === 0) return '';
-    return applySkuPattern(pattern, productCode, exampleAttrs);
-  }, [draft.attributes, draft.sku, draft.sku_pattern, draft.variants]);
-
-  const defaultVariantImageAttrName = useMemo(() => {
-    const found = draft.attributes.find((a) => isColorAttr(a.name));
-    return found?.name?.trim() || '';
-  }, [draft.attributes]);
-
-  const uploaderInitialImages = useMemo(() => [...existingImageUrls, ...imagesFiles], [existingImageUrls, imagesFiles]);
-
-  useEffect(() => {
-    // Keep the image-attribute selection stable; default to a color-like attribute.
-    const existingNames = new Set(draft.attributes.map((a) => a.name.trim()).filter(Boolean));
-    setVariantImageAttrName((prev) => {
-      if (prev && existingNames.has(prev)) return prev;
-      if (defaultVariantImageAttrName && existingNames.has(defaultVariantImageAttrName)) return defaultVariantImageAttrName;
-      const first = draft.attributes.find((a) => a.name.trim())?.name?.trim() || '';
-      return first;
-    });
-  }, [defaultVariantImageAttrName, draft.attributes]);
-
-  const validate = (): string | null => {
-    // TAB 1 requireds
-    if (!draft.name.trim()) return 'Tên sản phẩm là bắt buộc';
-    if (!draft.slug.trim()) return 'Slug là bắt buộc';
-    if (!draft.category_id) return 'Danh mục là bắt buộc';
-
-    // Media: primary image required
-    const totalImages = (existingImageUrls?.length ?? 0) + (imagesFiles?.length ?? 0);
-    if (totalImages <= 0) return 'Ảnh chính là bắt buộc';
-    if (totalImages > MAX_PRODUCT_IMAGES) return `Tối đa ${MAX_PRODUCT_IMAGES} ảnh`;
-
-    // Shipping required per existing backend
-    const weight = Number(draft.weight_gram);
-    const len = Number(draft.length_cm);
-    const wid = Number(draft.width_cm);
-    const hei = Number(draft.height_cm);
-    if (![weight, len, wid, hei].every((x) => Number.isFinite(x) && x >= 0)) {
-      return 'Thông số vận chuyển (khối lượng/dài/rộng/cao) không hợp lệ';
-    }
-
-    // TAB 2 logic
-    if (!draft.has_variants) {
-      if (!draft.sku.trim()) return 'SKU là bắt buộc (Sản phẩm đơn)';
-      const price = Number(draft.price);
-      if (!Number.isFinite(price) || price <= 0) return 'Giá bán phải > 0 (Sản phẩm đơn)';
-      if (draft.manage_stock) {
-        const st = Number(draft.stock);
-        if (!Number.isFinite(st) || st < 0) return 'Kho không được âm (Sản phẩm đơn)';
-      }
-      return null;
-    }
-
-    // Variants
-    if (draft.attributes.length === 0) return 'Vui lòng thêm ít nhất 1 thuộc tính';
-
-    // Keep validation consistent with the variant builder constraints
-    if (attributesForGeneration.errors.tooManyAttrs) return 'Tối đa 3 thuộc tính để tạo biến thể';
-    if (attributesForGeneration.errors.dupName) return 'Tên thuộc tính bị trùng. Vui lòng chỉnh lại.';
-    if (attributesForGeneration.errors.tooManyValues) return 'Mỗi thuộc tính tối đa 20 giá trị';
-    if (attributesForGeneration.errors.hasEmptyName) return 'Tên thuộc tính không được để trống';
-    if (attributesForGeneration.errors.hasEmptyValues) return 'Mỗi thuộc tính cần ít nhất 1 giá trị';
-    if (attributesForGeneration.overLimit) return 'Số biến thể vượt giới hạn 200';
-
-    for (const a of draft.attributes) {
-      if (!a.name.trim()) return 'Tên thuộc tính không được để trống';
-      if (uniq(a.values).length === 0) return `Thuộc tính "${a.name || '(chưa đặt tên)'}" cần ít nhất 1 giá trị`;
-    }
-
-    if (draft.variants.length === 0) return 'Vui lòng tạo biến thể';
-
-    const skuSeen = new Set<string>();
-    const comboSeen = new Set<string>();
-    for (let i = 0; i < draft.variants.length; i++) {
-      const v = draft.variants[i];
-      if (!v.sku.trim()) return `Biến thể #${i + 1}: thiếu SKU`;
-      const skuKey = v.sku.trim().toLowerCase();
-      if (skuSeen.has(skuKey)) return `SKU bị trùng: ${v.sku}`;
-      skuSeen.add(skuKey);
-
-      const price = Number(v.price);
-      if (!Number.isFinite(price) || price <= 0) return `Biến thể #${i + 1}: giá phải > 0`;
-
-      if (draft.manage_stock_by_variant) {
-        const st = Number(v.stock);
-        if (!Number.isFinite(st) || st < 0) return `Biến thể #${i + 1}: kho không được âm`;
-      }
-
-      // Ensure all attribute columns filled
-      const requiredAttrNames = draft.attributes.map((a) => a.name.trim()).filter(Boolean);
-      for (const n of requiredAttrNames) {
-        if (!v.attributes?.[n]) return `Biến thể #${i + 1}: thiếu giá trị thuộc tính "${n}"`;
-      }
-
-      const key = buildVariantKey(v.attributes);
-      if (comboSeen.has(key)) return `Biến thể bị trùng tổ hợp thuộc tính (#${i + 1})`;
-      comboSeen.add(key);
-    }
-
-    return null;
-  };
-
-  // Load categories + draft from localStorage
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await getCategoriesApi();
-        const list = Array.isArray(data) ? data : [];
-        setCategories(list.map((c: any) => ({ id: Number(c.id), name: String(c.name ?? '') })));
-      } catch {
-        setCategories([]);
-      }
-    })();
+  const loadCategories = useCallback(async () => {
+    const response = await getCategoriesApi();
+    const list = Array.isArray(response) ? response : Array.isArray(response?.data) ? response.data : [];
+    setCategories(
+      list
+        .map((item: any) => ({ id: Number(item?.id || 0), name: String(item?.name || '').trim() }))
+        .filter((item: CategoryOption) => item.id > 0 && item.name),
+    );
   }, []);
 
-  // Load existing product for update
   useEffect(() => {
-    (async () => {
-      if (lastLoadedRef.current) return;
-      lastLoadedRef.current = true;
+    let cancelled = false;
 
-      // Restore local draft first
+    const load = async () => {
       try {
-        const raw = localStorage.getItem(draftKey);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          setDraft((prev) => ({ ...prev, ...parsed }));
-        }
-      } catch {
-        // ignore
-      }
+        setLoading(Boolean(id));
+        await loadCategories();
+        if (!id) return;
 
-      if (!id) return;
+        const raw = await getProductById(id);
+        if (cancelled) return;
+        const product = normalizeProduct(raw);
+        const variants = Array.isArray(product?.variants) ? product.variants.map(normalizeVariant) : [];
+        const firstVariant = variants[0];
+        const hasVariants = Boolean(product?.has_variants && variants.length > 1);
 
-      setLoading(true);
-      try {
-        const p: any = await getProductById(id);
+        setDraft({
+          name: String(product?.name || '').trim(),
+          slug: String(product?.slug || '').trim(),
+          sku: String(firstVariant?.sku || product?.sku || '').trim(),
+          categoryId: product?.category_id ? String(product.category_id) : '',
+          status: (product?.status || (product?.is_active ? 'active' : 'draft')) as AdminProductStatus,
+          featured: Boolean(product?.featured),
+          brand: String(product?.brand || 'Yanmar').trim(),
+          shortDescription: String(product?.short_description || product?.shortDescription || '').trim(),
+          description: String(product?.description || '').trim(),
+          price:
+            firstVariant?.price ||
+            (product?.price !== undefined && product?.price !== null ? String(product.price) : ''),
+          comparePrice:
+            firstVariant?.comparePrice ||
+            (product?.original_price !== undefined && product?.original_price !== null ? String(product.original_price) : ''),
+          costPrice: firstVariant?.costPrice || '',
+          stock:
+            firstVariant?.stock ||
+            (product?.stock !== undefined && product?.stock !== null ? String(product.stock) : '0'),
+          weight: product?.shipping?.weight !== undefined ? String(product.shipping.weight) : String(product?.weight || 0),
+          length: product?.shipping?.length !== undefined ? String(product.shipping.length) : String(product?.length || 0),
+          width: product?.shipping?.width !== undefined ? String(product.shipping.width) : String(product?.width || 0),
+          height: product?.shipping?.height !== undefined ? String(product.shipping.height) : String(product?.height || 0),
+          hasVariants,
+          variants: hasVariants ? variants : [],
+          specifications: normalizeSpecs(product),
+        });
 
-        // Map backend -> UI (best-effort)
-        setDraft((prev) => ({
-          ...prev,
-          name: String(p?.name ?? prev.name),
-          slug: String(p?.slug ?? prev.slug),
-          description: String(p?.description ?? prev.description),
-          category_id: String(p?.category_id ?? prev.category_id),
-          sku: String(p?.sku ?? prev.sku),
-          price: p?.price !== undefined && p?.price !== null ? String(p.price) : prev.price,
-          status: p?.is_active ? 'active' : 'draft',
-          seo_slug: String(p?.slug ?? prev.seo_slug),
-          weight_gram: p?.weight !== undefined && p?.weight !== null ? String(Number(p.weight) * 1000) : prev.weight_gram,
-          length_cm: p?.length !== undefined && p?.length !== null ? String(p.length) : prev.length_cm,
-          width_cm: p?.width !== undefined && p?.width !== null ? String(p.width) : prev.width_cm,
-          height_cm: p?.height !== undefined && p?.height !== null ? String(p.height) : prev.height_cm,
-        }));
-
-        // images
-        const urls: string[] = Array.isArray(p?.images)
-          ? p.images
-              .map((x: any) => (typeof x === 'string' ? x : x?.url || x?.image_url))
-              .filter((x: any) => typeof x === 'string' && x)
-          : [];
-        setExistingImageUrls(urls);
-        setImagesFiles([]);
-      } catch (e) {
-        showToast('Không tải được sản phẩm', 'error');
+        setExistingImages(extractImageUrls(product));
+        setExistingVariantIds(variants.map((variant) => variant.id).filter((value): value is number => Number.isFinite(Number(value))));
+        setExistingAttributeIds(
+          (Array.isArray(product?.attributes) ? product.attributes : [])
+            .map((item: any) => Number(item?.id))
+            .filter((value: number) => Number.isFinite(value)),
+        );
+        setSlugTouched(true);
+      } catch (error: any) {
+        showToast(getErrorMessage(error), 'error');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
+    };
 
-      // Treat loaded data as baseline (not dirty)
-      setDirty(false);
-      setHydrated(true);
-    })();
-  }, [draftKey, id, showToast]);
-
-  // Mark hydrated after initial load in create mode
-  useEffect(() => {
-    if (id) return;
-    // allow any localStorage restore above to settle
-    const t = window.setTimeout(() => {
-      setDirty(false);
-      setHydrated(true);
-    }, 0);
-    return () => window.clearTimeout(t);
-  }, [id]);
-
-  // Init slug auto-state after hydration
-  useEffect(() => {
-    if (!hydrated) return;
-    if (slugAutoRef.current.initialized) return;
-
-    const auto = slugify(draft.name || '');
-    const currentSlug = String(draft.slug || '').trim();
-    const currentSeo = String(draft.seo_slug || '').trim();
-
-    slugAutoRef.current.slugLocked = Boolean(currentSlug) && currentSlug !== auto;
-    slugAutoRef.current.seoLocked = Boolean(currentSeo) && currentSeo !== auto;
-    slugAutoRef.current.lastAutoSlug = auto;
-    slugAutoRef.current.lastAutoSeoSlug = auto;
-    slugAutoRef.current.initialized = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated]);
-
-  // Slug auto-generate from name until user edits slug manually
-  useEffect(() => {
-    if (!hydrated) return;
-
-    setDraft((prev) => {
-      const auto = slugify(prev.name || '');
-
-      const currentSlug = String(prev.slug || '').trim();
-      const currentSeo = String(prev.seo_slug || '').trim();
-
-      const shouldAutoSlug =
-        !slugAutoRef.current.slugLocked || !currentSlug || currentSlug === slugAutoRef.current.lastAutoSlug;
-      const shouldAutoSeo =
-        !slugAutoRef.current.seoLocked || !currentSeo || currentSeo === slugAutoRef.current.lastAutoSeoSlug;
-
-      let changed = false;
-      const next = { ...prev };
-
-      if (shouldAutoSlug && currentSlug !== auto) {
-        next.slug = auto;
-        changed = true;
-      }
-      if (shouldAutoSeo && currentSeo !== auto) {
-        next.seo_slug = auto;
-        changed = true;
-      }
-
-      slugAutoRef.current.lastAutoSlug = auto;
-      slugAutoRef.current.lastAutoSeoSlug = auto;
-
-      return changed ? next : prev;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.name, hydrated]);
-
-  // mark dirty on changes (after initial hydration)
-  useEffect(() => {
-    if (readOnly) return;
-    if (!hydrated) return;
-    setDirty(true);
-  }, [draft, imagesFiles, existingImageUrls, hydrated, readOnly]);
-
-  // Autosave every 10s (localStorage) - non-file fields only
-  useEffect(() => {
-    if (readOnly) return;
-    if (autosaveRef.current) window.clearInterval(autosaveRef.current);
-    autosaveRef.current = window.setInterval(() => {
-      try {
-        const toSave = { ...draft };
-        localStorage.setItem(draftKey, JSON.stringify(toSave));
-      } catch {
-        // ignore
-      }
-    }, 10_000);
-
+    load();
     return () => {
-      if (autosaveRef.current) window.clearInterval(autosaveRef.current);
-      autosaveRef.current = null;
+      cancelled = true;
     };
-  }, [draft, draftKey, readOnly]);
+  }, [id, loadCategories, showToast]);
 
-  // Warn on leave if not saved (client-side dirty)
-  useEffect(() => {
-    if (readOnly) return;
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!dirty) return;
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [dirty, readOnly]);
+  const setField = <K extends keyof ProductDraft>(field: K, value: ProductDraft[K]) => {
+    setDraft((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => {
+      if (!prev[field as string]) return prev;
+      const next = { ...prev };
+      delete next[field as string];
+      return next;
+    });
+  };
+
+  const onNameChange = (value: string) => {
+    setDraft((prev) => ({
+      ...prev,
+      name: value,
+      slug: slugTouched ? prev.slug : slugify(value),
+    }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.name;
+      delete next.slug;
+      return next;
+    });
+  };
 
   const onImagesUpdate = useCallback((files: File[], existing: string[]) => {
-    setImagesFiles(files);
-    setExistingImageUrls(existing);
+    setImageFiles(files);
+    setExistingImages(existing);
+    setErrors((prev) => {
+      if (!prev.images) return prev;
+      const next = { ...prev };
+      delete next.images;
+      return next;
+    });
   }, []);
 
-  const setField = <K extends keyof ProductDraft>(key: K, value: ProductDraft[K]) => {
-    setDraft((prev) => ({ ...prev, [key]: value }));
+  const updateSpec = (localId: string, patch: Partial<SpecificationDraft>) => {
+    setDraft((prev) => ({
+      ...prev,
+      specifications: prev.specifications.map((item) => (item.localId === localId ? { ...item, ...patch } : item)),
+    }));
   };
 
-  const addAttribute = () => {
-    if (attributesLocked) {
-      showToast('Thuộc tính đã được khoá sau khi generate. Hãy chọn “Chỉnh sửa thuộc tính”.', 'warning');
-      return;
-    }
-    if (draft.attributes.length >= 3) {
-      showToast('Tối đa 3 thuộc tính', 'warning');
-      return;
-    }
-    setDraft((prev) => ({ ...prev, attributes: [...prev.attributes, { id: newId(), name: '', values: [] }] }));
+  const updateVariant = (localId: string, patch: Partial<VariantDraft>) => {
+    setDraft((prev) => ({
+      ...prev,
+      variants: prev.variants.map((item) => (item.localId === localId ? { ...item, ...patch } : item)),
+    }));
   };
 
-  const removeAttribute = (attrId: string) => {
-    if (attributesLocked) {
-      showToast('Thuộc tính đã được khoá sau khi generate. Hãy chọn “Chỉnh sửa thuộc tính”.', 'warning');
-      return;
-    }
-    setDraft((prev) => {
-      const nextAttrs = prev.attributes.filter((a) => a.id !== attrId);
-      const removed = prev.attributes.find((a) => a.id === attrId);
-      const removedName = removed?.name?.trim();
+  const validate = () => {
+    const next: FormErrors = {};
+    const name = draft.name.trim();
+    const slug = draft.slug.trim();
+    const sku = draft.sku.trim();
+    const price = toNumber(draft.price);
+    const comparePrice = toOptionalNumber(draft.comparePrice);
+    const costPrice = toOptionalNumber(draft.costPrice);
+    const stock = toNumber(draft.stock);
+    const totalImages = existingImages.length + imageFiles.length;
 
-      const nextVariants = prev.variants.map((v) => {
-        const attrs = { ...(v.attributes || {}) };
-        if (removedName && attrs[removedName] !== undefined) {
-          delete attrs[removedName];
-        }
-        return { ...v, attributes: attrs };
-      });
+    if (!name) next.name = 'Tên sản phẩm là bắt buộc.';
+    if (name.length > 180) next.name = 'Tên sản phẩm tối đa 180 ký tự.';
+    if (!slug) next.slug = 'Slug là bắt buộc.';
+    if (slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) next.slug = 'Slug chỉ dùng chữ thường, số và dấu gạch ngang.';
+    if (!draft.categoryId) next.categoryId = 'Cần chọn danh mục.';
+    if (!totalImages) next.images = 'Cần ít nhất 1 ảnh sản phẩm.';
+    if (!sku) next.sku = 'SKU hoặc mã phụ tùng là bắt buộc.';
+    if (sku.length > 80) next.sku = 'SKU tối đa 80 ký tự.';
+    if (!Number.isFinite(price) || price <= 0) next.price = 'Giá bán phải lớn hơn 0.';
+    if (comparePrice !== null && comparePrice < price) next.comparePrice = 'Giá niêm yết phải lớn hơn hoặc bằng giá bán.';
+    if (costPrice !== null && costPrice < 0) next.costPrice = 'Giá vốn không được âm.';
+    if (!Number.isInteger(stock) || stock < 0) next.stock = 'Tồn kho phải là số nguyên không âm.';
 
-      return { ...prev, attributes: nextAttrs, variants: nextVariants };
+    ['weight', 'length', 'width', 'height'].forEach((field) => {
+      const value = toNumber(draft[field as keyof ProductDraft] as string);
+      if (!Number.isFinite(value) || value < 0) next[field] = 'Thông số này không được âm.';
     });
+
+    draft.specifications.forEach((spec, index) => {
+      const hasLabel = Boolean(spec.label.trim());
+      const hasValue = Boolean(spec.value.trim());
+      if (hasLabel !== hasValue) next[`spec-${spec.localId}`] = `Thông số #${index + 1} cần đủ tên và giá trị.`;
+    });
+
+    if (draft.hasVariants) {
+      if (draft.variants.length === 0) next.variants = 'Cần thêm ít nhất một biến thể hoặc tắt chế độ biến thể.';
+      const seen = new Set<string>();
+      draft.variants.forEach((variant, index) => {
+        const prefix = `variant-${variant.localId}`;
+        const variantSku = variant.sku.trim();
+        const variantPrice = toNumber(variant.price);
+        const variantComparePrice = toOptionalNumber(variant.comparePrice);
+        const variantCostPrice = toOptionalNumber(variant.costPrice);
+        const variantStock = toNumber(variant.stock);
+        if (!variantSku) next[`${prefix}-sku`] = `Biến thể #${index + 1} thiếu SKU.`;
+        const skuKey = variantSku.toLowerCase();
+        if (skuKey && seen.has(skuKey)) next[`${prefix}-sku`] = `SKU biến thể bị trùng: ${variantSku}.`;
+        seen.add(skuKey);
+        if (!Number.isFinite(variantPrice) || variantPrice <= 0) next[`${prefix}-price`] = 'Giá biến thể phải lớn hơn 0.';
+        if (variantComparePrice !== null && variantComparePrice < variantPrice) next[`${prefix}-compare`] = 'Giá niêm yết phải lớn hơn hoặc bằng giá bán.';
+        if (variantCostPrice !== null && variantCostPrice < 0) next[`${prefix}-cost`] = 'Giá vốn không được âm.';
+        if (!Number.isInteger(variantStock) || variantStock < 0) next[`${prefix}-stock`] = 'Tồn kho phải là số nguyên không âm.';
+      });
+    }
+
+    setErrors(next);
+    return next;
   };
 
-  // Lock attributes after generate (or when loading an existing product with variants)
-  useEffect(() => {
-    if (!hydrated) return;
-    if (!draft.has_variants) {
-      setAttributesLocked(false);
-      return;
+  const uploadNewImages = async () => {
+    const uploaded: string[] = [];
+    for (const file of imageFiles) {
+      const result = await uploadAdminProductImage(file);
+      if (!result.url) throw new Error('Upload ảnh thất bại, không nhận được URL.');
+      uploaded.push(result.url);
     }
-    if (draft.variants.length > 0) setAttributesLocked(true);
-  }, [draft.has_variants, draft.variants.length, hydrated]);
+    return [...existingImages, ...uploaded];
+  };
 
-  const attributesForGeneration = useMemo(() => {
-    const trimmed = draft.attributes
-      .map((a) => ({ id: a.id, name: a.name.trim(), values: uniq(a.values) }))
-      .filter((a) => a.name || a.values.length > 0);
+  const buildPayload = async (): Promise<AdminProductPayload> => {
+    const imageUrls = await uploadNewImages();
+    const baseSku = draft.sku.trim();
+    const baseStatus = draft.status === 'active' ? 'active' : 'inactive';
+    const specs = draft.specifications
+      .map((item) => ({ label: item.label.trim(), value: item.value.trim() }))
+      .filter((item) => item.label && item.value);
 
-    const normalizedNames = trimmed.map((a) => normalizeAttrName(a.name));
-    const dupName = normalizedNames.some((n, i) => n && normalizedNames.indexOf(n) !== i);
-    const tooManyAttrs = trimmed.length > 3;
-    const tooManyValues = trimmed.some((a) => a.values.length > 20);
-    const hasEmptyName = trimmed.some((a) => a.values.length > 0 && !a.name);
-    const hasEmptyValues = trimmed.some((a) => a.name && a.values.length === 0);
+    const variants = draft.hasVariants
+      ? draft.variants.map((variant) => ({
+          id: variant.id,
+          sku: variant.sku.trim(),
+          price: toNumber(variant.price),
+          compare_price: toOptionalNumber(variant.comparePrice),
+          cost_price: toOptionalNumber(variant.costPrice),
+          stock: toNumber(variant.stock),
+          manage_stock: true,
+          allow_backorder: false,
+          status: variant.status,
+          image_url: variant.imageUrl.trim() || null,
+          attribute_values: variant.name.trim() ? { 'Quy cách': variant.name.trim() } : {},
+        }))
+      : [
+          {
+            id: existingVariantIds[0],
+            sku: baseSku,
+            price: toNumber(draft.price),
+            compare_price: toOptionalNumber(draft.comparePrice),
+            cost_price: toOptionalNumber(draft.costPrice),
+            stock: toNumber(draft.stock),
+            manage_stock: true,
+            allow_backorder: false,
+            status: baseStatus,
+            attribute_values: {},
+            image_url: null,
+          },
+        ];
 
-    // valid means ready for counting/generation (non-empty names + values, no dup names)
-    const valid =
-      trimmed.length > 0 &&
-      !tooManyAttrs &&
-      !tooManyValues &&
-      !dupName &&
-      !hasEmptyName &&
-      !hasEmptyValues &&
-      trimmed.every((a) => a.name && a.values.length > 0);
+    const variantNames = Array.from(
+      new Set(
+        draft.variants
+          .map((variant) => variant.name.trim())
+          .filter(Boolean),
+      ),
+    );
 
-    const breakdown = valid ? trimmed.map((a) => `${a.values.length} ${a.name}`).join(' × ') : '';
-    const count = valid ? trimmed.reduce((acc, a) => acc * a.values.length, 1) : 0;
-    const overLimit = count > 200;
+    const activeVariantIds = variants.map((variant) => Number(variant.id)).filter((value) => Number.isFinite(value));
+    const deletedVariantIds = id ? existingVariantIds.filter((variantId) => !activeVariantIds.includes(variantId)) : [];
 
     return {
-      list: trimmed,
-      valid,
-      count,
-      breakdown,
-      overLimit,
-      errors: {
-        tooManyAttrs,
-        tooManyValues,
-        dupName,
-        hasEmptyName,
-        hasEmptyValues,
+      name: draft.name.trim(),
+      slug: draft.slug.trim(),
+      short_description: draft.shortDescription.trim() || null,
+      description: draft.description.trim() || null,
+      status: draft.status,
+      featured: draft.featured,
+      category_id: Number(draft.categoryId),
+      brand: draft.brand.trim() || 'Yanmar',
+      tags: [],
+      specifications: specs,
+      has_variants: draft.hasVariants,
+      shipping: {
+        weight: toNumber(draft.weight),
+        length: toNumber(draft.length),
+        width: toNumber(draft.width),
+        height: toNumber(draft.height),
       },
+      media: imageUrls.map((url, index) => ({ url, type: 'image', sort_order: index + 1 })),
+      attributes: draft.hasVariants && variantNames.length > 0 ? [{ name: 'Quy cách', values: variantNames }] : [],
+      variants,
+      deleted_variant_ids: deletedVariantIds,
+      deleted_attribute_ids: id ? existingAttributeIds : [],
     };
-  }, [draft.attributes]);
-
-  const generateVariants = async () => {
-    setIsGenerating(true);
-    try {
-      if (!attributesForGeneration.valid) {
-        if (attributesForGeneration.errors.tooManyAttrs) {
-          showToast('Tối đa 3 thuộc tính để tạo biến thể', 'warning');
-          return;
-        }
-        if (attributesForGeneration.errors.dupName) {
-          showToast('Tên thuộc tính bị trùng. Vui lòng chỉnh lại.', 'warning');
-          return;
-        }
-        if (attributesForGeneration.errors.tooManyValues) {
-          showToast('Mỗi thuộc tính tối đa 20 giá trị', 'warning');
-          return;
-        }
-        showToast('Chưa đủ thuộc tính/giá trị để tạo biến thể', 'warning');
-        return;
-      }
-      if (attributesForGeneration.overLimit) {
-        showToast('Số biến thể vượt giới hạn 200', 'error');
-        return;
-      }
-      if (!draft.sku.trim()) {
-        showToast('Vui lòng nhập Product code (SKU) trước khi generate', 'warning');
-        return;
-      }
-
-      // Generate from trimmed/unique attribute list so keys match validation/counting exactly.
-      const attrsForCartesian = attributesForGeneration.list.map((a) => ({ name: a.name, values: a.values }));
-      const combos = cartesian(attrsForCartesian as any);
-
-      // Preserve existing edits by combo key
-      const byKey = new Map<string, VariantRow>();
-      for (const v of draft.variants) {
-        const normalizedAttrs: Record<string, string> = {};
-        for (const [k, val] of Object.entries(v.attributes || {})) {
-          const kk = String(k || '').trim();
-          if (!kk) continue;
-          normalizedAttrs[kk] = String(val ?? '');
-        }
-        byKey.set(buildVariantKey(normalizedAttrs), { ...v, attributes: normalizedAttrs });
-      }
-
-      const productCode = draft.sku.trim();
-      const pattern = draft.sku_pattern || '{{product_code}}-{{attribute_values}}';
-
-      const next: VariantRow[] = combos.map((attrs) => {
-        const key = buildVariantKey(attrs);
-        const existing = byKey.get(key);
-        if (existing) return existing;
-
-        const sku = applySkuPattern(pattern, productCode, attrs);
-        return {
-          id: newId(),
-          image: null,
-          attributes: attrs,
-          sku,
-          price: draft.price || '',
-          cost_price: draft.cost_price || '',
-          stock: '0',
-          status: 'active',
-        };
-      });
-
-      // Validate combos unique by key already
-      setDraft((prev) => ({ ...prev, variants: next }));
-      setSelectedVariantIds([]);
-      setAttributesLocked(true);
-    } finally {
-      setIsGenerating(false);
-    }
   };
 
-  const [selectedVariantIds, setSelectedVariantIds] = useState<string[]>([]);
-
-  const allVariantSelected = draft.variants.length > 0 && draft.variants.every((v) => selectedVariantIds.includes(v.id));
-
-  const ensureBulkTargets = () => {
-    if (applyBulkToAll) return true;
-    if (selectedVariantIds.length > 0) return true;
-    showToast('Chọn ít nhất 1 biến thể hoặc tick “Áp dụng cho tất cả biến thể”', 'warning');
-    return false;
-  };
-
-  const bulkSet = (field: 'price' | 'cost_price' | 'stock', value: string) => {
-    if (!ensureBulkTargets()) return;
-    setDraft((prev) => {
-      const set = new Set(selectedVariantIds);
-      const next = prev.variants.map((v) => {
-        if (!applyBulkToAll && !set.has(v.id)) return v;
-        return { ...v, [field]: value };
-      });
-      return { ...prev, variants: next };
-    });
-  };
-
-  const bulkAdjustPercent = (percent: number) => {
-    if (!ensureBulkTargets()) return;
-    setDraft((prev) => {
-      const set = new Set(selectedVariantIds);
-      const next = prev.variants.map((v) => {
-        if (!applyBulkToAll && !set.has(v.id)) return v;
-        const p = Number(v.price);
-        if (!Number.isFinite(p) || p <= 0) return v;
-        const nextPrice = Math.round(p * (1 + percent / 100));
-        return { ...v, price: String(nextPrice) };
-      });
-      return { ...prev, variants: next };
-    });
-  };
-
-  const bulkSetStatus = (status: VariantRow['status']) => {
-    if (!ensureBulkTargets()) return;
-    setDraft((prev) => {
-      const set = new Set(selectedVariantIds);
-      const next = prev.variants.map((v) => {
-        if (!applyBulkToAll && !set.has(v.id)) return v;
-        return { ...v, status };
-      });
-      return { ...prev, variants: next };
-    });
-  };
-
-  const assignImageByAttributeValue = (attrValue: string, file: File | null) => {
-    const attrName = variantImageAttrName?.trim();
-    if (!attrName) return;
-    setDraft((prev) => {
-      const next = prev.variants.map((v) => {
-        if ((v.attributes?.[attrName] || '') !== attrValue) return v;
-        return { ...v, image: file };
-      });
-      return { ...prev, variants: next };
-    });
-  };
-
-  const onSubmit = async () => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (readOnly) return;
-    const err = validate();
-    if (err) {
-      showToast(err, 'warning');
+
+    const validation = validate();
+    if (Object.keys(validation).length > 0) {
+      showToast('Vui lòng xử lý các lỗi trong form trước khi lưu.', 'warning');
       return;
     }
 
-    setIsSubmitting(true);
     try {
-      // Map PRD status -> existing backend is_active
-      const is_active = draft.status === 'active';
-
-      if (!draft.has_variants) {
-        // Simple
-        const payload: any = {
-          name: draft.name.trim(),
-          slug: draft.slug.trim(),
-          description: draft.description,
-          price: Number(draft.price),
-          sku: draft.sku.trim(),
-          stock: draft.manage_stock ? Number(draft.stock || 0) : 0,
-          currency: 'VND',
-          affiliate: 0,
-          weight: Number(draft.weight_gram || 0) / 1000,
-          length: Number(draft.length_cm || 0),
-          width: Number(draft.width_cm || 0),
-          height: Number(draft.height_cm || 0),
-          is_active,
-          category_id: Number(draft.category_id),
-          images: [...existingImageUrls, ...imagesFiles],
-        };
-
-        if (id) {
-          await updateProduct({ ...payload, id });
-        } else {
-          await createProduct(payload);
-        }
-
-        showToast(id ? 'Cập nhật sản phẩm thành công!' : 'Tạo sản phẩm thành công!', 'success');
-        setDirty(false);
-        try {
-          localStorage.removeItem(draftKey);
-        } catch {
-          // ignore
-        }
-        onSuccess?.();
-        return;
-      }
-
-      // Variants
-      const minPrice = Math.min(...draft.variants.map((v) => Number(v.price) || Infinity));
-      const productPrice = Number.isFinite(minPrice) && minPrice !== Infinity ? minPrice : Number(draft.price || 0);
-      const stock = draft.manage_stock_by_variant ? totalVariantStock : 0;
-
-      // Best-effort compatibility mapping for current backend variants (size/color/material)
-      const toCompat = (attrs: Record<string, string>) => {
-        const out: any = {};
-        for (const [k, v] of Object.entries(attrs || {})) {
-          const n = normalizeAttrName(k);
-          if (n === 'size') out.size = v;
-          if (n === 'màu' || n === 'mau' || n === 'color') out.color = v;
-          if (n === 'chất liệu' || n === 'chat lieu' || n === 'material') out.material = v;
-        }
-        return out;
-      };
-
-      const variantsPayload = draft.variants.map((v) => ({
-        sku: v.sku.trim(),
-        price: Number(v.price),
-        stock: draft.manage_stock_by_variant ? Number(v.stock || 0) : 0,
-        is_active: v.status === 'active',
-        ...toCompat(v.attributes),
-      }));
-
-      const payload: any = {
-        name: draft.name.trim(),
-        slug: draft.slug.trim(),
-        description: draft.description,
-        price: productPrice,
-        sku: draft.sku.trim(),
-        stock,
-        currency: 'VND',
-        affiliate: 0,
-        weight: Number(draft.weight_gram || 0) / 1000,
-        length: Number(draft.length_cm || 0),
-        width: Number(draft.width_cm || 0),
-        height: Number(draft.height_cm || 0),
-        is_active,
-        category_id: Number(draft.category_id),
-        variants: variantsPayload,
-        images: [...existingImageUrls, ...imagesFiles],
-      };
-
+      setSaving(true);
+      const payload = await buildPayload();
       if (id) {
-        await updateProduct({ ...payload, id });
+        await updateAdminProduct(id, payload);
       } else {
-        await createProduct(payload);
+        await createAdminProduct(payload);
       }
-
-      showToast(id ? 'Cập nhật sản phẩm thành công!' : 'Tạo sản phẩm thành công!', 'success');
-      setDirty(false);
-      try {
-        localStorage.removeItem(draftKey);
-      } catch {
-        // ignore
-      }
+      showToast(id ? 'Đã cập nhật sản phẩm.' : 'Đã tạo sản phẩm.', 'success');
       onSuccess?.();
-    } catch (e: any) {
-      const parsed = parseApiError(e);
-      if (parsed?.status === 401) {
-        showToast('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.', 'error', 5000);
-        logout();
-        const current = `${window.location.pathname}${window.location.search}`;
-        window.location.href = `/admin/login?redirect=${encodeURIComponent(current)}`;
-        return;
-      }
-      showToast(parsed?.message || 'Có lỗi xảy ra. Vui lòng thử lại.', 'error', 6000);
+    } catch (error: any) {
+      const message = getErrorMessage(error);
+      if (message.toLowerCase().includes('slug')) setErrors((prev) => ({ ...prev, slug: message }));
+      if (message.toLowerCase().includes('sku')) setErrors((prev) => ({ ...prev, sku: message }));
+      showToast(message, 'error');
     } finally {
-      setIsSubmitting(false);
+      setSaving(false);
     }
   };
 
-  const renderTabBasic = () => {
+  if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
-              <div>
-                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Thông tin chính</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Tên, slug và mô tả sản phẩm</div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Tên sản phẩm *</label>
-                <input
-                  value={draft.name}
-                  onChange={(e) => setField('name', e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  placeholder="VD: Áo hoodie"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Slug *</label>
-                <input
-                  value={draft.slug}
-                  onChange={(e) => {
-                    const next = slugify(e.target.value);
-                    if (next) {
-                      slugAutoRef.current.slugLocked = true;
-                    } else {
-                      slugAutoRef.current.slugLocked = false;
-                    }
-                    setField('slug', next);
-                    if (!slugAutoRef.current.seoLocked && (!draft.seo_slug || draft.seo_slug === slugAutoRef.current.lastAutoSeoSlug)) {
-                      setField('seo_slug', next);
-                    }
-                  }}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  placeholder="ao-hoodie-cho-cho"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Mô tả ngắn</label>
-                <textarea
-                  value={draft.short_description}
-                  onChange={(e) => setField('short_description', e.target.value)}
-                  rows={3}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  placeholder="Tóm tắt nổi bật của sản phẩm..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Mô tả chi tiết</label>
-                <div className="rounded-xl overflow-hidden border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900">
-                  <ReactQuill theme="snow" value={draft.description} readOnly={readOnly} onChange={(v) => setField('description', v)} />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-3">
-              <div>
-                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Media</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Ảnh chính, gallery và video</div>
-              </div>
-              <ImageUploader
-                initialImages={uploaderInitialImages}
-                onImagesUpdate={onImagesUpdate}
-                label="Ảnh sản phẩm"
-                helpText={`Ảnh đầu tiên là ảnh chính. Kéo thả để sắp xếp. Tối đa ${MAX_PRODUCT_IMAGES} ảnh.`}
-                requiredPrimary
-                maxImages={MAX_PRODUCT_IMAGES}
-                disabled={readOnly}
-              />
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Video (optional)</label>
-                <input
-                  value={draft.video_url}
-                  onChange={(e) => setField('video_url', e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  placeholder="https://..."
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
-              <div>
-                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Phân loại</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Danh mục, thương hiệu và tags</div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Danh mục *</label>
-                <select
-                  value={draft.category_id}
-                  onChange={(e) => setField('category_id', e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                >
-                  <option value="">— Chọn danh mục —</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={String(c.id)}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Thương hiệu</label>
-                <input
-                  value={draft.brand}
-                  onChange={(e) => setField('brand', e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  placeholder="VD: Lộc Sang"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Nhóm sản phẩm</label>
-                <select
-                  value={draft.pet_type}
-                  onChange={(e) => setField('pet_type', e.target.value as PetType)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                >
-                  <option value="dog">Nhóm 1</option>
-                  <option value="cat">Nhóm 2</option>
-                  <option value="both">Cả hai</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Mùa</label>
-                <select
-                  value={draft.season}
-                  onChange={(e) => setField('season', e.target.value as Season)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                >
-                  <option value="winter">Winter</option>
-                  <option value="summer">Summer</option>
-                  <option value="all_season">All season</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Tags</label>
-                <TagInput value={draft.tags} onChange={(next) => setField('tags', next)} placeholder="Nhập tag và Enter..." />
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
-              <div>
-                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Trạng thái</div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Trạng thái</label>
-                <select
-                  value={draft.status}
-                  onChange={(e) => setField('status', e.target.value as ProductStatus)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                >
-                  <option value="draft">Nháp</option>
-                  <option value="active">Đang bán</option>
-                  <option value="discontinued">Ngừng bán</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+        Đang tải dữ liệu sản phẩm...
       </div>
     );
-  };
+  }
 
-  const renderTabVariants = () => {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Loại sản phẩm</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Sản phẩm đơn hoặc nhiều biến thể</div>
-            </div>
-            <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-              <input
-                type="checkbox"
-                checked={draft.has_variants}
-                onChange={(e) => setField('has_variants', e.target.checked)}
-                className="h-4 w-4"
-              />
-              Sản phẩm có nhiều biến thể
-            </label>
-          </div>
-        </div>
-
-        {!draft.has_variants ? (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-6">
-            <div>
-              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Sản phẩm đơn</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">SKU, giá và tồn kho</div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">SKU *</label>
-                <input
-                  value={draft.sku}
-                  onChange={(e) => setField('sku', e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2"
-                  placeholder="VD: LOCSANG-HOODIE"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Giá bán *</label>
-                <input
-                  value={draft.price}
-                  onChange={(e) => setField('price', e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2"
-                  placeholder="199000"
-                  inputMode="numeric"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Giá so sánh</label>
-                <input
-                  value={draft.compare_price}
-                  onChange={(e) => setField('compare_price', e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2"
-                  placeholder="249000"
-                  inputMode="numeric"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Giá vốn</label>
-                <input
-                  value={draft.cost_price}
-                  onChange={(e) => setField('cost_price', e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2"
-                  placeholder="120000"
-                  inputMode="numeric"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-4 bg-gray-50 dark:bg-gray-950">
-                <div className="text-xs text-gray-500">Lợi nhuận</div>
-                <div className="text-lg font-bold text-gray-900 dark:text-gray-100">{Number.isFinite(simpleProfit) ? simpleProfit.toLocaleString('vi-VN') : '0'} đ</div>
-                <div className="text-xs text-gray-500">Biên lợi nhuận</div>
-                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{Number.isFinite(simpleMargin) ? simpleMargin.toFixed(1) : '0.0'}%</div>
-              </div>
-
-              <div className="space-y-3">
-                <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  <input
-                    type="checkbox"
-                    checked={draft.manage_stock}
-                    onChange={(e) => setField('manage_stock', e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  Quản lý tồn kho?
-                </label>
-
-                <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  <input
-                    type="checkbox"
-                    checked={draft.allow_backorder}
-                    onChange={(e) => setField('allow_backorder', e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  Cho phép bán khi hết hàng?
-                </label>
-
-                {draft.manage_stock && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Kho *</label>
-                    <input
-                      value={draft.stock}
-                      onChange={(e) => setField('stock', e.target.value)}
-                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2"
-                      inputMode="numeric"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Attribute Builder</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Tối đa 3 thuộc tính. Mỗi thuộc tính tối đa 20 giá trị. Không trùng tên/value.</div>
-                </div>
-                {attributesLocked ? (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmEditAttributes(true)}
-                    className="inline-flex items-center gap-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 font-semibold text-gray-800 dark:text-gray-200"
-                  >
-                    Chỉnh sửa thuộc tính
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={addAttribute}
-                    className="inline-flex items-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 font-semibold"
-                  >
-                    + Thêm thuộc tính
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                {draft.attributes.map((a) => (
-                  <div key={a.id} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Tên thuộc tính</label>
-                      <input
-                        value={a.name}
-                        disabled={attributesLocked}
-                        onChange={(e) => {
-                          if (attributesLocked) return;
-                          const nextName = e.target.value;
-                          setDraft((prev) => {
-                            const nextTrim = nextName.trim();
-                            const nextNorm = normalizeAttrName(nextTrim);
-                            if (nextNorm) {
-                              const dup = prev.attributes.some(
-                                (x) => x.id !== a.id && normalizeAttrName(x.name.trim()) === nextNorm,
-                              );
-                              if (dup) {
-                                showToast('Không cho trùng tên thuộc tính', 'warning');
-                                return prev;
-                              }
-                            }
-
-                            const oldTrim = a.name.trim();
-                            if (variantImageAttrName && oldTrim && variantImageAttrName === oldTrim) {
-                              setVariantImageAttrName(nextTrim);
-                            }
-
-                            return {
-                              ...prev,
-                              attributes: prev.attributes.map((x) => (x.id === a.id ? { ...x, name: nextName } : x)),
-                            };
-                          });
-                        }}
-                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2"
-                        placeholder="VD: Size"
-                      />
-
-                      <label className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-200">
-                        <input
-                          type="radio"
-                          name="variantImageAttr"
-                          disabled={attributesLocked || !a.name.trim()}
-                          checked={variantImageAttrName === a.name.trim()}
-                          onChange={() => setVariantImageAttrName(a.name.trim())}
-                          className="h-4 w-4"
-                        />
-                        Gán ảnh theo thuộc tính này
-                      </label>
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Giá trị</label>
-                      <TagInput
-                        value={a.values}
-                        disabled={attributesLocked}
-                        maxItems={20}
-                        onLimitReached={() => showToast('Mỗi thuộc tính tối đa 20 giá trị', 'warning')}
-                        onChange={(next) => {
-                          if (attributesLocked) return;
-                          setDraft((prev) => ({
-                            ...prev,
-                            attributes: prev.attributes.map((x) => (x.id === a.id ? { ...x, values: next } : x)),
-                          }));
-                        }}
-                        placeholder="Nhập giá trị và Enter..."
-                      />
-                      <div className="mt-2">
-                        <button
-                          type="button"
-                          onClick={() => removeAttribute(a.id)}
-                          disabled={attributesLocked}
-                          className="text-sm font-semibold text-red-600 hover:text-red-700"
-                        >
-                          Xoá thuộc tính
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {draft.attributes.length === 0 && (
-                  <div className="text-sm text-gray-500 dark:text-gray-400">Chưa có thuộc tính. Thêm thuộc tính để tạo biến thể.</div>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
-              <div className="text-sm text-gray-800 dark:text-gray-200">
-                Tổng số biến thể sẽ tạo:{' '}
-                <span className="font-semibold">{attributesForGeneration.valid ? attributesForGeneration.count : 0}</span>
-                {attributesForGeneration.breakdown ? (
-                  <span className="text-xs text-gray-500 dark:text-gray-400"> ({attributesForGeneration.breakdown})</span>
-                ) : null}
-              </div>
-              {attributesForGeneration.overLimit && (
-                <div className="mt-1 text-sm font-semibold text-red-600">Số biến thể vượt giới hạn 200</div>
-              )}
-            </div>
-
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Generate Variants</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Sinh Cartesian product. Tối đa 200 biến thể.</div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="min-w-[240px]">
-                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">SKU pattern</label>
-                    <input
-                      value={draft.sku_pattern}
-                      onChange={(e) => setField('sku_pattern', e.target.value)}
-                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-                    />
-                    <div className="text-[11px] text-gray-500 mt-1">Mặc định: {'{{product_code}}-{{attribute_values}}'}</div>
-                    {skuExample && (
-                      <div className="text-[11px] text-gray-600 dark:text-gray-300 mt-1">
-                        Ví dụ SKU: <span className="font-semibold">{skuExample}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="min-w-[220px]">
-                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Product code (SKU) *</label>
-                    <input
-                      value={draft.sku}
-                      onChange={(e) => setField('sku', e.target.value)}
-                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-                      placeholder="VD: LOCSANG-HOODIE"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={isGenerating || attributesForGeneration.overLimit}
-                    onClick={generateVariants}
-                    className="h-[42px] self-end inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white px-4 py-2 font-semibold"
-                  >
-                    {isGenerating ? 'Đang tạo...' : 'Tạo tất cả tổ hợp'}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div>
-                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Bulk Actions</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Áp dụng cho dòng đã chọn, hoặc cho tất cả nếu tick bên dưới.</div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => bulkAdjustPercent(10)} className="rounded-xl border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
-                    +10%
-                  </button>
-                  <button type="button" onClick={() => bulkAdjustPercent(-10)} className="rounded-xl border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
-                    -10%
-                  </button>
-                </div>
-              </div>
-
-              <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                <input
-                  type="checkbox"
-                  checked={applyBulkToAll}
-                  onChange={(e) => setApplyBulkToAll(e.target.checked)}
-                  className="h-4 w-4"
-                />
-                Áp dụng cho tất cả biến thể
-              </label>
-
-              <div className="flex flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">Set giá:</span>
-                  <input
-                    className="w-32 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-                    placeholder="199000"
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter') return;
-                      e.preventDefault();
-                      const v = (e.target as HTMLInputElement).value;
-                      bulkSet('price', v);
-                      (e.target as HTMLInputElement).value = '';
-                    }}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">Set giá vốn:</span>
-                  <input
-                    className="w-32 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-                    placeholder="120000"
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter') return;
-                      e.preventDefault();
-                      const v = (e.target as HTMLInputElement).value;
-                      bulkSet('cost_price', v);
-                      (e.target as HTMLInputElement).value = '';
-                    }}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">Set kho:</span>
-                  <input
-                    className="w-24 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-                    placeholder="0"
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter') return;
-                      e.preventDefault();
-                      const v = (e.target as HTMLInputElement).value;
-                      bulkSet('stock', v);
-                      (e.target as HTMLInputElement).value = '';
-                    }}
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">Set trạng thái:</span>
-                  <select
-                    className="w-36 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-                    defaultValue=""
-                    onChange={(e) => {
-                      const v = e.target.value as VariantRow['status'] | '';
-                      if (!v) return;
-                      bulkSetStatus(v);
-                      e.target.value = '';
-                    }}
-                  >
-                    <option value="">—</option>
-                    <option value="active">Đang bán</option>
-                    <option value="inactive">Ẩn</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {variantImageAttrName && (
-              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-3">
-                <div>
-                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Ảnh theo biến thể (theo {variantImageAttrName})</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Gán 1 ảnh cho tất cả biến thể có cùng giá trị thuộc tính.</div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {uniq(draft.attributes.find((a) => a.name.trim() === variantImageAttrName)?.values || []).map((val) => (
-                    <label key={val} className="flex items-center justify-between gap-2 rounded-xl border border-gray-200 dark:border-gray-800 p-3">
-                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{val}</div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => assignImageByAttributeValue(val, e.target.files?.[0] ?? null)}
-                        className="text-xs"
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Bảng quản lý biến thể</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Tổng biến thể: {draft.variants.length}</div>
-                </div>
-
-                <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  <input
-                    type="checkbox"
-                    checked={draft.manage_stock_by_variant}
-                    onChange={(e) => setField('manage_stock_by_variant', e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  Quản lý tồn kho theo biến thể
-                </label>
-              </div>
-
-              <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                <div className="max-h-[420px] overflow-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-800/40 text-gray-600 dark:text-gray-300 sticky top-0">
-                      <tr>
-                        <th className="px-3 py-2">
-                          <input
-                            type="checkbox"
-                            checked={allVariantSelected}
-                            onChange={(e) => {
-                              if (e.target.checked) setSelectedVariantIds(draft.variants.map((v) => v.id));
-                              else setSelectedVariantIds([]);
-                            }}
-                          />
-                        </th>
-                        <th className="px-3 py-2 text-left">Ảnh</th>
-                        <th className="px-3 py-2 text-left">SKU *</th>
-                        <th className="px-3 py-2 text-left">Thuộc tính</th>
-                        <th className="px-3 py-2 text-left">Giá *</th>
-                        <th className="px-3 py-2 text-left">Giá vốn</th>
-                        <th className="px-3 py-2 text-left">Kho{draft.manage_stock_by_variant ? ' *' : ''}</th>
-                        <th className="px-3 py-2 text-left">Trạng thái</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                      {draft.variants.map((v) => (
-                        <tr key={v.id} className="text-gray-800 dark:text-gray-100">
-                          <td className="px-3 py-2">
-                            <input
-                              type="checkbox"
-                              checked={selectedVariantIds.includes(v.id)}
-                              onChange={(e) => {
-                                setSelectedVariantIds((prev) =>
-                                  e.target.checked ? uniq([...prev, v.id]) : prev.filter((x) => x !== v.id)
-                                );
-                              }}
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0] ?? null;
-                                setDraft((prev) => ({
-                                  ...prev,
-                                  variants: prev.variants.map((x) => (x.id === v.id ? { ...x, image: file } : x)),
-                                }));
-                              }}
-                              className="text-xs"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              value={v.sku}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                setDraft((prev) => ({
-                                  ...prev,
-                                  variants: prev.variants.map((x) => (x.id === v.id ? { ...x, sku: value } : x)),
-                                }));
-                              }}
-                              className="w-56 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
-                            />
-                          </td>
-
-                          <td className="px-3 py-2">
-                            <div className="min-w-[220px] space-y-0.5 text-xs text-gray-700 dark:text-gray-200">
-                              {draft.attributes
-                                .map((a) => a.name.trim())
-                                .filter(Boolean)
-                                .slice(0, 3)
-                                .map((name) => (
-                                  <div key={name}>
-                                    <span className="font-semibold">{name}:</span> {v.attributes?.[name] || '—'}
-                                  </div>
-                                ))}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              value={v.price}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                setDraft((prev) => ({
-                                  ...prev,
-                                  variants: prev.variants.map((x) => (x.id === v.id ? { ...x, price: value } : x)),
-                                }));
-                              }}
-                              inputMode="numeric"
-                              className="w-32 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              value={v.cost_price}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                setDraft((prev) => ({
-                                  ...prev,
-                                  variants: prev.variants.map((x) => (x.id === v.id ? { ...x, cost_price: value } : x)),
-                                }));
-                              }}
-                              inputMode="numeric"
-                              className="w-32 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              value={v.stock}
-                              disabled={!draft.manage_stock_by_variant}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                setDraft((prev) => ({
-                                  ...prev,
-                                  variants: prev.variants.map((x) => (x.id === v.id ? { ...x, stock: value } : x)),
-                                }));
-                              }}
-                              inputMode="numeric"
-                              className="w-24 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 disabled:opacity-60"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <select
-                              value={v.status}
-                              onChange={(e) => {
-                                const value = e.target.value as VariantRow['status'];
-                                setDraft((prev) => ({
-                                  ...prev,
-                                  variants: prev.variants.map((x) => (x.id === v.id ? { ...x, status: value } : x)),
-                                }));
-                              }}
-                              className="w-32 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
-                            >
-                              <option value="active">Đang bán</option>
-                              <option value="inactive">Ẩn</option>
-                            </select>
-                          </td>
-                        </tr>
-                      ))}
-
-                      {draft.variants.length === 0 && (
-                        <tr>
-                          <td colSpan={8} className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
-                            Chưa có biến thể.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="text-sm text-gray-600 dark:text-gray-300">
-                Kho tổng: <span className="font-semibold">{totalVariantStock}</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderTabSeo = () => {
-    const previewTitle = draft.meta_title || draft.name || 'Tiêu đề SEO';
-    const previewDesc = draft.meta_description || 'Mô tả SEO sẽ hiển thị ở đây...';
-    const previewSlug = draft.seo_slug || draft.slug || 'san-pham';
-
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
-              <div>
-                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">SEO</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Meta title, meta description, SEO slug</div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Meta title</label>
-                <input
-                  value={draft.meta_title}
-                  onChange={(e) => setField('meta_title', e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Meta description</label>
-                <textarea
-                  value={draft.meta_description}
-                  onChange={(e) => setField('meta_description', e.target.value)}
-                  rows={3}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">SEO slug</label>
-                <input
-                  value={draft.seo_slug}
-                  onChange={(e) => {
-                    const next = slugify(e.target.value);
-                    if (next) {
-                      slugAutoRef.current.seoLocked = true;
-                    } else {
-                      slugAutoRef.current.seoLocked = false;
-                    }
-                    setField('seo_slug', next);
-                  }}
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2"
-                />
-              </div>
-
-              <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-                <div className="text-xs text-gray-500">Google snippet preview</div>
-                <div className="mt-2">
-                  <div className="text-blue-700 dark:text-blue-300 text-lg font-semibold line-clamp-2">{previewTitle}</div>
-                  <div className="text-green-700 dark:text-green-300 text-sm">https://locsang.shop/{previewSlug}</div>
-                  <div className="text-gray-600 dark:text-gray-300 text-sm line-clamp-2">{previewDesc}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
-              <div>
-                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Vận chuyển</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Khối lượng và kích thước (dùng cho vận chuyển)</div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Khối lượng (gram)</label>
-                  <input value={draft.weight_gram} onChange={(e) => setField('weight_gram', e.target.value)} inputMode="numeric" className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Dài (cm)</label>
-                  <input value={draft.length_cm} onChange={(e) => setField('length_cm', e.target.value)} inputMode="numeric" className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Rộng (cm)</label>
-                  <input value={draft.width_cm} onChange={(e) => setField('width_cm', e.target.value)} inputMode="numeric" className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Cao (cm)</label>
-                  <input value={draft.height_cm} onChange={(e) => setField('height_cm', e.target.value)} inputMode="numeric" className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
-              <div>
-                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Nâng cao</div>
-              </div>
-
-              <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                <input
-                  type="checkbox"
-                  checked={draft.allow_backorder}
-                  onChange={(e) => setField('allow_backorder', e.target.checked)}
-                  className="h-4 w-4"
-                />
-                Cho phép bán khi hết hàng
-              </label>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Ngưỡng cảnh báo tồn kho thấp</label>
-                <input
-                  value={draft.low_stock_threshold}
-                  onChange={(e) => setField('low_stock_threshold', e.target.value)}
-                  inputMode="numeric"
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2"
-                  placeholder="VD: 5"
-                />
-              </div>
-
-              <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                <input
-                  type="checkbox"
-                  checked={draft.featured}
-                  onChange={(e) => setField('featured', e.target.checked)}
-                  className="h-4 w-4"
-                />
-                Hiển thị sản phẩm nổi bật
-              </label>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Thứ tự hiển thị</label>
-                <input
-                  value={draft.display_order}
-                  onChange={(e) => setField('display_order', e.target.value)}
-                  inputMode="numeric"
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2"
-                  placeholder="VD: 1"
-                />
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
-              <div className="text-xs text-gray-500 dark:text-gray-400">Autosave</div>
-              <div className="text-sm text-gray-700 dark:text-gray-200">Tự lưu nháp mỗi 10 giây (local).</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const errorList = Object.values(errors);
 
   return (
-    <>
-      <LoadingOverlay isLoading={loading || isSubmitting} text={loading ? 'Đang tải sản phẩm...' : isSubmitting ? 'Đang lưu sản phẩm...' : ''} />
-
-      {confirmEditAttributes && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
-            <div className="text-base font-semibold text-gray-900 dark:text-gray-100">Chỉnh sửa thuộc tính?</div>
-            <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              Thay đổi thuộc tính sẽ xoá toàn bộ biến thể hiện tại. Bạn có chắc muốn tiếp tục?
+    <form onSubmit={submit} className="space-y-4 pb-24">
+      <div className="rounded-2xl border border-rose-100 bg-gradient-to-r from-rose-50 to-white p-4 dark:border-rose-500/20 dark:from-rose-500/10 dark:to-slate-950 sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-bold text-rose-700 dark:text-rose-300">
+              <Package size={18} />
+              Sản phẩm Lộc Sang
             </div>
-            <div className="mt-5 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmEditAttributes(false)}
-                className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-200"
-              >
-                Huỷ
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setConfirmEditAttributes(false);
-                  setDraft((prev) => ({ ...prev, variants: [] }));
-                  setSelectedVariantIds([]);
-                  setAttributesLocked(false);
-                }}
-                className="rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2 text-sm font-semibold text-white"
-              >
-                Xác nhận
-              </button>
+            <h2 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">
+              {id ? 'Cập nhật sản phẩm' : 'Tạo sản phẩm mới'}
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm font-medium text-slate-600 dark:text-slate-300">
+              Nhập đúng mã phụ tùng, giá, kho và thông số kỹ thuật để dữ liệu hiển thị ngay trên storefront.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white bg-white/80 p-3 text-sm font-bold text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+            Hoàn tất {completion}%
+            <div className="mt-2 h-2 w-40 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+              <div className="h-full rounded-full bg-rose-600" style={{ width: `${completion}%` }} />
             </div>
           </div>
+        </div>
+      </div>
+
+      {errorList.length > 0 && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
+          <div className="flex items-center gap-2 font-black">
+            <AlertCircle size={18} />
+            Cần kiểm tra lại {errorList.length} mục
+          </div>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm font-semibold">
+            {errorList.slice(0, 6).map((message, index) => (
+              <li key={`${message}-${index}`}>{message}</li>
+            ))}
+          </ul>
         </div>
       )}
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25 }}
-        className="mx-auto max-w-7xl px-4 py-6"
-      >
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div className="min-w-0">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Lộc Sang Admin</div>
-            <h2 className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">{readOnly ? 'Chi tiết sản phẩm' : id ? 'Cập nhật sản phẩm' : 'Tạo sản phẩm'}</h2>
-            {!readOnly && dirty && <div className="mt-1 text-xs text-rose-600">Có thay đổi chưa lưu</div>}
+      <section className={sectionClass}>
+        <div className="mb-4 flex items-center gap-2">
+          <BadgeCheck size={20} className="text-rose-600" />
+          <h3 className="text-lg font-black text-slate-950 dark:text-white">Thông tin bắt buộc</h3>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div>
+            <label className={labelClass}>Tên sản phẩm *</label>
+            <input
+              className={inputClass}
+              value={draft.name}
+              disabled={disabled}
+              placeholder="VD: Lọc nhớt Yanmar 119305-35153"
+              onChange={(event) => onNameChange(event.target.value)}
+            />
+            <FieldError message={errors.name} />
           </div>
-          <img src={logo_url} alt="Lộc Sang" className="h-10 w-10 rounded-full ring-1 ring-gray-200 dark:ring-gray-800" />
-        </div>
-
-        {/* Tabs */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={
-                'rounded-xl px-4 py-2 text-sm font-semibold border transition ' +
-                (tab === t.key
-                  ? 'bg-rose-600 text-white border-rose-600'
-                  : 'bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800')
-              }
+          <div>
+            <label className={labelClass}>Slug *</label>
+            <input
+              className={inputClass}
+              value={draft.slug}
+              disabled={disabled}
+              placeholder="loc-nhot-yanmar-119305-35153"
+              onChange={(event) => {
+                setSlugTouched(true);
+                setField('slug', slugify(event.target.value));
+              }}
+            />
+            <FieldError message={errors.slug} />
+          </div>
+          <div>
+            <label className={labelClass}>SKU hoặc mã phụ tùng *</label>
+            <input
+              className={inputClass}
+              value={draft.sku}
+              disabled={disabled}
+              placeholder="VD: 119305-35153"
+              onChange={(event) => setField('sku', event.target.value.toUpperCase().trim())}
+            />
+            <FieldError message={errors.sku} />
+          </div>
+          <div>
+            <label className={labelClass}>Danh mục *</label>
+            <select
+              className={inputClass}
+              value={draft.categoryId}
+              disabled={disabled}
+              onChange={(event) => setField('categoryId', event.target.value)}
             >
-              {t.label}
-            </button>
-          ))}
+              <option value="">Chọn danh mục</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <FieldError message={errors.categoryId} />
+          </div>
+          <div>
+            <label className={labelClass}>Trạng thái bán</label>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {statusOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => setField('status', option.value)}
+                  className={`rounded-xl border p-3 text-left transition ${
+                    draft.status === option.value
+                      ? 'border-rose-600 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-200'
+                      : 'border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300'
+                  }`}
+                >
+                  <div className="text-sm font-black">{option.label}</div>
+                  <div className="mt-1 text-xs font-semibold opacity-75">{option.hint}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>Thương hiệu</label>
+            <input className={inputClass} value={draft.brand} disabled={disabled} onChange={(event) => setField('brand', event.target.value)} />
+            <label className="mt-3 flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200">
+              <input
+                type="checkbox"
+                checked={draft.featured}
+                disabled={disabled}
+                onChange={(event) => setField('featured', event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-rose-600"
+              />
+              Ghim nổi bật trên storefront
+            </label>
+          </div>
         </div>
+      </section>
 
-        <div className={readOnly ? 'pointer-events-none' : ''}>
-          {tab === 'basic' && renderTabBasic()}
-          {tab === 'variants' && renderTabVariants()}
-          {tab === 'seo' && renderTabSeo()}
+      <section className={sectionClass}>
+        <div className="mb-4 flex items-center gap-2">
+          <ImageIcon size={20} className="text-rose-600" />
+          <h3 className="text-lg font-black text-slate-950 dark:text-white">Ảnh sản phẩm *</h3>
         </div>
+        <ImageUploader
+          initialImages={initialImages}
+          onImagesUpdate={onImagesUpdate}
+          label="Ảnh sản phẩm"
+          helpText="Ảnh đầu tiên sẽ là ảnh chính trên storefront. Nên dùng nền trắng, thấy rõ sản phẩm."
+          requiredPrimary
+          disabled={disabled}
+          maxImages={9}
+        />
+        <FieldError message={errors.images} />
+      </section>
 
-        {/* Actions */}
-        <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              if (!readOnly && dirty && !window.confirm('Bạn có thay đổi chưa lưu. Rời trang?')) return;
-              onCancel?.();
-            }}
-            className="inline-flex items-center justify-center rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 font-semibold text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            {readOnly ? 'Quay lại' : 'Huỷ'}
-          </button>
+      <section className={sectionClass}>
+        <div className="mb-4 flex items-center gap-2">
+          <Settings2 size={20} className="text-rose-600" />
+          <h3 className="text-lg font-black text-slate-950 dark:text-white">Giá và kho</h3>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label className={labelClass}>Giá bán *</label>
+            <input className={inputClass} value={draft.price} disabled={disabled} inputMode="numeric" placeholder="180000" onChange={(event) => setField('price', event.target.value)} />
+            <FieldError message={errors.price} />
+          </div>
+          <div>
+            <label className={labelClass}>Giá niêm yết</label>
+            <input className={inputClass} value={draft.comparePrice} disabled={disabled} inputMode="numeric" placeholder="200000" onChange={(event) => setField('comparePrice', event.target.value)} />
+            <FieldError message={errors.comparePrice} />
+          </div>
+          <div>
+            <label className={labelClass}>Giá vốn</label>
+            <input className={inputClass} value={draft.costPrice} disabled={disabled} inputMode="numeric" placeholder="120000" onChange={(event) => setField('costPrice', event.target.value)} />
+            <FieldError message={errors.costPrice} />
+          </div>
+          <div>
+            <label className={labelClass}>Tồn kho *</label>
+            <input className={inputClass} value={draft.stock} disabled={disabled} inputMode="numeric" placeholder="20" onChange={(event) => setField('stock', event.target.value)} />
+            <FieldError message={errors.stock} />
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-900 sm:grid-cols-3">
+          <div>
+            <div className="text-xs font-bold uppercase text-slate-500">Giá bán</div>
+            <div className="text-base font-black text-slate-950 dark:text-white">{currencyFormatter.format(toNumber(draft.price))} đ</div>
+          </div>
+          <div>
+            <div className="text-xs font-bold uppercase text-slate-500">Giá niêm yết</div>
+            <div className="text-base font-black text-slate-950 dark:text-white">{draft.comparePrice ? `${currencyFormatter.format(toNumber(draft.comparePrice))} đ` : 'Không có'}</div>
+          </div>
+          <div>
+            <div className="text-xs font-bold uppercase text-slate-500">Lãi dự kiến</div>
+            <div className={`text-base font-black ${profitPreview !== null && profitPreview < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+              {profitPreview === null ? 'Chưa nhập giá vốn' : `${currencyFormatter.format(profitPreview)} đ`}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className={sectionClass}>
+        <h3 className="mb-4 text-lg font-black text-slate-950 dark:text-white">Nội dung hiển thị</h3>
+        <div className="grid gap-4">
+          <div>
+            <label className={labelClass}>Mô tả ngắn</label>
+            <textarea
+              className={`${inputClass} min-h-[84px] resize-y`}
+              value={draft.shortDescription}
+              disabled={disabled}
+              maxLength={280}
+              placeholder="VD: Dùng cho động cơ Yanmar, hàng chính hãng, bền bỉ."
+              onChange={(event) => setField('shortDescription', event.target.value)}
+            />
+            <div className="mt-1 text-xs font-semibold text-slate-500">{draft.shortDescription.length}/280 ký tự</div>
+          </div>
+          <div>
+            <label className={labelClass}>Mô tả chi tiết</label>
+            <textarea
+              className={`${inputClass} min-h-[140px] resize-y`}
+              value={draft.description}
+              disabled={disabled}
+              placeholder="Nhập mô tả chi tiết, hướng dẫn sử dụng, lưu ý lắp đặt hoặc bảo quản."
+              onChange={(event) => setField('description', event.target.value)}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className={sectionClass}>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-lg font-black text-slate-950 dark:text-white">Thông số kỹ thuật</h3>
+            <p className="text-sm font-medium text-slate-500">Các dòng này sẽ hiển thị ở trang chi tiết sản phẩm.</p>
+          </div>
           {!readOnly && (
             <button
               type="button"
-              disabled={isSubmitting}
-              onClick={onSubmit}
-              className="inline-flex items-center justify-center rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white px-5 py-2 font-semibold"
+              onClick={() => setField('specifications', [...draft.specifications, newSpec()])}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-black text-slate-800 transition hover:border-rose-300 hover:text-rose-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
             >
-              Lưu sản phẩm
+              <Plus size={16} />
+              Thêm thông số
             </button>
           )}
         </div>
-      </motion.div>
-    </>
+        <div className="space-y-3">
+          {draft.specifications.map((spec) => (
+            <div key={spec.localId} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]">
+              <input className={inputClass} value={spec.label} disabled={disabled} placeholder="Tên thông số, VD: Độ nhớt" onChange={(event) => updateSpec(spec.localId, { label: event.target.value })} />
+              <input className={inputClass} value={spec.value} disabled={disabled} placeholder="Giá trị, VD: 10W-30" onChange={(event) => updateSpec(spec.localId, { value: event.target.value })} />
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => setField('specifications', draft.specifications.filter((item) => item.localId !== spec.localId))}
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-red-200 px-3 text-red-600 transition hover:bg-red-50"
+                  aria-label="Xóa thông số"
+                >
+                  <Trash2 size={17} />
+                </button>
+              )}
+              <div className="sm:col-span-3">
+                <FieldError message={errors[`spec-${spec.localId}`]} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className={sectionClass}>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-lg font-black text-slate-950 dark:text-white">Biến thể</h3>
+            <p className="text-sm font-medium text-slate-500">Chỉ bật khi cùng một sản phẩm có nhiều quy cách, dung tích hoặc mã con.</p>
+          </div>
+          <label className="inline-flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm font-black text-slate-800 dark:bg-slate-900 dark:text-slate-100">
+            <input
+              type="checkbox"
+              checked={draft.hasVariants}
+              disabled={disabled}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                setDraft((prev) => ({
+                  ...prev,
+                  hasVariants: checked,
+                  variants: checked && prev.variants.length === 0 ? [newVariant(prev.sku.trim())] : prev.variants,
+                }));
+              }}
+              className="h-4 w-4 rounded border-slate-300 text-rose-600"
+            />
+            Sản phẩm có biến thể
+          </label>
+        </div>
+
+        {!draft.hasVariants ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            Form đang ở chế độ sản phẩm đơn. Hệ thống vẫn tạo một biến thể mặc định để checkout trừ kho ổn định.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <FieldError message={errors.variants} />
+            {draft.variants.map((variant, index) => {
+              const prefix = `variant-${variant.localId}`;
+              return (
+                <div key={variant.localId} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="font-black text-slate-900 dark:text-white">Biến thể #{index + 1}</div>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        onClick={() => setField('variants', draft.variants.filter((item) => item.localId !== variant.localId))}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-bold text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 size={16} />
+                        Xóa
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6">
+                    <div className="lg:col-span-2">
+                      <label className={labelClass}>Quy cách</label>
+                      <input className={inputClass} value={variant.name} disabled={disabled} placeholder="VD: 4L hoặc 119305-35153" onChange={(event) => updateVariant(variant.localId, { name: event.target.value })} />
+                    </div>
+                    <div className="lg:col-span-2">
+                      <label className={labelClass}>SKU *</label>
+                      <input className={inputClass} value={variant.sku} disabled={disabled} onChange={(event) => updateVariant(variant.localId, { sku: event.target.value.toUpperCase().trim() })} />
+                      <FieldError message={errors[`${prefix}-sku`]} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Giá *</label>
+                      <input className={inputClass} value={variant.price} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { price: event.target.value })} />
+                      <FieldError message={errors[`${prefix}-price`]} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Tồn *</label>
+                      <input className={inputClass} value={variant.stock} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { stock: event.target.value })} />
+                      <FieldError message={errors[`${prefix}-stock`]} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Giá niêm yết</label>
+                      <input className={inputClass} value={variant.comparePrice} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { comparePrice: event.target.value })} />
+                      <FieldError message={errors[`${prefix}-compare`]} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Giá vốn</label>
+                      <input className={inputClass} value={variant.costPrice} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { costPrice: event.target.value })} />
+                      <FieldError message={errors[`${prefix}-cost`]} />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className={labelClass}>Ảnh riêng của biến thể</label>
+                      <input className={inputClass} value={variant.imageUrl} disabled={disabled} placeholder="URL ảnh nếu cần" onChange={(event) => updateVariant(variant.localId, { imageUrl: event.target.value })} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Trạng thái</label>
+                      <select className={inputClass} value={variant.status} disabled={disabled} onChange={(event) => updateVariant(variant.localId, { status: event.target.value as VariantDraft['status'] })}>
+                        <option value="active">Đang bán</option>
+                        <option value="inactive">Ẩn</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() => setField('variants', [...draft.variants, newVariant(draft.sku.trim())])}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-rose-300 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
+              >
+                <Plus size={17} />
+                Thêm biến thể
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+
+      <section className={sectionClass}>
+        <h3 className="mb-4 text-lg font-black text-slate-950 dark:text-white">Kích thước vận chuyển</h3>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label className={labelClass}>Khối lượng</label>
+            <input className={inputClass} value={draft.weight} disabled={disabled} inputMode="decimal" onChange={(event) => setField('weight', event.target.value)} />
+            <FieldError message={errors.weight} />
+          </div>
+          <div>
+            <label className={labelClass}>Dài</label>
+            <input className={inputClass} value={draft.length} disabled={disabled} inputMode="decimal" onChange={(event) => setField('length', event.target.value)} />
+            <FieldError message={errors.length} />
+          </div>
+          <div>
+            <label className={labelClass}>Rộng</label>
+            <input className={inputClass} value={draft.width} disabled={disabled} inputMode="decimal" onChange={(event) => setField('width', event.target.value)} />
+            <FieldError message={errors.width} />
+          </div>
+          <div>
+            <label className={labelClass}>Cao</label>
+            <input className={inputClass} value={draft.height} disabled={disabled} inputMode="decimal" onChange={(event) => setField('height', event.target.value)} />
+            <FieldError message={errors.height} />
+          </div>
+        </div>
+      </section>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 lg:left-[255px]">
+        <div className="mx-auto flex max-w-5xl gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+          >
+            <ArrowLeft size={17} />
+            Hủy
+          </button>
+          {!readOnly && (
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex min-h-11 flex-[2] items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 text-sm font-black text-white shadow-lg shadow-rose-600/20 transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Save size={18} />
+              {saving ? 'Đang lưu...' : id ? 'Lưu thay đổi' : 'Tạo sản phẩm'}
+            </button>
+          )}
+        </div>
+      </div>
+    </form>
   );
 };
 

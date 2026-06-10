@@ -107,6 +107,22 @@ const ProductDetail = () => {
   const stock = Number(selectedVariant?.stock ?? product?.stock ?? 0);
   const inStock = stock > 0 || Boolean(selectedVariant?.allow_backorder ?? product?.allow_backorder);
   const discountLabel = getDiscountLabel(selectedVariant || product) || (pricing.hasDiscount ? '-15%' : '');
+  const specifications = useMemo(() => {
+    const rawSpecs = Array.isArray(product?.specifications) ? product.specifications : [];
+    const specs = rawSpecs
+      .map((item) => ({
+        label: String(item?.label || item?.key || item?.name || '').trim(),
+        value: String(item?.value || '').trim(),
+      }))
+      .filter((item) => item.label && item.value);
+
+    if (specs.length > 0) return specs;
+    return [
+      { label: 'Danh mục', value: product?.category_name || 'Phụ tùng Yanmar' },
+      { label: 'Mã sản phẩm', value: selectedVariant?.sku || product?.sku || 'Yanmar' },
+      { label: 'Thương hiệu', value: product?.brand || 'Yanmar' },
+    ];
+  }, [product, selectedVariant]);
 
   useSEO({
     title: product?.name || 'Chi tiết sản phẩm Yanmar',
@@ -250,12 +266,9 @@ const ProductDetail = () => {
               <ChevronDown size={22} />
             </button>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 py-3 text-sm max-[390px]:text-xs">
-              <SpecRow label="Độ nhớt" value={product.sku?.includes('10W') ? '10W-30' : product.sku || 'Yanmar'} />
-              <SpecRow label="Loại nhớt" value={product.category_name || 'Phụ tùng Yanmar'} />
-              <SpecRow label="Tiêu chuẩn" value={product.brand || 'API CI-4'} />
-              <SpecRow label="Xuất xứ" value="Thái Lan" />
-              <SpecRow label="Dung tích" value={product.name?.includes('4L') ? '4 lít' : 'Theo sản phẩm'} />
-              <SpecRow label="Hạn sử dụng" value="5 năm kể từ NSX" />
+              {specifications.map((spec) => (
+                <SpecRow key={`${spec.label}-${spec.value}`} label={spec.label} value={spec.value} />
+              ))}
             </div>
           </div>
         </section>

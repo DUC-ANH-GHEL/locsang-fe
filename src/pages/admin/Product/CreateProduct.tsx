@@ -1,6 +1,5 @@
-import React from "react";
 import ProductForm from "../../../components/products/ProductForm";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useToast } from "../../../components/Toast";
 
 type CreateProductProps = {
@@ -23,19 +22,21 @@ const CreateProduct = ({ readOnly = false }: CreateProductProps) => {
   };
 
   const handleCancel = () => {
-    showToast('Đã huỷ thao tác.', 'info');
+    showToast('Đã hủy thao tác.', 'info');
     navigate('/admin/products');
   };
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{readOnly ? 'Chi tiết sản phẩm' : isUpdate ? "Cập nhật sản phẩm" : "Tạo sản phẩm mới"}</h1>
-        <ProductForm
-          onSuccess={handleSuccess}
-          onCancel={handleCancel}
-          id={id ? Number(id) : null}
-          readOnly={readOnly}
-        />
+    <div className="mx-auto max-w-6xl">
+      <h1 className="sr-only">
+        {readOnly ? 'Chi tiết sản phẩm' : isUpdate ? 'Cập nhật sản phẩm' : 'Tạo sản phẩm mới'}
+      </h1>
+      <ProductForm
+        onSuccess={handleSuccess}
+        onCancel={handleCancel}
+        id={id ? Number(id) : null}
+        readOnly={readOnly}
+      />
     </div>
   );
 };
