@@ -48,9 +48,10 @@ type VariantDraft = {
   name: string;
   sku: string;
   price: string;
+  salePrice: string;
   comparePrice: string;
-  costPrice: string;
   stock: string;
+  allowBackorder: boolean;
   status: 'active' | 'inactive';
   imageUrl: string;
 };
@@ -66,9 +67,10 @@ type ProductDraft = {
   shortDescription: string;
   description: string;
   price: string;
+  salePrice: string;
   comparePrice: string;
-  costPrice: string;
   stock: string;
+  allowBackorder: boolean;
   weight: string;
   length: string;
   width: string;
@@ -96,9 +98,10 @@ const emptyDraft: ProductDraft = {
   shortDescription: '',
   description: '',
   price: '',
+  salePrice: '',
   comparePrice: '',
-  costPrice: '',
   stock: '0',
+  allowBackorder: false,
   weight: '0',
   length: '0',
   width: '0',
@@ -126,9 +129,10 @@ const newVariant = (skuPrefix = ''): VariantDraft => ({
   name: '',
   sku: skuPrefix ? `${skuPrefix}-` : '',
   price: '',
+  salePrice: '',
   comparePrice: '',
-  costPrice: '',
   stock: '0',
+  allowBackorder: false,
   status: 'active',
   imageUrl: '',
 });
@@ -215,19 +219,20 @@ const normalizeVariant = (variant: any, index: number): VariantDraft => {
     name: String(variant?.variant_name || variant?.variantName || attrName || '').trim(),
     sku: String(variant?.sku || '').trim(),
     price: variant?.price !== undefined && variant?.price !== null ? String(variant.price) : '',
+    salePrice:
+      variant?.sale_price !== undefined && variant?.sale_price !== null
+        ? String(variant.sale_price)
+        : variant?.salePrice !== undefined && variant?.salePrice !== null
+          ? String(variant.salePrice)
+          : '',
     comparePrice:
       variant?.compare_price !== undefined && variant?.compare_price !== null
         ? String(variant.compare_price)
         : variant?.comparePrice !== undefined && variant?.comparePrice !== null
           ? String(variant.comparePrice)
           : '',
-    costPrice:
-      variant?.cost_price !== undefined && variant?.cost_price !== null
-        ? String(variant.cost_price)
-        : variant?.costPrice !== undefined && variant?.costPrice !== null
-          ? String(variant.costPrice)
-          : '',
     stock: variant?.stock !== undefined && variant?.stock !== null ? String(variant.stock) : '0',
+    allowBackorder: Boolean(variant?.allow_backorder ?? variant?.allowBackorder ?? false),
     status: variant?.status === 'inactive' || variant?.is_active === false ? 'inactive' : 'active',
     imageUrl: String(variant?.image_url || variant?.imageUrl || '').trim(),
   };
@@ -272,12 +277,10 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     return Math.round((done / checks.length) * 100);
   }, [draft.categoryId, draft.name, draft.price, draft.sku, draft.stock, existingImages.length, imageFiles.length]);
 
-  const profitPreview = useMemo(() => {
-    const price = toNumber(draft.price);
-    const cost = toOptionalNumber(draft.costPrice);
-    if (!price || cost === null) return null;
-    return price - cost;
-  }, [draft.price, draft.costPrice]);
+  const effectivePricePreview = useMemo(() => {
+    const salePrice = toOptionalNumber(draft.salePrice);
+    return salePrice !== null ? salePrice : toNumber(draft.price);
+  }, [draft.price, draft.salePrice]);
 
   const loadCategories = useCallback(async () => {
     const response = await getCategoriesApi();
@@ -318,13 +321,20 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           price:
             firstVariant?.price ||
             (product?.price !== undefined && product?.price !== null ? String(product.price) : ''),
+          salePrice:
+            firstVariant?.salePrice ||
+            (product?.sale_price !== undefined && product?.sale_price !== null
+              ? String(product.sale_price)
+              : product?.salePrice !== undefined && product?.salePrice !== null
+                ? String(product.salePrice)
+                : ''),
           comparePrice:
             firstVariant?.comparePrice ||
             (product?.original_price !== undefined && product?.original_price !== null ? String(product.original_price) : ''),
-          costPrice: firstVariant?.costPrice || '',
           stock:
             firstVariant?.stock ||
             (product?.stock !== undefined && product?.stock !== null ? String(product.stock) : '0'),
+          allowBackorder: Boolean(firstVariant?.allowBackorder ?? product?.allow_backorder ?? product?.allowBackorder ?? false),
           weight: product?.shipping?.weight !== undefined ? String(product.shipping.weight) : String(product?.weight || 0),
           length: product?.shipping?.length !== undefined ? String(product.shipping.length) : String(product?.length || 0),
           width: product?.shipping?.width !== undefined ? String(product.shipping.width) : String(product?.width || 0),
@@ -410,8 +420,8 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     const slug = draft.slug.trim();
     const sku = draft.sku.trim();
     const price = toNumber(draft.price);
+    const salePrice = toOptionalNumber(draft.salePrice);
     const comparePrice = toOptionalNumber(draft.comparePrice);
-    const costPrice = toOptionalNumber(draft.costPrice);
     const stock = toNumber(draft.stock);
     const totalImages = existingImages.length + imageFiles.length;
 
@@ -424,8 +434,8 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     if (!sku) next.sku = 'SKU hoặc mã phụ tùng là bắt buộc.';
     if (sku.length > 80) next.sku = 'SKU tối đa 80 ký tự.';
     if (!Number.isFinite(price) || price <= 0) next.price = 'Giá bán phải lớn hơn 0.';
-    if (comparePrice !== null && comparePrice < price) next.comparePrice = 'Giá niêm yết phải lớn hơn hoặc bằng giá bán.';
-    if (costPrice !== null && costPrice < 0) next.costPrice = 'Giá vốn không được âm.';
+    if (salePrice !== null && (salePrice <= 0 || salePrice > price)) next.salePrice = 'Giá sale phải lớn hơn 0 và không vượt giá bán.';
+    if (comparePrice !== null && comparePrice < price) next.comparePrice = 'Giá gốc phải lớn hơn hoặc bằng giá bán.';
     if (!Number.isInteger(stock) || stock < 0) next.stock = 'Tồn kho phải là số nguyên không âm.';
 
     ['weight', 'length', 'width', 'height'].forEach((field) => {
@@ -446,16 +456,16 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         const prefix = `variant-${variant.localId}`;
         const variantSku = variant.sku.trim();
         const variantPrice = toNumber(variant.price);
+        const variantSalePrice = toOptionalNumber(variant.salePrice);
         const variantComparePrice = toOptionalNumber(variant.comparePrice);
-        const variantCostPrice = toOptionalNumber(variant.costPrice);
         const variantStock = toNumber(variant.stock);
         if (!variantSku) next[`${prefix}-sku`] = `Biến thể #${index + 1} thiếu SKU.`;
         const skuKey = variantSku.toLowerCase();
         if (skuKey && seen.has(skuKey)) next[`${prefix}-sku`] = `SKU biến thể bị trùng: ${variantSku}.`;
         seen.add(skuKey);
         if (!Number.isFinite(variantPrice) || variantPrice <= 0) next[`${prefix}-price`] = 'Giá biến thể phải lớn hơn 0.';
-        if (variantComparePrice !== null && variantComparePrice < variantPrice) next[`${prefix}-compare`] = 'Giá niêm yết phải lớn hơn hoặc bằng giá bán.';
-        if (variantCostPrice !== null && variantCostPrice < 0) next[`${prefix}-cost`] = 'Giá vốn không được âm.';
+        if (variantSalePrice !== null && (variantSalePrice <= 0 || variantSalePrice > variantPrice)) next[`${prefix}-sale`] = 'Giá sale phải lớn hơn 0 và không vượt giá bán.';
+        if (variantComparePrice !== null && variantComparePrice < variantPrice) next[`${prefix}-compare`] = 'Giá gốc phải lớn hơn hoặc bằng giá bán.';
         if (!Number.isInteger(variantStock) || variantStock < 0) next[`${prefix}-stock`] = 'Tồn kho phải là số nguyên không âm.';
       });
     }
@@ -487,11 +497,12 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           id: variant.id,
           sku: variant.sku.trim(),
           price: toNumber(variant.price),
+          sale_price: toOptionalNumber(variant.salePrice),
           compare_price: toOptionalNumber(variant.comparePrice),
-          cost_price: toOptionalNumber(variant.costPrice),
+          cost_price: null,
           stock: toNumber(variant.stock),
           manage_stock: true,
-          allow_backorder: false,
+          allow_backorder: variant.allowBackorder,
           status: variant.status,
           image_url: variant.imageUrl.trim() || null,
           attribute_values: variant.name.trim() ? { 'Quy cách': variant.name.trim() } : {},
@@ -501,11 +512,12 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             id: existingVariantIds[0],
             sku: baseSku,
             price: toNumber(draft.price),
+            sale_price: toOptionalNumber(draft.salePrice),
             compare_price: toOptionalNumber(draft.comparePrice),
-            cost_price: toOptionalNumber(draft.costPrice),
+            cost_price: null,
             stock: toNumber(draft.stock),
             manage_stock: true,
-            allow_backorder: false,
+            allow_backorder: draft.allowBackorder,
             status: baseStatus,
             attribute_values: {},
             image_url: null,
@@ -755,14 +767,14 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             <FieldError message={errors.price} />
           </div>
           <div>
-            <label className={labelClass}>Giá niêm yết</label>
-            <input className={inputClass} value={draft.comparePrice} disabled={disabled} inputMode="numeric" placeholder="200000" onChange={(event) => setField('comparePrice', event.target.value)} />
-            <FieldError message={errors.comparePrice} />
+            <label className={labelClass}>Giá sale</label>
+            <input className={inputClass} value={draft.salePrice} disabled={disabled} inputMode="numeric" placeholder="160000" onChange={(event) => setField('salePrice', event.target.value)} />
+            <FieldError message={errors.salePrice} />
           </div>
           <div>
-            <label className={labelClass}>Giá vốn</label>
-            <input className={inputClass} value={draft.costPrice} disabled={disabled} inputMode="numeric" placeholder="120000" onChange={(event) => setField('costPrice', event.target.value)} />
-            <FieldError message={errors.costPrice} />
+            <label className={labelClass}>Giá gốc</label>
+            <input className={inputClass} value={draft.comparePrice} disabled={disabled} inputMode="numeric" placeholder="200000" onChange={(event) => setField('comparePrice', event.target.value)} />
+            <FieldError message={errors.comparePrice} />
           </div>
           <div>
             <label className={labelClass}>Tồn kho *</label>
@@ -770,20 +782,33 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             <FieldError message={errors.stock} />
           </div>
         </div>
+        <label className="mt-4 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
+          <input
+            type="checkbox"
+            checked={draft.allowBackorder}
+            disabled={disabled}
+            onChange={(event) => setField('allowBackorder', event.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-rose-600"
+          />
+          <span>
+            Cho phép bán khi hết hàng
+            <span className="mt-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Bật nếu vẫn nhận đơn khi tồn kho bằng 0 hoặc âm.
+            </span>
+          </span>
+        </label>
         <div className="mt-4 grid gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-900 sm:grid-cols-3">
           <div>
             <div className="text-xs font-bold uppercase text-slate-500">Giá bán</div>
             <div className="text-base font-black text-slate-950 dark:text-white">{currencyFormatter.format(toNumber(draft.price))} đ</div>
           </div>
           <div>
-            <div className="text-xs font-bold uppercase text-slate-500">Giá niêm yết</div>
-            <div className="text-base font-black text-slate-950 dark:text-white">{draft.comparePrice ? `${currencyFormatter.format(toNumber(draft.comparePrice))} đ` : 'Không có'}</div>
+            <div className="text-xs font-bold uppercase text-slate-500">Giá sale</div>
+            <div className="text-base font-black text-rose-600">{draft.salePrice ? `${currencyFormatter.format(toNumber(draft.salePrice))} đ` : 'Không có'}</div>
           </div>
           <div>
-            <div className="text-xs font-bold uppercase text-slate-500">Lãi dự kiến</div>
-            <div className={`text-base font-black ${profitPreview !== null && profitPreview < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-              {profitPreview === null ? 'Chưa nhập giá vốn' : `${currencyFormatter.format(profitPreview)} đ`}
-            </div>
+            <div className="text-xs font-bold uppercase text-slate-500">Giá khách thấy</div>
+            <div className="text-base font-black text-slate-950 dark:text-white">{currencyFormatter.format(effectivePricePreview)} đ</div>
           </div>
         </div>
       </section>
@@ -921,20 +946,30 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
                       <FieldError message={errors[`${prefix}-price`]} />
                     </div>
                     <div>
-                      <label className={labelClass}>Tồn *</label>
-                      <input className={inputClass} value={variant.stock} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { stock: event.target.value })} />
-                      <FieldError message={errors[`${prefix}-stock`]} />
+                      <label className={labelClass}>Giá sale</label>
+                      <input className={inputClass} value={variant.salePrice} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { salePrice: event.target.value })} />
+                      <FieldError message={errors[`${prefix}-sale`]} />
                     </div>
                     <div>
-                      <label className={labelClass}>Giá niêm yết</label>
+                      <label className={labelClass}>Giá gốc</label>
                       <input className={inputClass} value={variant.comparePrice} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { comparePrice: event.target.value })} />
                       <FieldError message={errors[`${prefix}-compare`]} />
                     </div>
                     <div>
-                      <label className={labelClass}>Giá vốn</label>
-                      <input className={inputClass} value={variant.costPrice} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { costPrice: event.target.value })} />
-                      <FieldError message={errors[`${prefix}-cost`]} />
+                      <label className={labelClass}>Tồn *</label>
+                      <input className={inputClass} value={variant.stock} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { stock: event.target.value })} />
+                      <FieldError message={errors[`${prefix}-stock`]} />
                     </div>
+                    <label className="md:col-span-2 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
+                      <input
+                        type="checkbox"
+                        checked={variant.allowBackorder}
+                        disabled={disabled}
+                        onChange={(event) => updateVariant(variant.localId, { allowBackorder: event.target.checked })}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-rose-600"
+                      />
+                      Cho phép bán khi hết hàng
+                    </label>
                     <div className="md:col-span-2">
                       <label className={labelClass}>Ảnh riêng của biến thể</label>
                       <input className={inputClass} value={variant.imageUrl} disabled={disabled} placeholder="URL ảnh nếu cần" onChange={(event) => updateVariant(variant.localId, { imageUrl: event.target.value })} />

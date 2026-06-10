@@ -81,6 +81,7 @@ export type AdminProductVariantPayload = {
   id?: number;
   sku: string;
   price: number;
+  sale_price?: number | null;
   compare_price?: number | null;
   cost_price?: number | null;
   stock: number;
