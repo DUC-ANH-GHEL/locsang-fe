@@ -261,6 +261,26 @@ const ProductDetail = () => {
             </div>
           </div>
 
+          <div className="mt-5 hidden grid-cols-2 gap-3 md:grid">
+            <button
+              type="button"
+              onClick={buyNow}
+              disabled={!inStock}
+              className="h-12 rounded-lg bg-[#e30613] text-[1.05rem] font-black uppercase text-white shadow-[0_10px_24px_rgba(227,6,19,0.18)] transition hover:bg-[#c90512] disabled:cursor-not-allowed disabled:bg-[#bbbbbb] disabled:shadow-none"
+            >
+              Mua ngay
+            </button>
+            <button
+              type="button"
+              onClick={addProduct}
+              disabled={!inStock}
+              className="flex h-12 items-center justify-center gap-3 rounded-lg border border-[#e30613] bg-white text-[1rem] font-black uppercase text-[#e30613] transition hover:bg-[#fff1f2] disabled:cursor-not-allowed disabled:border-[#bbbbbb] disabled:text-[#999]"
+            >
+              <ShoppingCart size={24} />
+              Thêm vào giỏ
+            </button>
+          </div>
+
           <div className="mt-4 rounded-xl border border-[#e1e1e1] bg-white px-4 py-3">
             <FeatureRow icon={<ShieldCheck size={22} fill="#e30613" />} text="Nhớt chính hãng Yanmar" />
             <FeatureRow icon={<Settings size={22} fill="#e30613" />} text="Bảo vệ động cơ tối ưu, vận hành êm ái" />
