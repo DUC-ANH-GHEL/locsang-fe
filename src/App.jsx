@@ -33,6 +33,7 @@ const CreateCategory = lazy(() => import('./pages/admin/Category/CreateCategory'
 const Categories = lazy(() => import('./pages/admin/Category/Categories'));
 const EditCategory = lazy(() => import('./pages/admin/Category/EditCategory'));
 const Settings = lazy(() => import('./pages/admin/Settings'));
+const AdminAccounts = lazy(() => import('./pages/admin/Accounts'));
 
 
 
@@ -90,6 +91,7 @@ function App() {
             <Route path="home-content" element={<HomeContentEditor />} />
             <Route path="orders" element={<Orders />} />
             <Route path="orders/create" element={<OrderCreate />} />
+            <Route path="accounts" element={<AdminAccounts />} />
             <Route path="settings" element={<Settings />} />
             <Route path="product/:id" element={<ProductReadonlyDetail />} />
           </Route>
