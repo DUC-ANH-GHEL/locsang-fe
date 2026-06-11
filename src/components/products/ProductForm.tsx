@@ -169,7 +169,7 @@ const getErrorMessage = (error: any) => {
   const text = typeof message === 'string' ? message : 'Không lưu được sản phẩm. Vui lòng kiểm tra lại dữ liệu.';
 
   if (data?.error_code === 'SLUG_DUPLICATE' || text.toLowerCase().includes('slug')) {
-    return 'Slug đã tồn tại. Vui lòng đổi slug hoặc đổi tên sản phẩm.';
+    return 'Slug đã tồn tại. Vui lòng đổi tên sản phẩm để tạo slug khác.';
   }
   if (data?.error_code === 'SKU_DUPLICATE' || text.toLowerCase().includes('sku')) {
     return 'SKU đã tồn tại. Vui lòng dùng mã phụ tùng khác.';
@@ -359,7 +359,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
   const [existingVariantIds, setExistingVariantIds] = useState<number[]>([]);
   const [existingAttributeIds, setExistingAttributeIds] = useState<number[]>([]);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [slugTouched, setSlugTouched] = useState(Boolean(id));
   const [loading, setLoading] = useState(Boolean(id));
   const [saving, setSaving] = useState(false);
   const [draftHydrated, setDraftHydrated] = useState(Boolean(id));
@@ -424,6 +423,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           setDraft({
             ...emptyDraft,
             ...saved.draft,
+            slug: slugify(String(saved.draft.name || '')),
             specifications:
               Array.isArray(saved.draft.specifications) && saved.draft.specifications.length > 0
                 ? saved.draft.specifications
@@ -431,7 +431,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             variants: Array.isArray(saved.draft.variants) ? saved.draft.variants : [],
           });
           setImageItems(restoredImages);
-          setSlugTouched(Boolean(saved.draft.slug));
           setDraftSavedAt(saved.savedAt || null);
           if (hasDraftContent(saved.draft, restoredImages)) {
             showToast('Đã khôi phục nháp sản phẩm đang nhập dở.', 'info');
@@ -546,7 +545,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
 
         setDraft({
           name: String(product?.name || '').trim(),
-          slug: String(product?.slug || '').trim(),
+          slug: slugify(String(product?.name || '').trim()),
           sku: String(firstVariant?.sku || product?.sku || '').trim(),
           categoryId: product?.category_id ? String(product.category_id) : '',
           status: (product?.status || (product?.is_active ? 'active' : 'draft')) as AdminProductStatus,
@@ -581,7 +580,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             .map((item: any) => Number(item?.id))
             .filter((value: number) => Number.isFinite(value)),
         );
-        setSlugTouched(true);
       } catch (error: any) {
         showToast(getErrorMessage(error), 'error');
       } finally {
@@ -609,7 +607,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     setDraft((prev) => ({
       ...prev,
       name: value,
-      slug: slugTouched ? prev.slug : slugify(value),
+      slug: slugify(value),
     }));
     setErrors((prev) => {
       const next = { ...prev };
@@ -859,8 +857,8 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       const message = getErrorMessage(error);
       let serverErrorKey: string | null = null;
       if (message.toLowerCase().includes('slug')) {
-        serverErrorKey = 'slug';
-        setErrors((prev) => ({ ...prev, slug: message }));
+        serverErrorKey = 'name';
+        setErrors((prev) => ({ ...prev, name: message }));
       }
       if (message.toLowerCase().includes('sku')) {
         serverErrorKey = serverErrorKey || 'sku';
@@ -960,15 +958,15 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             <label className={labelClass}>Slug *</label>
             <input
               data-error-key="slug"
-              className={inputClass}
+              className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-slate-900 dark:text-slate-400`}
               value={draft.slug}
-              disabled={disabled}
+              disabled
               placeholder="loc-nhot-yanmar-119305-35153"
-              onChange={(event) => {
-                setSlugTouched(true);
-                setField('slug', slugify(event.target.value));
-              }}
+              readOnly
             />
+            <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Slug tự động sinh theo tên sản phẩm để giữ URL SEO nhất quán.
+            </p>
             <FieldError message={errors.slug} />
           </div>
           <div>
