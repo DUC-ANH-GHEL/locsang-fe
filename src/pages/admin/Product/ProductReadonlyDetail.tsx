@@ -186,7 +186,7 @@ const ProductReadonlyDetail = () => {
 
   const status = normalizeStatus(product?.status || (product?.is_active ? 'active' : 'draft'));
   const statusInfo = statusMeta[status] || statusMeta.draft;
-  const categoryLabel = product?.category?.name || product?.category_name || (product?.category_id ? `Danh mục #${product.category_id}` : '-');
+  const categoryLabel = getText(product?.category?.name || product?.category_name || product?.category, 'Chưa phân loại');
   const stockTotal = variants.length
     ? variants.reduce((sum: number, variant: any) => sum + Number(variant?.stock || 0), 0)
     : Number(product?.stock || 0);
