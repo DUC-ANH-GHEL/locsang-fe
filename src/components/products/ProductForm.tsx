@@ -165,11 +165,18 @@ const getErrorMessage = (error: any) => {
   const message = data?.message || detail?.message || detail || error?.message;
   const text = typeof message === 'string' ? message : 'Không lưu được sản phẩm. Vui lòng kiểm tra lại dữ liệu.';
 
-  if (data?.error_code === 'SLUG_DUPLICATE' || text.toLowerCase().includes('slug')) {
+  if (data?.error_code === 'SLUG_DUPLICATE') {
     return 'Slug đã tồn tại. Vui lòng đổi tên sản phẩm để tạo slug khác.';
   }
-  if (data?.error_code === 'SKU_DUPLICATE' || text.toLowerCase().includes('sku')) {
+  if (data?.error_code === 'SKU_DUPLICATE') {
     return 'SKU đã tồn tại. Vui lòng dùng mã phụ tùng khác.';
+  }
+  const lower = text.toLowerCase();
+  if (lower.includes('sku') && !lower.includes('slug')) {
+    return 'SKU đã tồn tại. Vui lòng dùng mã phụ tùng khác.';
+  }
+  if (lower.includes('slug') && !lower.includes('sku')) {
+    return 'Slug đã tồn tại. Vui lòng đổi tên sản phẩm để tạo slug khác.';
   }
   return text;
 };
@@ -848,12 +855,13 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       onSuccess?.();
     } catch (error: any) {
       const message = getErrorMessage(error);
+      const errorCode = error?.response?.data?.error_code || error?.response?.data?.detail?.error_code;
       let serverErrorKey: string | null = null;
-      if (message.toLowerCase().includes('slug')) {
+      if (errorCode === 'SLUG_DUPLICATE') {
         serverErrorKey = 'name';
         setErrors((prev) => ({ ...prev, name: message }));
       }
-      if (message.toLowerCase().includes('sku')) {
+      if (errorCode === 'SKU_DUPLICATE') {
         serverErrorKey = serverErrorKey || 'sku';
         setErrors((prev) => ({ ...prev, sku: message }));
       }
