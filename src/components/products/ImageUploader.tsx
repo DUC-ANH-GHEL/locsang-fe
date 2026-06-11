@@ -1,9 +1,8 @@
-// src/components/products/ImageUploader.tsx
-import { useState, useEffect, ChangeEvent } from 'react';
-import React from "react";
+import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
 import imageCompression from 'browser-image-compression';
 
-type ImageItem = File | string; // File mới hoặc URL cũ
+type ImageItem = File | string;
+
 const DEFAULT_MAX_IMAGES = 9;
 
 interface ImageUploaderProps {
@@ -15,6 +14,20 @@ interface ImageUploaderProps {
   maxImages?: number;
   disabled?: boolean;
 }
+
+const areImageListsEqual = (a: ImageItem[], b: ImageItem[]) => {
+  if (a.length !== b.length) return false;
+  return a.every((item, index) => item === b[index]);
+};
+
+const moveItem = <T,>(items: T[], fromIndex: number, toIndex: number) => {
+  if (fromIndex === toIndex) return items;
+  if (fromIndex < 0 || toIndex < 0 || fromIndex >= items.length || toIndex >= items.length) return items;
+  const next = [...items];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  return next;
+};
 
 const ImageUploader = ({
   onImagesUpdate,
@@ -28,19 +41,26 @@ const ImageUploader = ({
   const [images, setImages] = useState<ImageItem[]>([...initialImages]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const dragIndexRef = React.useRef<number | null>(null);
-  const pointerDragRef = React.useRef<{ pointerId: number; fromIndex: number; startX: number; startY: number; active: boolean } | null>(null);
 
-  // Keep stable object URLs per File to avoid blob: URL churn and revoke-too-early issues
-  const objectUrlMapRef = React.useRef<Map<File, string>>(new Map());
+  const objectUrlMapRef = useRef<Map<File, string>>(new Map());
+  const fileKeyMapRef = useRef<WeakMap<File, string>>(new WeakMap());
+  const dragRef = useRef<{
+    pointerId: number;
+    currentIndex: number;
+    startX: number;
+    startY: number;
+    active: boolean;
+  } | null>(null);
 
-  const areImageListsEqual = (a: ImageItem[], b: ImageItem[]) => {
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-      if (a[i] !== b[i]) return false;
-    }
-    return true;
+  const getItemKey = (item: ImageItem) => {
+    if (typeof item === 'string') return `url:${item}`;
+    const existing = fileKeyMapRef.current.get(item);
+    if (existing) return existing;
+    const key = `file:${item.name}:${item.size}:${item.lastModified}:${Math.random().toString(16).slice(2)}`;
+    fileKeyMapRef.current.set(item, key);
+    return key;
   };
 
   useEffect(() => {
@@ -48,67 +68,46 @@ const ImageUploader = ({
     setImages((prev) => (areImageListsEqual(prev, next) ? prev : next));
   }, [initialImages]);
 
-  // Tạo previews khi images thay đổi
   useEffect(() => {
     const map = objectUrlMapRef.current;
-
-    // Revoke object URLs for Files that are no longer in the list
     const currentFiles = new Set<File>();
-    images.forEach((img) => {
-      if (img instanceof File) currentFiles.add(img);
+
+    images.forEach((item) => {
+      if (item instanceof File) currentFiles.add(item);
     });
+
     for (const [file, url] of map.entries()) {
       if (!currentFiles.has(file)) {
-        try {
-          URL.revokeObjectURL(url);
-        } catch {
-          // ignore
-        }
+        URL.revokeObjectURL(url);
         map.delete(file);
       }
     }
 
-    // Build previews (reuse existing object URLs)
-    const nextPreviews: string[] = images
-      .map((img) => {
-        if (typeof img === 'string') return img;
-        const existing = map.get(img);
+    const nextPreviews = images
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        const existing = map.get(item);
         if (existing) return existing;
-        try {
-          const created = URL.createObjectURL(img);
-          map.set(img, created);
-          return created;
-        } catch {
-          return '';
-        }
+        const created = URL.createObjectURL(item);
+        map.set(item, created);
+        return created;
       })
       .filter(Boolean);
 
     setPreviews(nextPreviews);
-
-    // Callback để truyền images ra ngoài
-    const files = images.filter(img => img instanceof File) as File[];
-    const existing = images.filter((img): img is string => typeof img === 'string');
-    onImagesUpdate(files, existing, images);
-
-    // Cleanup khi component unmount
-    return () => {
-      // Do not revoke here; revoke is handled by removal + final unmount cleanup below.
-    };
+    onImagesUpdate(
+      images.filter((item): item is File => item instanceof File),
+      images.filter((item): item is string => typeof item === 'string'),
+      images,
+    );
   }, [images, onImagesUpdate]);
 
-  // Final unmount cleanup
   useEffect(() => {
     return () => {
-      const map = objectUrlMapRef.current;
-      for (const url of map.values()) {
-        try {
-          URL.revokeObjectURL(url);
-        } catch {
-          // ignore
-        }
+      for (const url of objectUrlMapRef.current.values()) {
+        URL.revokeObjectURL(url);
       }
-      map.clear();
+      objectUrlMapRef.current.clear();
     };
   }, []);
 
@@ -116,12 +115,10 @@ const ImageUploader = ({
     const maxBytes = 10 * 1024 * 1024;
     if (file.size <= maxBytes) return file;
 
-    // SVG isn't reliably compressible via canvas; reject if too large
-    if ((file.type ?? '') === 'image/svg+xml') {
+    if ((file.type || '') === 'image/svg+xml') {
       throw new Error(`${file.name}: SVG > 10MB không hỗ trợ nén`);
     }
 
-    // Try to compress under 10MB
     const compressed = await imageCompression(file, {
       maxSizeMB: 10,
       maxWidthOrHeight: 2560,
@@ -129,129 +126,72 @@ const ImageUploader = ({
       initialQuality: 0.85,
     });
 
-    // Library returns a File; keep original name for UX
-    const result = compressed instanceof File
-      ? compressed
-      : new File([compressed], file.name, { type: file.type || 'image/jpeg' });
+    const result =
+      compressed instanceof File
+        ? compressed
+        : new File([compressed], file.name, { type: file.type || 'image/jpeg' });
 
     if (result.size > maxBytes) {
-      throw new Error(`${file.name}: không nén xuống <= 10MB (hiện ${(result.size / (1024 * 1024)).toFixed(1)}MB)`);
+      throw new Error(`${file.name}: không nén xuống <= 10MB`);
     }
 
     return result;
   };
 
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    if (disabled) return;
-    if (!e.target.files) return;
+  const appendFiles = async (files: File[]) => {
+    if (disabled || files.length === 0) return;
 
-    // allow selecting same file again
-    const filesArray = Array.from(e.target.files);
-    e.target.value = '';
+    const remainingSlots = Math.max(0, maxImages - images.length);
+    const accepted: File[] = [];
+    const rejected: string[] = [];
 
-    setUploadError(null);
+    if (remainingSlots <= 0) {
+      setUploadError(`Tối đa ${maxImages} ảnh`);
+      return;
+    }
 
-    // Process asynchronously so UI doesn't freeze
-    (async () => {
-      const remainingSlots = Math.max(0, maxImages - images.length);
-      const accepted: File[] = [];
-      const rejected: string[] = [];
-
-      if (remainingSlots <= 0) {
-        setUploadError(`Tối đa ${maxImages} ảnh`);
-        return;
+    for (const file of files) {
+      if (accepted.length >= remainingSlots) {
+        rejected.push(`Chỉ được tối đa ${maxImages} ảnh`);
+        continue;
       }
-
-      for (const file of filesArray) {
-        if (accepted.length >= remainingSlots) {
-          rejected.push(`Chỉ được tối đa ${maxImages} ảnh`);
-          continue;
-        }
-        const isImage = (file.type ?? '').startsWith('image/');
-        if (!isImage) {
-          rejected.push(`${file.name}: không phải ảnh`);
-          continue;
-        }
-        try {
-          const finalFile = await compressIfNeeded(file);
-          accepted.push(finalFile);
-        } catch (err: any) {
-          rejected.push(err?.message ? String(err.message) : `${file.name}: lỗi nén ảnh`);
-        }
+      if (!(file.type || '').startsWith('image/')) {
+        rejected.push(`${file.name}: không phải ảnh`);
+        continue;
       }
-
-      if (rejected.length > 0) {
-        setUploadError(rejected.join(' | '));
+      try {
+        accepted.push(await compressIfNeeded(file));
+      } catch (error: any) {
+        rejected.push(error?.message ? String(error.message) : `${file.name}: lỗi nén ảnh`);
       }
+    }
 
-      if (accepted.length > 0) {
-        setImages((prev) => [...prev, ...accepted]);
-      }
-    })();
+    setUploadError(rejected.length > 0 ? rejected.join(' | ') : null);
+    if (accepted.length > 0) setImages((prev) => [...prev, ...accepted]);
   };
 
-  const handleDropFiles = (files: File[]) => {
-    if (disabled) return;
-    if (!files || files.length === 0) return;
-    setUploadError(null);
-
-    (async () => {
-      const remainingSlots = Math.max(0, maxImages - images.length);
-      const accepted: File[] = [];
-      const rejected: string[] = [];
-
-      if (remainingSlots <= 0) {
-        setUploadError(`Tối đa ${maxImages} ảnh`);
-        return;
-      }
-
-      for (const file of files) {
-        if (accepted.length >= remainingSlots) {
-          rejected.push(`Chỉ được tối đa ${maxImages} ảnh`);
-          continue;
-        }
-        const isImage = (file.type ?? '').startsWith('image/');
-        if (!isImage) {
-          rejected.push(`${file.name}: không phải ảnh`);
-          continue;
-        }
-        try {
-          const finalFile = await compressIfNeeded(file);
-          accepted.push(finalFile);
-        } catch (err: any) {
-          rejected.push(err?.message ? String(err.message) : `${file.name}: lỗi nén ảnh`);
-        }
-      }
-
-      if (rejected.length > 0) setUploadError(rejected.join(' | '));
-      if (accepted.length > 0) setImages((prev) => [...prev, ...accepted]);
-    })();
+  const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files) return;
+    const files = Array.from(event.target.files);
+    event.target.value = '';
+    appendFiles(files);
   };
 
   const reorder = (fromIndex: number, toIndex: number) => {
-    if (disabled) return;
-    if (fromIndex === toIndex) return;
-    setImages((prev) => {
-      if (fromIndex < 0 || toIndex < 0 || fromIndex >= prev.length || toIndex >= prev.length) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
-    });
-    dragIndexRef.current = toIndex;
-    if (pointerDragRef.current) {
-      pointerDragRef.current.fromIndex = toIndex;
-    }
+    setImages((prev) => moveItem(prev, fromIndex, toIndex));
+    dragRef.current = dragRef.current ? { ...dragRef.current, currentIndex: toIndex } : null;
+    setDraggingIndex(toIndex);
+    setDragOverIndex(toIndex);
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const pointerState = pointerDragRef.current;
-    if (disabled || !pointerState || pointerState.pointerId !== event.pointerId) return;
+    const state = dragRef.current;
+    if (disabled || !state || state.pointerId !== event.pointerId) return;
 
-    const distance = Math.abs(event.clientX - pointerState.startX) + Math.abs(event.clientY - pointerState.startY);
-    if (!pointerState.active && distance < 8) return;
+    const distance = Math.abs(event.clientX - state.startX) + Math.abs(event.clientY - state.startY);
+    if (!state.active && distance < 6) return;
 
-    pointerState.active = true;
+    state.active = true;
     event.preventDefault();
 
     const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
@@ -259,53 +199,46 @@ const ImageUploader = ({
     if (!imageTarget) return;
 
     const nextIndex = Number(imageTarget.dataset.imageIndex);
-    if (!Number.isInteger(nextIndex) || nextIndex === pointerState.fromIndex) return;
-    setDragOverIndex(nextIndex);
-    reorder(pointerState.fromIndex, nextIndex);
+    if (!Number.isInteger(nextIndex) || nextIndex === state.currentIndex) return;
+    reorder(state.currentIndex, nextIndex);
   };
 
   const stopPointerDrag = (event?: React.PointerEvent<HTMLDivElement>) => {
-    if (event && pointerDragRef.current?.pointerId === event.pointerId) {
+    if (event && dragRef.current?.pointerId === event.pointerId) {
       try {
         event.currentTarget.releasePointerCapture(event.pointerId);
       } catch {
         // ignore
       }
     }
-    pointerDragRef.current = null;
-    dragIndexRef.current = null;
+    dragRef.current = null;
+    setDraggingIndex(null);
     setDragOverIndex(null);
   };
 
   const removeImage = (index: number) => {
     if (disabled) return;
-    setImages(prev => {
-      const newImages = [...prev];
-      newImages.splice(index, 1);
-      return newImages;
-    });
+    setImages((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
   };
 
   return (
     <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}{requiredPrimary ? ' *' : ''}
+      <label className="mb-1 block text-sm font-bold text-slate-800 dark:text-slate-100">
+        {label}
+        {requiredPrimary ? ' *' : ''}
       </label>
-      {helpText && <div className="text-xs text-gray-500 mb-2">{helpText}</div>}
+      {helpText && <div className="mb-2 text-xs font-semibold text-slate-500">{helpText}</div>}
+
       <div
-        className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center"
-        onDragOver={(e) => {
+        className="rounded-xl border-2 border-dashed border-slate-300 bg-white p-6 text-center transition hover:border-rose-300 dark:border-slate-700 dark:bg-slate-950"
+        onDragOver={(event) => {
           if (disabled) return;
-          e.preventDefault();
-          e.stopPropagation();
+          event.preventDefault();
         }}
-        onDrop={(e) => {
+        onDrop={(event) => {
           if (disabled) return;
-          e.preventDefault();
-          e.stopPropagation();
-          const dt = e.dataTransfer;
-          const dropped = Array.from(dt?.files ?? []);
-          handleDropFiles(dropped);
+          event.preventDefault();
+          appendFiles(Array.from(event.dataTransfer?.files || []));
         }}
       >
         <input
@@ -320,13 +253,7 @@ const ImageUploader = ({
         />
         <label htmlFor="images" className={disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}>
           <div className="space-y-1 text-center">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              stroke="currentColor"
-              fill="none"
-              viewBox="0 0 48 48"
-              aria-hidden="true"
-            >
+            <svg className="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
               <path
                 d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
                 strokeWidth={2}
@@ -334,114 +261,79 @@ const ImageUploader = ({
                 strokeLinejoin="round"
               />
             </svg>
-            <p className="text-sm text-gray-500">
-              Kéo thả hoặc click để chọn ảnh
-            </p>
-            <p className="text-xs text-gray-500">Tối đa {maxImages} ảnh</p>
-            <p className="text-xs text-gray-500">Ảnh &gt; 10MB sẽ tự nén về &le; 10MB</p>
-            <p className="text-xs text-gray-500">Kéo thả thumbnail để sắp xếp (ảnh đầu tiên là ảnh chính)</p>
+            <p className="text-sm font-bold text-slate-600">Kéo thả hoặc click để chọn ảnh</p>
+            <p className="text-xs font-semibold text-slate-500">Tối đa {maxImages} ảnh, ảnh đầu tiên là ảnh chính</p>
+            <p className="text-xs font-semibold text-slate-500">Kéo thumbnail sang vị trí mới để sắp xếp</p>
           </div>
         </label>
       </div>
 
-      {/* Image preview */}
-      {uploadError && (
-        <div className="mt-2 text-xs text-red-600">{uploadError}</div>
-      )}
+      {uploadError && <div className="mt-2 text-xs font-bold text-red-600">{uploadError}</div>}
+
       {previews.length > 0 && (
-        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
           {previews.map((src, index) => {
             const imageItem = images[index];
-            const stableKey =
-              typeof imageItem === 'string'
-                ? imageItem
-                : `${imageItem?.name || 'image'}-${imageItem?.lastModified || 0}-${imageItem?.size || 0}-${index}`;
+            const isDragging = draggingIndex === index;
+            const isHoverTarget = dragOverIndex === index;
 
             return (
               <div
-              key={stableKey}
-              data-image-index={index}
-              className={`relative touch-none cursor-grab select-none rounded-md outline-none transition active:cursor-grabbing ${
-                dragOverIndex === index ? 'scale-[1.02] ring-2 ring-rose-500 ring-offset-2' : ''
-              }`}
-              draggable={!disabled}
-              onPointerDown={(e) => {
-                if (disabled || e.button !== 0) return;
-                pointerDragRef.current = {
-                  pointerId: e.pointerId,
-                  fromIndex: index,
-                  startX: e.clientX,
-                  startY: e.clientY,
-                  active: false,
-                };
-                dragIndexRef.current = index;
-                setDragOverIndex(index);
-                try {
-                  e.currentTarget.setPointerCapture(e.pointerId);
-                } catch {
-                  // ignore
-                }
-              }}
-              onPointerMove={handlePointerMove}
-              onPointerUp={stopPointerDrag}
-              onPointerCancel={stopPointerDrag}
-              onDragStart={(e) => {
-                dragIndexRef.current = index;
-                setDragOverIndex(index);
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', String(index));
-              }}
-              onDragOver={(e) => {
-                if (disabled) return;
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                setDragOverIndex(index);
-              }}
-              onDragEnter={(e) => {
-                if (disabled) return;
-                e.preventDefault();
-                const from = dragIndexRef.current;
-                if (typeof from === 'number' && from !== index) {
-                  reorder(from, index);
-                }
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const from = dragIndexRef.current;
-                if (typeof from === 'number') reorder(from, index);
-                dragIndexRef.current = null;
-                setDragOverIndex(null);
-              }}
-              onDragEnd={() => {
-                dragIndexRef.current = null;
-                setDragOverIndex(null);
-              }}
-            >
-              <img
-                src={src}
-                alt={`Preview ${index + 1}`}
-                draggable={false}
-                className="h-24 w-full object-cover rounded-md"
-              />
-              {index === 0 && (
-                <div className="absolute bottom-1 left-1 text-[10px] px-2 py-0.5 rounded-full bg-rose-600 text-white">
-                  Chính
-                </div>
-              )}
-              <button
-                type="button"
-                className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                disabled={disabled}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeImage(index);
+                key={getItemKey(imageItem)}
+                data-image-index={index}
+                className={`group relative touch-none select-none rounded-xl border bg-white p-1 shadow-sm transition-all duration-150 dark:bg-slate-950 ${
+                  disabled ? 'cursor-default opacity-75' : 'cursor-grab active:cursor-grabbing'
+                } ${
+                  isDragging
+                    ? 'z-20 scale-[0.98] border-rose-500 opacity-80 shadow-lg ring-2 ring-rose-500 ring-offset-2'
+                    : isHoverTarget
+                      ? 'border-rose-300 ring-2 ring-rose-200'
+                      : 'border-slate-200 hover:border-rose-200'
+                }`}
+                onPointerDown={(event) => {
+                  if (disabled || event.button !== 0) return;
+                  dragRef.current = {
+                    pointerId: event.pointerId,
+                    currentIndex: index,
+                    startX: event.clientX,
+                    startY: event.clientY,
+                    active: false,
+                  };
+                  setDraggingIndex(index);
+                  setDragOverIndex(index);
+                  try {
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                  } catch {
+                    // ignore
+                  }
                 }}
+                onPointerMove={handlePointerMove}
+                onPointerUp={stopPointerDrag}
+                onPointerCancel={stopPointerDrag}
               >
-                ×
-              </button>
-            </div>
+                <img src={src} alt={`Ảnh sản phẩm ${index + 1}`} draggable={false} className="h-28 w-full rounded-lg object-cover" />
+                <div className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-black text-white">
+                  #{index + 1}
+                </div>
+                {index === 0 && (
+                  <div className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-black text-white">
+                    Chính
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-sm font-black text-white shadow"
+                  disabled={disabled}
+                  aria-label="Xóa ảnh"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    removeImage(index);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
             );
           })}
         </div>

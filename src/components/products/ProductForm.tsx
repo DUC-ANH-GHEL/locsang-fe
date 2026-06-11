@@ -18,6 +18,7 @@ import { createCategory as createCategoryApi, getCategories as getCategoriesApi 
 import {
   AdminProductPayload,
   AdminProductStatus,
+  cleanupAdminProductUploads,
   createAdminProduct,
   getProductById,
   updateAdminProduct,
@@ -37,6 +38,16 @@ type CategoryOption = {
 };
 
 type ProductImageDraft = File | string;
+
+type UploadedImageResult = {
+  url: string;
+  publicId?: string | null;
+};
+
+type ProductPayloadBuildResult = {
+  payload: AdminProductPayload;
+  uploadedPublicIds: string[];
+};
 
 type SpecificationDraft = {
   localId: string;
@@ -344,8 +355,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
   const { showToast } = useToast();
   const [draft, setDraft] = useState<ProductDraft>(() => ({ ...emptyDraft, specifications: emptyDraft.specifications.map((item) => ({ ...item, localId: makeId() })) }));
   const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [imageItems, setImageItems] = useState<ProductImageDraft[]>([]);
   const [existingVariantIds, setExistingVariantIds] = useState<number[]>([]);
   const [existingAttributeIds, setExistingAttributeIds] = useState<number[]>([]);
@@ -422,8 +431,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             variants: Array.isArray(saved.draft.variants) ? saved.draft.variants : [],
           });
           setImageItems(restoredImages);
-          setImageFiles(restoredImages.filter((item): item is File => item instanceof File));
-          setExistingImages(restoredImages.filter((item): item is string => typeof item === 'string'));
           setSlugTouched(Boolean(saved.draft.slug));
           setDraftSavedAt(saved.savedAt || null);
           if (hasDraftContent(saved.draft, restoredImages)) {
@@ -567,8 +574,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         });
 
         const productImages = extractImageUrls(product);
-        setExistingImages(productImages);
-        setImageFiles([]);
         setImageItems(productImages);
         setExistingVariantIds(variants.map((variant) => variant.id).filter((value): value is number => Number.isFinite(Number(value))));
         setExistingAttributeIds(
@@ -615,8 +620,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
   };
 
   const onImagesUpdate = useCallback((files: File[], existing: string[], orderedImages?: ProductImageDraft[]) => {
-    setImageFiles(files);
-    setExistingImages(existing);
     setImageItems(orderedImages || [...existing, ...files]);
     setErrors((prev) => {
       if (!prev.images) return prev;
@@ -714,43 +717,36 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     }, 180);
   };
 
-  const uploadNewImages = async () => {
-    const uploaded: string[] = [];
-    for (const file of imageFiles) {
-      const result = await uploadAdminProductImage(file);
-      if (!result.url) throw new Error('Upload ảnh thất bại, không nhận được URL.');
-      uploaded.push(result.url);
-    }
-    return [...existingImages, ...uploaded];
-  };
-
   const uploadOrderedImages = async () => {
-    const uploadedByFile = new Map<File, string>();
-    const orderedUrls: string[] = [];
+    const uploadedByFile = new Map<File, UploadedImageResult>();
+    const orderedImages: UploadedImageResult[] = [];
+    const uploadedPublicIds: string[] = [];
 
     for (const item of imageItems) {
       if (typeof item === 'string') {
-        orderedUrls.push(item);
+        orderedImages.push({ url: item, publicId: null });
         continue;
       }
 
       const existingUpload = uploadedByFile.get(item);
       if (existingUpload) {
-        orderedUrls.push(existingUpload);
+        orderedImages.push(existingUpload);
         continue;
       }
 
       const result = await uploadAdminProductImage(item);
       if (!result.url) throw new Error('Upload ảnh thất bại, không nhận được URL.');
-      uploadedByFile.set(item, result.url);
-      orderedUrls.push(result.url);
+      const uploaded = { url: result.url, publicId: result.public_id ?? null };
+      uploadedByFile.set(item, uploaded);
+      orderedImages.push(uploaded);
+      if (result.public_id) uploadedPublicIds.push(result.public_id);
     }
 
-    return orderedUrls;
+    return { orderedImages, uploadedPublicIds };
   };
 
-  const buildPayload = async (): Promise<AdminProductPayload> => {
-    const imageUrls = await uploadOrderedImages();
+  const buildPayload = async (): Promise<ProductPayloadBuildResult> => {
+    const { orderedImages, uploadedPublicIds } = await uploadOrderedImages();
     const baseSku = draft.sku.trim();
     const baseStatus = draft.status === 'active' ? 'active' : 'inactive';
     const specs = draft.specifications
@@ -800,7 +796,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     const activeVariantIds = variants.map((variant) => Number(variant.id)).filter((value) => Number.isFinite(value));
     const deletedVariantIds = id ? existingVariantIds.filter((variantId) => !activeVariantIds.includes(variantId)) : [];
 
-    return {
+    const payload: AdminProductPayload = {
       name: draft.name.trim(),
       slug: draft.slug.trim(),
       short_description: draft.shortDescription.trim() || null,
@@ -812,12 +808,18 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       tags: [],
       specifications: specs,
       has_variants: draft.hasVariants,
-      media: imageUrls.map((url, index) => ({ url, type: 'image', sort_order: index + 1 })),
+      media: orderedImages.map((image, index) => ({
+        url: image.url,
+        type: 'image',
+        sort_order: index + 1,
+        public_id: image.publicId ?? null,
+      })),
       attributes: draft.hasVariants && variantNames.length > 0 ? [{ name: 'Quy cách', values: variantNames }] : [],
       variants,
       deleted_variant_ids: deletedVariantIds,
       deleted_attribute_ids: id ? existingAttributeIds : [],
     };
+    return { payload, uploadedPublicIds };
   };
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -831,9 +833,13 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       return;
     }
 
+    let uploadedPublicIds: string[] = [];
+
     try {
       setSaving(true);
-      const payload = await buildPayload();
+      const built = await buildPayload();
+      uploadedPublicIds = built.uploadedPublicIds;
+      const payload = built.payload;
       if (id) {
         await updateAdminProduct(id, payload);
       } else {
@@ -856,6 +862,11 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       }
       if (serverErrorKey) {
         focusErrorField(serverErrorKey);
+      }
+      if (!id && uploadedPublicIds.length > 0) {
+        cleanupAdminProductUploads(uploadedPublicIds).catch((cleanupError) => {
+          console.warn('Cannot cleanup uploaded product images after failed create', cleanupError);
+        });
       }
       showToast(message, 'error');
     } finally {

@@ -75,6 +75,7 @@ export type AdminProductMedia = {
   url: string;
   type?: 'image' | 'video';
   sort_order?: number;
+  public_id?: string | null;
 };
 
 export type AdminProductVariantPayload = {
@@ -409,6 +410,12 @@ export const uploadAdminProductImage = async (file: File): Promise<{ url: string
     url: String(response.data?.url || ''),
     public_id: response.data?.public_id ?? null,
   };
+};
+
+export const cleanupAdminProductUploads = async (publicIds: string[]): Promise<void> => {
+  const uniqueIds = Array.from(new Set(publicIds.map((item) => String(item || '').trim()).filter(Boolean)));
+  if (uniqueIds.length === 0) return;
+  await apiClient.post('/admin/products/upload-image/cleanup', { public_ids: uniqueIds });
 };
 
 export const createAdminProduct = async (payload: AdminProductPayload) => {
