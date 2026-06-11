@@ -28,7 +28,9 @@ const ImageUploader = ({
   const [images, setImages] = useState<ImageItem[]>([...initialImages]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const dragIndexRef = React.useRef<number | null>(null);
+  const pointerDragRef = React.useRef<{ pointerId: number; fromIndex: number; startX: number; startY: number; active: boolean } | null>(null);
 
   // Keep stable object URLs per File to avoid blob: URL churn and revoke-too-early issues
   const objectUrlMapRef = React.useRef<Map<File, string>>(new Map());
@@ -230,11 +232,49 @@ const ImageUploader = ({
     if (disabled) return;
     if (fromIndex === toIndex) return;
     setImages((prev) => {
+      if (fromIndex < 0 || toIndex < 0 || fromIndex >= prev.length || toIndex >= prev.length) return prev;
       const next = [...prev];
       const [moved] = next.splice(fromIndex, 1);
       next.splice(toIndex, 0, moved);
       return next;
     });
+    dragIndexRef.current = toIndex;
+    if (pointerDragRef.current) {
+      pointerDragRef.current.fromIndex = toIndex;
+    }
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const pointerState = pointerDragRef.current;
+    if (disabled || !pointerState || pointerState.pointerId !== event.pointerId) return;
+
+    const distance = Math.abs(event.clientX - pointerState.startX) + Math.abs(event.clientY - pointerState.startY);
+    if (!pointerState.active && distance < 8) return;
+
+    pointerState.active = true;
+    event.preventDefault();
+
+    const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
+    const imageTarget = target?.closest('[data-image-index]') as HTMLElement | null;
+    if (!imageTarget) return;
+
+    const nextIndex = Number(imageTarget.dataset.imageIndex);
+    if (!Number.isInteger(nextIndex) || nextIndex === pointerState.fromIndex) return;
+    setDragOverIndex(nextIndex);
+    reorder(pointerState.fromIndex, nextIndex);
+  };
+
+  const stopPointerDrag = (event?: React.PointerEvent<HTMLDivElement>) => {
+    if (event && pointerDragRef.current?.pointerId === event.pointerId) {
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        // ignore
+      }
+    }
+    pointerDragRef.current = null;
+    dragIndexRef.current = null;
+    setDragOverIndex(null);
   };
 
   const removeImage = (index: number) => {
@@ -313,18 +353,62 @@ const ImageUploader = ({
           {previews.map((src, index) => (
             <div
               key={index}
-              className="relative"
+              data-image-index={index}
+              className={`relative touch-none cursor-grab select-none rounded-md outline-none transition active:cursor-grabbing ${
+                dragOverIndex === index ? 'scale-[1.02] ring-2 ring-rose-500 ring-offset-2' : ''
+              }`}
               draggable={!disabled}
-              onDragStart={() => {
+              onPointerDown={(e) => {
+                if (disabled || e.button !== 0) return;
+                pointerDragRef.current = {
+                  pointerId: e.pointerId,
+                  fromIndex: index,
+                  startX: e.clientX,
+                  startY: e.clientY,
+                  active: false,
+                };
                 dragIndexRef.current = index;
+                setDragOverIndex(index);
+                try {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                } catch {
+                  // ignore
+                }
+              }}
+              onPointerMove={handlePointerMove}
+              onPointerUp={stopPointerDrag}
+              onPointerCancel={stopPointerDrag}
+              onDragStart={(e) => {
+                dragIndexRef.current = index;
+                setDragOverIndex(index);
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', String(index));
               }}
               onDragOver={(e) => {
+                if (disabled) return;
                 e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                setDragOverIndex(index);
               }}
-              onDrop={() => {
+              onDragEnter={(e) => {
+                if (disabled) return;
+                e.preventDefault();
+                const from = dragIndexRef.current;
+                if (typeof from === 'number' && from !== index) {
+                  reorder(from, index);
+                }
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 const from = dragIndexRef.current;
                 if (typeof from === 'number') reorder(from, index);
                 dragIndexRef.current = null;
+                setDragOverIndex(null);
+              }}
+              onDragEnd={() => {
+                dragIndexRef.current = null;
+                setDragOverIndex(null);
               }}
             >
               <img
@@ -341,7 +425,11 @@ const ImageUploader = ({
                 type="button"
                 className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
                 disabled={disabled}
-                onClick={() => removeImage(index)}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeImage(index);
+                }}
               >
                 ×
               </button>
