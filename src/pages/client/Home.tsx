@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   BadgePercent,
   ChevronRight,
@@ -102,6 +102,8 @@ const iconForCategory = (name: string) => {
 
 const Home = () => {
   const navigate = useNavigate();
+  const outletContext = useOutletContext<{ openProductSearch?: () => void } | null>();
+  const openProductSearch = outletContext?.openProductSearch;
   const { addToCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [homeContent, setHomeContent] = useState<HomeContentPayload | null>(null);
@@ -234,7 +236,9 @@ const Home = () => {
               type="search"
               placeholder="Tìm phụ tùng, nhớt..."
               className="h-full min-w-0 flex-1 bg-transparent text-[1.35rem] font-medium outline-none placeholder:text-[#9b9b9b] max-[390px]:text-[1.05rem]"
-              onFocus={() => navigate('/products')}
+              readOnly
+              onClick={() => openProductSearch?.()}
+              onFocus={() => openProductSearch?.()}
             />
           </label>
 

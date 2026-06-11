@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useCart } from '../contexts/CartContext';
 
 import { logo_url } from '../config/api';
+
 const BRAND_MARK = `${logo_url}?v=yanmar-3`;
 
 const BrandLockup = ({ compact = false }) => (
@@ -39,32 +40,31 @@ const CartDropdown = ({
   clearCart,
   updateCartItemQuantity,
   onCheckout,
-  compact = false,
 }) => (
-  <div className={`absolute right-0 z-50 mt-2 animate-fadeIn rounded-2xl border border-black/10 bg-white py-2 shadow-2xl ${compact ? 'w-[min(92vw,20rem)]' : 'w-80'}`}>
-    <div className={`border-b border-gray-100 px-4 py-2 font-bold text-[#d50918] ${compact ? 'text-base' : 'text-lg'}`}>
+  <div className="absolute right-0 z-50 mt-2 w-80 animate-fadeIn rounded-2xl border border-black/10 bg-white py-2 shadow-2xl">
+    <div className="border-b border-gray-100 px-4 py-2 text-lg font-bold text-[#d50918]">
       Giỏ hàng
     </div>
     {cart.length === 0 ? (
-      <div className={`px-4 text-center text-gray-500 ${compact ? 'py-5 text-sm' : 'py-6'}`}>
+      <div className="px-4 py-6 text-center text-gray-500">
         Chưa có sản phẩm nào
       </div>
     ) : (
       <>
-        <ul className={`${compact ? 'max-h-56' : 'max-h-64'} divide-y divide-gray-100 overflow-y-auto`}>
+        <ul className="max-h-64 divide-y divide-gray-100 overflow-y-auto">
           {cart.map((item, idx) => (
             <li key={idx} className="flex items-start gap-2 px-4 py-2">
-              <img src={item.image} alt={item.title} className={`${compact ? 'h-9 w-9' : 'h-10 w-10'} rounded border object-cover`} />
+              <img src={item.image} alt={item.title} className="h-10 w-10 rounded border object-cover" />
               <div className="min-w-0 flex-1">
-                <div className={`${compact ? 'text-xs' : 'text-sm'} break-words font-semibold leading-snug text-gray-900`}>
+                <div className="break-words text-sm font-semibold leading-snug text-gray-900">
                   {item.title}
                 </div>
                 {item.variant_label && (
-                  <div className={`${compact ? 'text-[11px]' : 'text-xs'} mt-0.5 break-words leading-snug text-gray-500`}>
+                  <div className="mt-0.5 break-words text-xs leading-snug text-gray-500">
                     Phân loại: <span className="font-medium text-gray-700">{item.variant_label}</span>
                   </div>
                 )}
-                <div className={`${compact ? 'text-[11px]' : 'text-xs'} text-gray-500`}>
+                <div className="text-xs text-gray-500">
                   SL: {item.quantity} x {formatVnd(item.price)}
                 </div>
                 <div className="mt-1 inline-flex items-center gap-1">
@@ -92,18 +92,18 @@ const CartDropdown = ({
           ))}
         </ul>
         <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2">
-          <span className={`${compact ? 'text-sm' : ''} font-semibold text-gray-700`}>Tổng:</span>
-          <span className={`${compact ? '' : 'text-lg'} font-bold text-[#d50918]`}>{formatVnd(total)}</span>
+          <span className="font-semibold text-gray-700">Tổng:</span>
+          <span className="text-lg font-bold text-[#d50918]">{formatVnd(total)}</span>
         </div>
         <div className="flex gap-2 px-4 pb-2">
           <button
-            className={`${compact ? 'text-sm' : ''} flex-1 rounded-xl bg-[#e30613] py-2 font-bold text-white transition hover:bg-[#ba0610]`}
+            className="flex-1 rounded-xl bg-[#e30613] py-2 font-bold text-white transition hover:bg-[#ba0610]"
             onClick={onCheckout}
           >
             Thanh toán
           </button>
-          <button className={`${compact ? 'text-sm' : ''} rounded-xl bg-gray-200 px-3 py-2 font-bold text-gray-700 transition hover:bg-gray-300`} onClick={clearCart}>
-            {compact ? 'Xóa' : 'Xóa hết'}
+          <button className="rounded-xl bg-gray-200 px-3 py-2 font-bold text-gray-700 transition hover:bg-gray-300" onClick={clearCart}>
+            Xóa hết
           </button>
         </div>
       </>
@@ -111,19 +111,17 @@ const CartDropdown = ({
   </div>
 );
 
-const Header = () => {
+const Header = ({ onOpenSearch }) => {
   const { cart, removeFromCart, clearCart, updateCartItemQuantity } = useCart();
   const [cartOpen, setCartOpen] = useState(false);
   const desktopCartRef = useRef(null);
-  const mobileCartRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     function handleClickOutside(event) {
       const insideDesktopCart = desktopCartRef.current && desktopCartRef.current.contains(event.target);
-      const insideMobileCart = mobileCartRef.current && mobileCartRef.current.contains(event.target);
-      if (!insideDesktopCart && !insideMobileCart) {
+      if (!insideDesktopCart) {
         setCartOpen(false);
       }
     }
@@ -163,9 +161,9 @@ const Header = () => {
           <div className="flex items-center gap-4">
             <button
               type="button"
-              onClick={() => navigate('/products')}
-              className={`inline-flex h-12 w-12 items-center justify-center text-[#d50918] transition hover:bg-[#fff0f1] ${isNewArrivalsActive ? 'bg-[#fff0f1]' : ''}`}
-              aria-label="Tìm kiếm"
+              onClick={onOpenSearch}
+              className="inline-flex h-12 w-12 items-center justify-center text-[#d50918] transition hover:bg-[#fff0f1]"
+              aria-label="Tìm kiếm sản phẩm"
             >
               <Search size={34} strokeWidth={2.5} />
             </button>
@@ -194,18 +192,12 @@ const Header = () => {
                 />
               )}
             </div>
-
           </div>
         </div>
       </div>
 
-      <div
-        className={`border-b border-[#ededed] bg-white md:hidden ${
-          isProductDetailMobileHeader ? 'px-5' : 'px-[3.95rem] max-[390px]:px-[3.35rem]'
-        }`}
-        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
-      >
-        <div className="mx-auto flex h-[5.05rem] max-w-[944px] items-center justify-between gap-5 max-[390px]:gap-4">
+      <div className="border-b border-[#ededed] bg-white px-5 md:hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        <div className="mx-auto grid h-[5.05rem] max-w-[944px] grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-3">
           {isProductDetailMobileHeader ? (
             <button
               type="button"
@@ -216,53 +208,14 @@ const Header = () => {
               <ChevronLeft size={39} strokeWidth={2.5} />
             </button>
           ) : (
-            <Link to="/" className="min-w-0 flex items-center">
-              <BrandLockup compact />
-            </Link>
+            <span aria-hidden="true" />
           )}
 
-          {isProductDetailMobileHeader && (
-              <Link to="/" className="min-w-0 flex flex-1 justify-center">
-              <BrandLockup compact />
-            </Link>
-          )}
+          <Link to="/" className="col-start-2 flex min-w-0 justify-center">
+            <BrandLockup compact />
+          </Link>
 
-          <div className="flex shrink-0 items-center gap-4 max-[390px]:gap-3">
-            <button
-              type="button"
-              onClick={() => navigate('/products')}
-              className="inline-flex h-10 w-10 items-center justify-center text-[#d50918] active:scale-[0.98]"
-              aria-label="Tìm kiếm"
-            >
-              <Search size={33} strokeWidth={2.5} />
-            </button>
-
-            <div className="relative" ref={mobileCartRef}>
-              <button
-                className="relative inline-flex h-10 w-10 items-center justify-center text-[#d50918] active:scale-[0.98]"
-                onClick={() => setCartOpen((v) => !v)}
-                aria-label="Giỏ hàng"
-              >
-                <FaShoppingCart size={32} className="cart-fly-target" />
-                {cartCount > 0 && (
-                  <span className="absolute right-0 top-0 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#e30613] px-1 text-[10px] font-bold leading-none text-white">
-                    {cartCount}
-                  </span>
-                )}
-              </button>
-              {cartOpen && (
-                <CartDropdown
-                  cart={cart}
-                  total={total}
-                  removeFromCart={removeFromCart}
-                  clearCart={clearCart}
-                  updateCartItemQuantity={updateCartItemQuantity}
-                  onCheckout={handleCheckout}
-                  compact
-                />
-              )}
-            </div>
-          </div>
+          <span aria-hidden="true" />
         </div>
       </div>
     </header>
