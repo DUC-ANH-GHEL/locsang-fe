@@ -114,8 +114,8 @@ const ProductReadonlyDetail = () => {
               <Field label="Danh mục" value={product.category?.name || product.category_name || product.category} />
               <Field label="Thương hiệu" value={product.brand} />
               <Field label="Trạng thái" value={product.status || (product.is_active ? 'active' : 'inactive')} />
-              <Field label="Giá bán" value={formatCurrency(product.sale_price || product.price)} />
-              <Field label="Giá gốc" value={formatCurrency(product.original_price || product.compare_price)} />
+              <Field label="Giá bán" value={formatCurrency(product.price)} />
+              <Field label="Giá sale" value={product.sale_price ? formatCurrency(product.sale_price) : 'Không có'} />
               <Field label="Tồn kho" value={product.stock} />
               <Field label="Nổi bật" value={product.featured ? 'Có' : 'Không'} />
             </div>
@@ -133,7 +133,8 @@ const ProductReadonlyDetail = () => {
                     <tr className="text-left text-xs uppercase tracking-wide text-gray-500">
                       <th className="py-2 pr-4">SKU</th>
                       <th className="py-2 pr-4">Tên</th>
-                      <th className="py-2 pr-4">Giá</th>
+                      <th className="py-2 pr-4">Giá bán</th>
+                      <th className="py-2 pr-4">Giá sale</th>
                       <th className="py-2 pr-4">Tồn</th>
                       <th className="py-2 pr-4">Trạng thái</th>
                     </tr>
@@ -143,7 +144,8 @@ const ProductReadonlyDetail = () => {
                       <tr key={variant.id || variant.sku}>
                         <td className="py-2 pr-4 font-semibold">{getText(variant.sku)}</td>
                         <td className="py-2 pr-4">{getText(variant.variant_name || variant.name || variant.title)}</td>
-                        <td className="py-2 pr-4">{formatCurrency(variant.sale_price || variant.price)}</td>
+                        <td className="py-2 pr-4">{formatCurrency(variant.price)}</td>
+                        <td className="py-2 pr-4">{variant.sale_price ? formatCurrency(variant.sale_price) : 'Không có'}</td>
                         <td className="py-2 pr-4">{getText(variant.stock)}</td>
                         <td className="py-2 pr-4">{getText(variant.status || (variant.is_active ? 'active' : 'inactive'))}</td>
                       </tr>

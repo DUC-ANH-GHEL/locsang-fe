@@ -49,7 +49,6 @@ type VariantDraft = {
   sku: string;
   price: string;
   salePrice: string;
-  comparePrice: string;
   stock: string;
   allowBackorder: boolean;
   status: 'active' | 'inactive';
@@ -68,7 +67,6 @@ type ProductDraft = {
   description: string;
   price: string;
   salePrice: string;
-  comparePrice: string;
   stock: string;
   allowBackorder: boolean;
   weight: string;
@@ -99,7 +97,6 @@ const emptyDraft: ProductDraft = {
   description: '',
   price: '',
   salePrice: '',
-  comparePrice: '',
   stock: '0',
   allowBackorder: false,
   weight: '0',
@@ -130,7 +127,6 @@ const newVariant = (skuPrefix = ''): VariantDraft => ({
   sku: skuPrefix ? `${skuPrefix}-` : '',
   price: '',
   salePrice: '',
-  comparePrice: '',
   stock: '0',
   allowBackorder: false,
   status: 'active',
@@ -225,12 +221,6 @@ const normalizeVariant = (variant: any, index: number): VariantDraft => {
         : variant?.salePrice !== undefined && variant?.salePrice !== null
           ? String(variant.salePrice)
           : '',
-    comparePrice:
-      variant?.compare_price !== undefined && variant?.compare_price !== null
-        ? String(variant.compare_price)
-        : variant?.comparePrice !== undefined && variant?.comparePrice !== null
-          ? String(variant.comparePrice)
-          : '',
     stock: variant?.stock !== undefined && variant?.stock !== null ? String(variant.stock) : '0',
     allowBackorder: Boolean(variant?.allow_backorder ?? variant?.allowBackorder ?? false),
     status: variant?.status === 'inactive' || variant?.is_active === false ? 'inactive' : 'active',
@@ -276,11 +266,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     const done = checks.filter(Boolean).length;
     return Math.round((done / checks.length) * 100);
   }, [draft.categoryId, draft.name, draft.price, draft.sku, draft.stock, existingImages.length, imageFiles.length]);
-
-  const effectivePricePreview = useMemo(() => {
-    const salePrice = toOptionalNumber(draft.salePrice);
-    return salePrice !== null ? salePrice : toNumber(draft.price);
-  }, [draft.price, draft.salePrice]);
 
   const loadCategories = useCallback(async () => {
     const response = await getCategoriesApi();
@@ -328,9 +313,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
               : product?.salePrice !== undefined && product?.salePrice !== null
                 ? String(product.salePrice)
                 : ''),
-          comparePrice:
-            firstVariant?.comparePrice ||
-            (product?.original_price !== undefined && product?.original_price !== null ? String(product.original_price) : ''),
           stock:
             firstVariant?.stock ||
             (product?.stock !== undefined && product?.stock !== null ? String(product.stock) : '0'),
@@ -421,7 +403,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     const sku = draft.sku.trim();
     const price = toNumber(draft.price);
     const salePrice = toOptionalNumber(draft.salePrice);
-    const comparePrice = toOptionalNumber(draft.comparePrice);
     const stock = toNumber(draft.stock);
     const totalImages = existingImages.length + imageFiles.length;
 
@@ -435,7 +416,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     if (sku.length > 80) next.sku = 'SKU tối đa 80 ký tự.';
     if (!Number.isFinite(price) || price <= 0) next.price = 'Giá bán phải lớn hơn 0.';
     if (salePrice !== null && (salePrice <= 0 || salePrice > price)) next.salePrice = 'Giá sale phải lớn hơn 0 và không vượt giá bán.';
-    if (comparePrice !== null && comparePrice < price) next.comparePrice = 'Giá gốc phải lớn hơn hoặc bằng giá bán.';
     if (!Number.isInteger(stock) || stock < 0) next.stock = 'Tồn kho phải là số nguyên không âm.';
 
     ['weight', 'length', 'width', 'height'].forEach((field) => {
@@ -457,7 +437,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         const variantSku = variant.sku.trim();
         const variantPrice = toNumber(variant.price);
         const variantSalePrice = toOptionalNumber(variant.salePrice);
-        const variantComparePrice = toOptionalNumber(variant.comparePrice);
         const variantStock = toNumber(variant.stock);
         if (!variantSku) next[`${prefix}-sku`] = `Biến thể #${index + 1} thiếu SKU.`;
         const skuKey = variantSku.toLowerCase();
@@ -465,7 +444,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         seen.add(skuKey);
         if (!Number.isFinite(variantPrice) || variantPrice <= 0) next[`${prefix}-price`] = 'Giá biến thể phải lớn hơn 0.';
         if (variantSalePrice !== null && (variantSalePrice <= 0 || variantSalePrice > variantPrice)) next[`${prefix}-sale`] = 'Giá sale phải lớn hơn 0 và không vượt giá bán.';
-        if (variantComparePrice !== null && variantComparePrice < variantPrice) next[`${prefix}-compare`] = 'Giá gốc phải lớn hơn hoặc bằng giá bán.';
         if (!Number.isInteger(variantStock) || variantStock < 0) next[`${prefix}-stock`] = 'Tồn kho phải là số nguyên không âm.';
       });
     }
@@ -498,7 +476,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           sku: variant.sku.trim(),
           price: toNumber(variant.price),
           sale_price: toOptionalNumber(variant.salePrice),
-          compare_price: toOptionalNumber(variant.comparePrice),
+          compare_price: null,
           cost_price: null,
           stock: toNumber(variant.stock),
           manage_stock: true,
@@ -513,7 +491,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             sku: baseSku,
             price: toNumber(draft.price),
             sale_price: toOptionalNumber(draft.salePrice),
-            compare_price: toOptionalNumber(draft.comparePrice),
+            compare_price: null,
             cost_price: null,
             stock: toNumber(draft.stock),
             manage_stock: true,
@@ -760,7 +738,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           <Settings2 size={20} className="text-rose-600" />
           <h3 className="text-lg font-black text-slate-950 dark:text-white">Giá và kho</h3>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
           <div>
             <label className={labelClass}>Giá bán *</label>
             <input className={inputClass} value={draft.price} disabled={disabled} inputMode="numeric" placeholder="180000" onChange={(event) => setField('price', event.target.value)} />
@@ -770,11 +748,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             <label className={labelClass}>Giá sale</label>
             <input className={inputClass} value={draft.salePrice} disabled={disabled} inputMode="numeric" placeholder="160000" onChange={(event) => setField('salePrice', event.target.value)} />
             <FieldError message={errors.salePrice} />
-          </div>
-          <div>
-            <label className={labelClass}>Giá gốc</label>
-            <input className={inputClass} value={draft.comparePrice} disabled={disabled} inputMode="numeric" placeholder="200000" onChange={(event) => setField('comparePrice', event.target.value)} />
-            <FieldError message={errors.comparePrice} />
           </div>
           <div>
             <label className={labelClass}>Tồn kho *</label>
@@ -797,7 +770,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             </span>
           </span>
         </label>
-        <div className="mt-4 grid gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-900 sm:grid-cols-3">
+        <div className="mt-4 grid gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-900 sm:grid-cols-2">
           <div>
             <div className="text-xs font-bold uppercase text-slate-500">Giá bán</div>
             <div className="text-base font-black text-slate-950 dark:text-white">{currencyFormatter.format(toNumber(draft.price))} đ</div>
@@ -805,10 +778,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           <div>
             <div className="text-xs font-bold uppercase text-slate-500">Giá sale</div>
             <div className="text-base font-black text-rose-600">{draft.salePrice ? `${currencyFormatter.format(toNumber(draft.salePrice))} đ` : 'Không có'}</div>
-          </div>
-          <div>
-            <div className="text-xs font-bold uppercase text-slate-500">Giá khách thấy</div>
-            <div className="text-base font-black text-slate-950 dark:text-white">{currencyFormatter.format(effectivePricePreview)} đ</div>
           </div>
         </div>
       </section>
@@ -930,7 +899,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
                       </button>
                     )}
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6">
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
                     <div className="lg:col-span-2">
                       <label className={labelClass}>Quy cách</label>
                       <input className={inputClass} value={variant.name} disabled={disabled} placeholder="VD: 4L hoặc 119305-35153" onChange={(event) => updateVariant(variant.localId, { name: event.target.value })} />
@@ -949,11 +918,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
                       <label className={labelClass}>Giá sale</label>
                       <input className={inputClass} value={variant.salePrice} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { salePrice: event.target.value })} />
                       <FieldError message={errors[`${prefix}-sale`]} />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Giá gốc</label>
-                      <input className={inputClass} value={variant.comparePrice} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { comparePrice: event.target.value })} />
-                      <FieldError message={errors[`${prefix}-compare`]} />
                     </div>
                     <div>
                       <label className={labelClass}>Tồn *</label>
