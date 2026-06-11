@@ -69,10 +69,6 @@ type ProductDraft = {
   salePrice: string;
   stock: string;
   allowBackorder: boolean;
-  weight: string;
-  length: string;
-  width: string;
-  height: string;
   hasVariants: boolean;
   variants: VariantDraft[];
   specifications: SpecificationDraft[];
@@ -99,10 +95,6 @@ const emptyDraft: ProductDraft = {
   salePrice: '',
   stock: '0',
   allowBackorder: false,
-  weight: '0',
-  length: '0',
-  width: '0',
-  height: '0',
   hasVariants: false,
   variants: [],
   specifications: [
@@ -377,10 +369,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             firstVariant?.stock ||
             (product?.stock !== undefined && product?.stock !== null ? String(product.stock) : '0'),
           allowBackorder: Boolean(firstVariant?.allowBackorder ?? product?.allow_backorder ?? product?.allowBackorder ?? false),
-          weight: product?.shipping?.weight !== undefined ? String(product.shipping.weight) : String(product?.weight || 0),
-          length: product?.shipping?.length !== undefined ? String(product.shipping.length) : String(product?.length || 0),
-          width: product?.shipping?.width !== undefined ? String(product.shipping.width) : String(product?.width || 0),
-          height: product?.shipping?.height !== undefined ? String(product.shipping.height) : String(product?.height || 0),
           hasVariants,
           variants: hasVariants ? variants : [],
           specifications: normalizeSpecs(product),
@@ -478,11 +466,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     if (salePrice !== null && (salePrice <= 0 || salePrice > price)) next.salePrice = 'Giá sale phải lớn hơn 0 và không vượt giá bán.';
     if (!Number.isInteger(stock) || stock < 0) next.stock = 'Tồn kho phải là số nguyên không âm.';
 
-    ['weight', 'length', 'width', 'height'].forEach((field) => {
-      const value = toNumber(draft[field as keyof ProductDraft] as string);
-      if (!Number.isFinite(value) || value < 0) next[field] = 'Thông số này không được âm.';
-    });
-
     draft.specifications.forEach((spec, index) => {
       const hasLabel = Boolean(spec.label.trim());
       const hasValue = Boolean(spec.value.trim());
@@ -519,7 +502,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       const prefix = `variant-${variant.localId}`;
       return [`${prefix}-sku`, `${prefix}-price`, `${prefix}-sale`, `${prefix}-stock`];
     });
-    const order = [...baseOrder, ...specOrder, 'variants', ...variantOrder, 'weight', 'length', 'width', 'height'];
+    const order = [...baseOrder, ...specOrder, 'variants', ...variantOrder];
     return order.find((key) => validation[key]) || Object.keys(validation)[0] || null;
   };
 
@@ -608,12 +591,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       tags: [],
       specifications: specs,
       has_variants: draft.hasVariants,
-      shipping: {
-        weight: toNumber(draft.weight),
-        length: toNumber(draft.length),
-        width: toNumber(draft.width),
-        height: toNumber(draft.height),
-      },
       media: imageUrls.map((url, index) => ({ url, type: 'image', sort_order: index + 1 })),
       attributes: draft.hasVariants && variantNames.length > 0 ? [{ name: 'Quy cách', values: variantNames }] : [],
       variants,
@@ -1123,32 +1100,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             )}
           </div>
         )}
-      </section>
-
-      <section className={sectionClass}>
-        <h3 className="mb-4 text-lg font-black text-slate-950 dark:text-white">Kích thước vận chuyển</h3>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <label className={labelClass}>Khối lượng</label>
-            <input data-error-key="weight" className={inputClass} value={draft.weight} disabled={disabled} inputMode="decimal" onChange={(event) => setField('weight', event.target.value)} />
-            <FieldError message={errors.weight} />
-          </div>
-          <div>
-            <label className={labelClass}>Dài</label>
-            <input data-error-key="length" className={inputClass} value={draft.length} disabled={disabled} inputMode="decimal" onChange={(event) => setField('length', event.target.value)} />
-            <FieldError message={errors.length} />
-          </div>
-          <div>
-            <label className={labelClass}>Rộng</label>
-            <input data-error-key="width" className={inputClass} value={draft.width} disabled={disabled} inputMode="decimal" onChange={(event) => setField('width', event.target.value)} />
-            <FieldError message={errors.width} />
-          </div>
-          <div>
-            <label className={labelClass}>Cao</label>
-            <input data-error-key="height" className={inputClass} value={draft.height} disabled={disabled} inputMode="decimal" onChange={(event) => setField('height', event.target.value)} />
-            <FieldError message={errors.height} />
-          </div>
-        </div>
       </section>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 lg:left-[255px]">
