@@ -14,7 +14,7 @@ import {
 
 import ImageUploader from './ImageUploader';
 import { useToast } from '../Toast';
-import { getCategories as getCategoriesApi } from '../../services/categoryService';
+import { createCategory as createCategoryApi, getCategories as getCategoriesApi } from '../../services/categoryService';
 import {
   AdminProductPayload,
   AdminProductStatus,
@@ -174,6 +174,12 @@ const getErrorMessage = (error: any) => {
 
 const normalizeProduct = (raw: any) => raw?.data ?? raw;
 
+const normalizeCategoryOption = (item: any): CategoryOption | null => {
+  const id = Number(item?.id || 0);
+  const name = String(item?.name || '').trim();
+  return id > 0 && name ? { id, name } : null;
+};
+
 const extractImageUrls = (product: any): string[] => {
   const urls: string[] = [];
   const push = (value: any) => {
@@ -250,7 +256,12 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
   const [slugTouched, setSlugTouched] = useState(Boolean(id));
   const [loading, setLoading] = useState(Boolean(id));
   const [saving, setSaving] = useState(false);
+  const [quickCategoryOpen, setQuickCategoryOpen] = useState(false);
+  const [quickCategoryName, setQuickCategoryName] = useState('');
+  const [quickCategorySaving, setQuickCategorySaving] = useState(false);
+  const [quickCategoryError, setQuickCategoryError] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
+  const quickCategoryInputRef = useRef<HTMLInputElement>(null);
 
   const disabled = readOnly || saving;
   const initialImages = useMemo(() => [...existingImages, ...imageFiles], [existingImages, imageFiles]);
@@ -273,10 +284,58 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     const list = Array.isArray(response) ? response : Array.isArray(response?.data) ? response.data : [];
     setCategories(
       list
-        .map((item: any) => ({ id: Number(item?.id || 0), name: String(item?.name || '').trim() }))
-        .filter((item: CategoryOption) => item.id > 0 && item.name),
+        .map(normalizeCategoryOption)
+        .filter((item: CategoryOption | null): item is CategoryOption => Boolean(item)),
     );
   }, []);
+
+  const openQuickCategory = () => {
+    setQuickCategoryOpen(true);
+    setQuickCategoryError('');
+    window.setTimeout(() => quickCategoryInputRef.current?.focus(), 50);
+  };
+
+  const createQuickCategory = async () => {
+    const name = quickCategoryName.trim();
+    if (!name) {
+      setQuickCategoryError('Nhập tên danh mục trước khi lưu.');
+      quickCategoryInputRef.current?.focus();
+      return;
+    }
+    if (name.length > 100) {
+      setQuickCategoryError('Tên danh mục tối đa 100 ký tự.');
+      quickCategoryInputRef.current?.focus();
+      return;
+    }
+
+    try {
+      setQuickCategorySaving(true);
+      setQuickCategoryError('');
+      const response = await createCategoryApi({ name, is_active: true });
+      const created = normalizeCategoryOption(response?.data ?? response);
+      if (!created) throw new Error('Không nhận được danh mục mới từ hệ thống.');
+
+      setCategories((prev) => {
+        const exists = prev.some((item) => item.id === created.id);
+        return exists ? prev : [...prev, created].sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+      });
+      setField('categoryId', String(created.id));
+      setQuickCategoryName('');
+      setQuickCategoryOpen(false);
+      showToast('Đã thêm và chọn danh mục mới.', 'success');
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      const message =
+        typeof detail === 'string' && detail.toLowerCase().includes('already')
+          ? 'Danh mục này đã tồn tại. Vui lòng chọn trong danh sách.'
+          : detail || error?.message || 'Không tạo được danh mục mới.';
+      setQuickCategoryError(String(message));
+      showToast(String(message), 'error');
+      quickCategoryInputRef.current?.focus();
+    } finally {
+      setQuickCategorySaving(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -716,6 +775,70 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
               ))}
             </select>
             <FieldError message={errors.categoryId} />
+            {!readOnly && (
+              <div className="mt-2">
+                {!quickCategoryOpen ? (
+                  <button
+                    type="button"
+                    onClick={openQuickCategory}
+                    disabled={disabled}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-rose-300 bg-rose-50 px-3 py-2 text-xs font-black text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
+                  >
+                    <Plus size={14} />
+                    Thêm danh mục mới
+                  </button>
+                ) : (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 dark:border-rose-500/25 dark:bg-rose-500/10">
+                    <label className="mb-1 block text-xs font-black text-slate-800 dark:text-slate-100">Tên danh mục mới</label>
+                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                      <input
+                        ref={quickCategoryInputRef}
+                        className={inputClass}
+                        value={quickCategoryName}
+                        disabled={disabled || quickCategorySaving}
+                        maxLength={100}
+                        placeholder="VD: Lọc nhớt"
+                        onChange={(event) => {
+                          setQuickCategoryName(event.target.value);
+                          setQuickCategoryError('');
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            createQuickCategory();
+                          }
+                          if (event.key === 'Escape') {
+                            setQuickCategoryOpen(false);
+                            setQuickCategoryError('');
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={createQuickCategory}
+                        disabled={disabled || quickCategorySaving}
+                        className="inline-flex min-h-11 items-center justify-center rounded-xl bg-rose-600 px-4 text-sm font-black text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {quickCategorySaving ? 'Đang lưu...' : 'Lưu'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuickCategoryOpen(false);
+                          setQuickCategoryName('');
+                          setQuickCategoryError('');
+                        }}
+                        disabled={quickCategorySaving}
+                        className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                    {quickCategoryError && <div className="mt-2 text-sm font-semibold text-red-600">{quickCategoryError}</div>}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div>
             <label className={labelClass}>Trạng thái bán</label>
