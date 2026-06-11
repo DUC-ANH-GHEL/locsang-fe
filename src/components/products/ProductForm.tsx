@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   ArrowLeft,
@@ -250,6 +250,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
   const [slugTouched, setSlugTouched] = useState(Boolean(id));
   const [loading, setLoading] = useState(Boolean(id));
   const [saving, setSaving] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const disabled = readOnly || saving;
   const initialImages = useMemo(() => [...existingImages, ...imageFiles], [existingImages, imageFiles]);
@@ -452,6 +453,29 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     return next;
   };
 
+  const getFirstErrorKey = (validation: FormErrors) => {
+    const baseOrder = ['name', 'slug', 'sku', 'categoryId', 'images', 'price', 'salePrice', 'stock'];
+    const specOrder = draft.specifications.map((spec) => `spec-${spec.localId}`);
+    const variantOrder = draft.variants.flatMap((variant) => {
+      const prefix = `variant-${variant.localId}`;
+      return [`${prefix}-sku`, `${prefix}-price`, `${prefix}-sale`, `${prefix}-stock`];
+    });
+    const order = [...baseOrder, ...specOrder, 'variants', ...variantOrder, 'weight', 'length', 'width', 'height'];
+    return order.find((key) => validation[key]) || Object.keys(validation)[0] || null;
+  };
+
+  const focusErrorField = (errorKey: string | null) => {
+    if (!errorKey || !formRef.current) return;
+    const targets = Array.from(formRef.current.querySelectorAll<HTMLElement>('[data-error-key]'));
+    const target = targets.find((element) => element.dataset.errorKey === errorKey);
+    if (!target) return;
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(() => {
+      target.focus({ preventScroll: true });
+    }, 180);
+  };
+
   const uploadNewImages = async () => {
     const uploaded: string[] = [];
     for (const file of imageFiles) {
@@ -545,6 +569,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
 
     const validation = validate();
     if (Object.keys(validation).length > 0) {
+      focusErrorField(getFirstErrorKey(validation));
       showToast('Vui lòng xử lý các lỗi trong form trước khi lưu.', 'warning');
       return;
     }
@@ -561,8 +586,18 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       onSuccess?.();
     } catch (error: any) {
       const message = getErrorMessage(error);
-      if (message.toLowerCase().includes('slug')) setErrors((prev) => ({ ...prev, slug: message }));
-      if (message.toLowerCase().includes('sku')) setErrors((prev) => ({ ...prev, sku: message }));
+      let serverErrorKey: string | null = null;
+      if (message.toLowerCase().includes('slug')) {
+        serverErrorKey = 'slug';
+        setErrors((prev) => ({ ...prev, slug: message }));
+      }
+      if (message.toLowerCase().includes('sku')) {
+        serverErrorKey = serverErrorKey || 'sku';
+        setErrors((prev) => ({ ...prev, sku: message }));
+      }
+      if (serverErrorKey) {
+        focusErrorField(serverErrorKey);
+      }
       showToast(message, 'error');
     } finally {
       setSaving(false);
@@ -580,7 +615,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
   const errorList = Object.values(errors);
 
   return (
-    <form onSubmit={submit} className="space-y-4 pb-24">
+    <form ref={formRef} onSubmit={submit} className="space-y-4 pb-24">
       <div className="rounded-2xl border border-rose-100 bg-gradient-to-r from-rose-50 to-white p-4 dark:border-rose-500/20 dark:from-rose-500/10 dark:to-slate-950 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -628,6 +663,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           <div>
             <label className={labelClass}>Tên sản phẩm *</label>
             <input
+              data-error-key="name"
               className={inputClass}
               value={draft.name}
               disabled={disabled}
@@ -639,6 +675,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           <div>
             <label className={labelClass}>Slug *</label>
             <input
+              data-error-key="slug"
               className={inputClass}
               value={draft.slug}
               disabled={disabled}
@@ -653,6 +690,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           <div>
             <label className={labelClass}>SKU hoặc mã phụ tùng *</label>
             <input
+              data-error-key="sku"
               className={inputClass}
               value={draft.sku}
               disabled={disabled}
@@ -664,6 +702,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           <div>
             <label className={labelClass}>Danh mục *</label>
             <select
+              data-error-key="categoryId"
               className={inputClass}
               value={draft.categoryId}
               disabled={disabled}
@@ -716,7 +755,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         </div>
       </section>
 
-      <section className={sectionClass}>
+      <section className={sectionClass} data-error-key="images" tabIndex={-1}>
         <div className="mb-4 flex items-center gap-2">
           <ImageIcon size={20} className="text-rose-600" />
           <h3 className="text-lg font-black text-slate-950 dark:text-white">Ảnh sản phẩm *</h3>
@@ -741,17 +780,17 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         <div className="grid gap-4 md:grid-cols-3">
           <div>
             <label className={labelClass}>Giá bán *</label>
-            <input className={inputClass} value={draft.price} disabled={disabled} inputMode="numeric" placeholder="180000" onChange={(event) => setField('price', event.target.value)} />
+            <input data-error-key="price" className={inputClass} value={draft.price} disabled={disabled} inputMode="numeric" placeholder="180000" onChange={(event) => setField('price', event.target.value)} />
             <FieldError message={errors.price} />
           </div>
           <div>
             <label className={labelClass}>Giá sale</label>
-            <input className={inputClass} value={draft.salePrice} disabled={disabled} inputMode="numeric" placeholder="160000" onChange={(event) => setField('salePrice', event.target.value)} />
+            <input data-error-key="salePrice" className={inputClass} value={draft.salePrice} disabled={disabled} inputMode="numeric" placeholder="160000" onChange={(event) => setField('salePrice', event.target.value)} />
             <FieldError message={errors.salePrice} />
           </div>
           <div>
             <label className={labelClass}>Tồn kho *</label>
-            <input className={inputClass} value={draft.stock} disabled={disabled} inputMode="numeric" placeholder="20" onChange={(event) => setField('stock', event.target.value)} />
+            <input data-error-key="stock" className={inputClass} value={draft.stock} disabled={disabled} inputMode="numeric" placeholder="20" onChange={(event) => setField('stock', event.target.value)} />
             <FieldError message={errors.stock} />
           </div>
         </div>
@@ -830,7 +869,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         <div className="space-y-3">
           {draft.specifications.map((spec) => (
             <div key={spec.localId} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]">
-              <input className={inputClass} value={spec.label} disabled={disabled} placeholder="Tên thông số, VD: Độ nhớt" onChange={(event) => updateSpec(spec.localId, { label: event.target.value })} />
+              <input data-error-key={`spec-${spec.localId}`} className={inputClass} value={spec.label} disabled={disabled} placeholder="Tên thông số, VD: Độ nhớt" onChange={(event) => updateSpec(spec.localId, { label: event.target.value })} />
               <input className={inputClass} value={spec.value} disabled={disabled} placeholder="Giá trị, VD: 10W-30" onChange={(event) => updateSpec(spec.localId, { value: event.target.value })} />
               {!readOnly && (
                 <button
@@ -880,7 +919,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             Form đang ở chế độ sản phẩm đơn. Hệ thống vẫn tạo một biến thể mặc định để checkout trừ kho ổn định.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3" data-error-key="variants" tabIndex={-1}>
             <FieldError message={errors.variants} />
             {draft.variants.map((variant, index) => {
               const prefix = `variant-${variant.localId}`;
@@ -906,22 +945,22 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
                     </div>
                     <div className="lg:col-span-2">
                       <label className={labelClass}>SKU *</label>
-                      <input className={inputClass} value={variant.sku} disabled={disabled} onChange={(event) => updateVariant(variant.localId, { sku: event.target.value.toUpperCase().trim() })} />
+                      <input data-error-key={`${prefix}-sku`} className={inputClass} value={variant.sku} disabled={disabled} onChange={(event) => updateVariant(variant.localId, { sku: event.target.value.toUpperCase().trim() })} />
                       <FieldError message={errors[`${prefix}-sku`]} />
                     </div>
                     <div>
                       <label className={labelClass}>Giá *</label>
-                      <input className={inputClass} value={variant.price} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { price: event.target.value })} />
+                      <input data-error-key={`${prefix}-price`} className={inputClass} value={variant.price} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { price: event.target.value })} />
                       <FieldError message={errors[`${prefix}-price`]} />
                     </div>
                     <div>
                       <label className={labelClass}>Giá sale</label>
-                      <input className={inputClass} value={variant.salePrice} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { salePrice: event.target.value })} />
+                      <input data-error-key={`${prefix}-sale`} className={inputClass} value={variant.salePrice} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { salePrice: event.target.value })} />
                       <FieldError message={errors[`${prefix}-sale`]} />
                     </div>
                     <div>
                       <label className={labelClass}>Tồn *</label>
-                      <input className={inputClass} value={variant.stock} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { stock: event.target.value })} />
+                      <input data-error-key={`${prefix}-stock`} className={inputClass} value={variant.stock} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { stock: event.target.value })} />
                       <FieldError message={errors[`${prefix}-stock`]} />
                     </div>
                     <label className="md:col-span-2 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
@@ -968,22 +1007,22 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <label className={labelClass}>Khối lượng</label>
-            <input className={inputClass} value={draft.weight} disabled={disabled} inputMode="decimal" onChange={(event) => setField('weight', event.target.value)} />
+            <input data-error-key="weight" className={inputClass} value={draft.weight} disabled={disabled} inputMode="decimal" onChange={(event) => setField('weight', event.target.value)} />
             <FieldError message={errors.weight} />
           </div>
           <div>
             <label className={labelClass}>Dài</label>
-            <input className={inputClass} value={draft.length} disabled={disabled} inputMode="decimal" onChange={(event) => setField('length', event.target.value)} />
+            <input data-error-key="length" className={inputClass} value={draft.length} disabled={disabled} inputMode="decimal" onChange={(event) => setField('length', event.target.value)} />
             <FieldError message={errors.length} />
           </div>
           <div>
             <label className={labelClass}>Rộng</label>
-            <input className={inputClass} value={draft.width} disabled={disabled} inputMode="decimal" onChange={(event) => setField('width', event.target.value)} />
+            <input data-error-key="width" className={inputClass} value={draft.width} disabled={disabled} inputMode="decimal" onChange={(event) => setField('width', event.target.value)} />
             <FieldError message={errors.width} />
           </div>
           <div>
             <label className={labelClass}>Cao</label>
-            <input className={inputClass} value={draft.height} disabled={disabled} inputMode="decimal" onChange={(event) => setField('height', event.target.value)} />
+            <input data-error-key="height" className={inputClass} value={draft.height} disabled={disabled} inputMode="decimal" onChange={(event) => setField('height', event.target.value)} />
             <FieldError message={errors.height} />
           </div>
         </div>
