@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Eye, PackageOpen, PencilLine, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../../services/authService';
@@ -125,7 +126,7 @@ const IconButton = ({
   disabled,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
   onClick: () => void;
   danger?: boolean;
   disabled?: boolean;
