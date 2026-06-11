@@ -4,7 +4,6 @@ import { ChevronLeft, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useCart } from '../contexts/CartContext';
 import { useStorefrontAuth } from '../contexts/StorefrontAuthContext';
-import { homeContentService } from '../services/homeContentService';
 
 import { logo_url } from '../config/api';
 const BRAND_MARK = `${logo_url}?v=yanmar-3`;
@@ -33,14 +32,6 @@ const formatVnd = (value) =>
     currency: 'VND',
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
-
-const DEFAULT_HEADER_CONTENT = {
-  header_nav_shop_text: 'Cửa hàng',
-  header_nav_new_arrivals_text: 'Sản phẩm',
-  header_nav_tips_text: 'Cẩm nang',
-  header_nav_shorts_text: 'Lộc Sang Shorts',
-  header_nav_orders_text: 'Đơn hàng',
-};
 
 const resolveStorefrontAvatar = (user) => {
   if (!user || typeof user !== 'object') return '';
@@ -151,35 +142,8 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, user } = useStorefrontAuth();
-  const [headerContent, setHeaderContent] = useState(DEFAULT_HEADER_CONTENT);
   const resolvedAvatarUrl = resolveStorefrontAvatar(user);
   const avatarUrl = avatarLoadFailed ? '' : resolvedAvatarUrl;
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadHeaderContent = async () => {
-      try {
-        const res = await homeContentService.getPublicHomeContent();
-        const content = res?.content || {};
-        if (cancelled) return;
-        setHeaderContent({
-          header_nav_shop_text: String(content.header_nav_shop_text || DEFAULT_HEADER_CONTENT.header_nav_shop_text),
-          header_nav_new_arrivals_text: String(content.header_nav_new_arrivals_text || DEFAULT_HEADER_CONTENT.header_nav_new_arrivals_text),
-          header_nav_tips_text: String(content.header_nav_tips_text || DEFAULT_HEADER_CONTENT.header_nav_tips_text),
-          header_nav_shorts_text: String(content.header_nav_shorts_text || DEFAULT_HEADER_CONTENT.header_nav_shorts_text),
-          header_nav_orders_text: String(content.header_nav_orders_text || DEFAULT_HEADER_CONTENT.header_nav_orders_text),
-        });
-      } catch {
-        if (!cancelled) setHeaderContent(DEFAULT_HEADER_CONTENT);
-      }
-    };
-
-    loadHeaderContent();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -200,11 +164,7 @@ const Header = () => {
   const total = cart.reduce((sum, p) => sum + Number(p.price || 0) * p.quantity, 0);
   const cartCount = cart.reduce((sum, p) => sum + p.quantity, 0);
 
-  const isShopActive = location.pathname === '/';
   const isNewArrivalsActive = location.pathname.startsWith('/products');
-  const isTipsActive = location.pathname.startsWith('/tips');
-  const isShortsActive = location.pathname.startsWith('/shorts');
-  const isOrdersActive = location.pathname.startsWith('/account/orders');
   const isProductDetailMobileHeader = /^\/products\/\d+/.test(location.pathname);
 
   const handleCheckout = () => {
@@ -220,19 +180,11 @@ const Header = () => {
             <BrandLockup />
           </Link>
 
-          <nav className="flex items-center gap-7 text-[13px] font-bold text-[#444]">
-            <Link to="/" className={`${isShopActive ? 'text-[#d90616]' : 'hover:text-[#d90616]'}`}>{headerContent.header_nav_shop_text}</Link>
-            <Link to="/products" className={`${isNewArrivalsActive ? 'text-[#d90616]' : 'hover:text-[#d90616]'}`}>{headerContent.header_nav_new_arrivals_text}</Link>
-            <Link to="/tips" className={`${isTipsActive ? 'text-[#d90616]' : 'hover:text-[#d90616]'}`}>{headerContent.header_nav_tips_text}</Link>
-            <Link to="/shorts" className={`${isShortsActive ? 'text-[#d90616]' : 'hover:text-[#d90616]'}`}>{headerContent.header_nav_shorts_text}</Link>
-            <Link to="/account/orders" className={`${isOrdersActive ? 'text-[#d90616]' : 'hover:text-[#d90616]'}`}>{headerContent.header_nav_orders_text}</Link>
-          </nav>
-
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <button
               type="button"
               onClick={() => navigate('/products')}
-              className="inline-flex h-12 w-12 items-center justify-center text-[#d50918] transition hover:bg-[#fff0f1]"
+              className={`inline-flex h-12 w-12 items-center justify-center text-[#d50918] transition hover:bg-[#fff0f1] ${isNewArrivalsActive ? 'bg-[#fff0f1]' : ''}`}
               aria-label="Tìm kiếm"
             >
               <Search size={34} strokeWidth={2.5} />
