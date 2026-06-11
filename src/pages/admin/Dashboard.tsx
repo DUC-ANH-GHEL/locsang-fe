@@ -8,12 +8,17 @@ import { productService, AdminProductListItem } from '../../services/productServ
 const formatCurrency = (value: unknown) =>
   Number(value || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
 
+const normalizeOrderStatus = (status: unknown) => {
+  const normalized = String(status || '').toLowerCase();
+  if (normalized === 'processing') return 'processing';
+  if (normalized === 'cancelled') return 'cancelled';
+  return 'pending';
+};
+
 const statusLabel: Record<string, string> = {
   pending: 'Mới',
-  processing: 'Đang xử lý',
-  shipped: 'Đang giao',
-  delivered: 'Đã giao',
-  cancelled: 'Đã hủy',
+  processing: 'Đã xử lý',
+  cancelled: 'Hủy đơn',
 };
 
 const Dashboard = () => {
@@ -42,7 +47,7 @@ const Dashboard = () => {
 
   const metrics = useMemo(() => {
     const revenue = orders
-      .filter((order) => String(order.status) !== 'cancelled')
+      .filter((order) => normalizeOrderStatus(order.status) !== 'cancelled')
       .reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
     const lowStock = products.filter((product) => Number(product.stock_total ?? 0) <= 5).length;
     return {
@@ -90,18 +95,21 @@ const Dashboard = () => {
             <div className="text-sm text-gray-500">Chưa có đơn hàng.</div>
           ) : (
             <div className="space-y-3">
-              {orders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 p-3 dark:border-gray-800">
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-gray-100">{order.tracking_code || `#${order.id}`}</div>
-                    <div className="text-xs text-gray-500">{order.receiver_name || order.receiver_phone || 'Khách hàng'}</div>
+              {orders.map((order) => {
+                const status = normalizeOrderStatus(order.status);
+                return (
+                  <div key={order.id} className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 p-3 dark:border-gray-800">
+                    <div>
+                      <div className="font-semibold text-gray-900 dark:text-gray-100">{order.tracking_code || `#${order.id}`}</div>
+                      <div className="text-xs text-gray-500">{order.receiver_name || order.receiver_phone || 'Khách hàng'}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-rose-600">{formatCurrency(order.total_amount)}</div>
+                      <div className="text-xs text-gray-500">{statusLabel[status]}</div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-bold text-rose-600">{formatCurrency(order.total_amount)}</div>
-                    <div className="text-xs text-gray-500">{statusLabel[order.status] || order.status}</div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

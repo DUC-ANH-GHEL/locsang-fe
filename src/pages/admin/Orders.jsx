@@ -14,7 +14,6 @@ import {
   RefreshCcw,
   Search,
   Trash2,
-  Truck,
   UserRound,
   X,
 } from 'lucide-react';
@@ -25,43 +24,39 @@ import { logout } from '../../services/authService';
 import { formatViDateTime } from '../../utils/dateTime';
 
 const PAGE_LIMIT = 20;
+const ORDER_STATUS_NEW = 'pending';
+const ORDER_STATUS_PROCESSED = 'processing';
+const ORDER_STATUS_CANCELLED = 'cancelled';
+
+const normalizeOrderStatus = (status) => {
+  const normalized = String(status || '').toLowerCase();
+  if (normalized === ORDER_STATUS_PROCESSED) return ORDER_STATUS_PROCESSED;
+  if (normalized === ORDER_STATUS_CANCELLED) return ORDER_STATUS_CANCELLED;
+  return ORDER_STATUS_NEW;
+};
 
 const statusFilters = [
   { value: '', label: 'Tất cả' },
-  { value: 'pending', label: 'Mới' },
-  { value: 'processing', label: 'Đang xử lý' },
-  { value: 'shipped', label: 'Đang giao' },
-  { value: 'delivered', label: 'Đã giao' },
-  { value: 'cancelled', label: 'Đã huỷ' },
+  { value: ORDER_STATUS_NEW, label: 'Mới' },
+  { value: ORDER_STATUS_PROCESSED, label: 'Đã xử lý' },
+  { value: ORDER_STATUS_CANCELLED, label: 'Hủy đơn' },
 ];
 
 const statusMeta = {
-  pending: {
+  [ORDER_STATUS_NEW]: {
     label: 'Mới',
     icon: ClipboardList,
     badge: 'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20',
     card: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-200',
   },
-  processing: {
-    label: 'Đang xử lý',
-    icon: Package,
-    badge: 'bg-sky-50 text-sky-700 ring-sky-100 dark:bg-sky-500/10 dark:text-sky-200 dark:ring-sky-500/20',
-    card: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-200',
-  },
-  shipped: {
-    label: 'Đang giao',
-    icon: Truck,
-    badge: 'bg-indigo-50 text-indigo-700 ring-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-200 dark:ring-indigo-500/20',
-    card: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200',
-  },
-  delivered: {
-    label: 'Đã giao',
+  [ORDER_STATUS_PROCESSED]: {
+    label: 'Đã xử lý',
     icon: CheckCircle2,
     badge: 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-200 dark:ring-emerald-500/20',
     card: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200',
   },
-  cancelled: {
-    label: 'Đã huỷ',
+  [ORDER_STATUS_CANCELLED]: {
+    label: 'Hủy đơn',
     icon: AlertTriangle,
     badge: 'bg-rose-50 text-rose-700 ring-rose-100 dark:bg-rose-500/10 dark:text-rose-200 dark:ring-rose-500/20',
     card: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-200',
@@ -76,19 +71,20 @@ const paymentMeta = {
 };
 
 const statusActionCatalog = {
-  processing: { key: 'processing', label: 'Đang xử lý', localStatus: 'processing' },
-  shipped: { key: 'shipped', label: 'Đang giao', localStatus: 'shipped' },
-  delivered: { key: 'delivered', label: 'Đã giao', localStatus: 'delivered' },
-  cancelled: { key: 'cancelled', label: 'Huỷ đơn', localStatus: 'cancelled' },
+  [ORDER_STATUS_PROCESSED]: { key: ORDER_STATUS_PROCESSED, label: 'Đã xử lý', localStatus: ORDER_STATUS_PROCESSED },
+  [ORDER_STATUS_CANCELLED]: { key: ORDER_STATUS_CANCELLED, label: 'Hủy đơn', localStatus: ORDER_STATUS_CANCELLED },
 };
 
 const statusTransitionByLocal = {
-  pending: ['processing', 'shipped', 'cancelled'],
-  processing: ['shipped', 'delivered', 'cancelled'],
-  shipped: ['delivered', 'cancelled'],
-  delivered: ['shipped', 'cancelled'],
-  cancelled: [],
+  [ORDER_STATUS_NEW]: [ORDER_STATUS_PROCESSED, ORDER_STATUS_CANCELLED],
+  [ORDER_STATUS_PROCESSED]: [ORDER_STATUS_CANCELLED],
+  [ORDER_STATUS_CANCELLED]: [],
 };
+
+const normalizeOrder = (order) => ({
+  ...order,
+  status: normalizeOrderStatus(order?.status),
+});
 
 const formatVnd = (value) =>
   Number(value || 0).toLocaleString('vi-VN', {
@@ -97,22 +93,21 @@ const formatVnd = (value) =>
     maximumFractionDigits: 0,
   });
 
-const formatDateTime = (value) => {
-  return formatViDateTime(value, {
+const formatDateTime = (value) =>
+  formatViDateTime(value, {
     hour: '2-digit',
     minute: '2-digit',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   }) || 'Chưa có';
-};
 
 const getOrderCode = (order) => order?.tracking_code || `LS-${String(order?.id || '').padStart(5, '0')}`;
 
-const getStatusMeta = (status) => statusMeta[status] || statusMeta.pending;
+const getStatusMeta = (status) => statusMeta[normalizeOrderStatus(status)] || statusMeta[ORDER_STATUS_NEW];
 
 const getAvailableActions = (status) => {
-  const keys = statusTransitionByLocal[status] || [];
+  const keys = statusTransitionByLocal[normalizeOrderStatus(status)] || [];
   return keys.map((key) => statusActionCatalog[key]).filter(Boolean);
 };
 
@@ -180,7 +175,7 @@ const Orders = () => {
   const [detailOrder, setDetailOrder] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailStatus, setDetailStatus] = useState('');
-  const [bulkStatus, setBulkStatus] = useState('processing');
+  const [bulkStatus, setBulkStatus] = useState(ORDER_STATUS_PROCESSED);
   const [submitting, setSubmitting] = useState(false);
   const openedQueryOrderIdRef = useRef(null);
 
@@ -198,15 +193,15 @@ const Orders = () => {
 
   const pageSummary = useMemo(() => {
     const totalAmount = orders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
-    const pending = orders.filter((order) => order.status === 'pending').length;
-    const active = orders.filter((order) => ['pending', 'processing', 'shipped'].includes(order.status)).length;
-    const delivered = orders.filter((order) => order.status === 'delivered').length;
+    const pending = orders.filter((order) => normalizeOrderStatus(order.status) === ORDER_STATUS_NEW).length;
+    const processed = orders.filter((order) => normalizeOrderStatus(order.status) === ORDER_STATUS_PROCESSED).length;
+    const cancelled = orders.filter((order) => normalizeOrderStatus(order.status) === ORDER_STATUS_CANCELLED).length;
     return [
       { label: 'Đơn trong trang', value: orders.length, icon: ClipboardList, tone: 'slate' },
-      { label: 'Đơn mới', value: pending, icon: AlertTriangle, tone: 'amber' },
-      { label: 'Cần xử lý', value: active, icon: Package, tone: 'rose' },
-      { label: 'Đã giao', value: delivered, icon: CheckCircle2, tone: 'emerald' },
-      { label: 'Giá trị trang', value: formatVnd(totalAmount), icon: Truck, tone: 'slate' },
+      { label: 'Mới', value: pending, icon: AlertTriangle, tone: 'amber' },
+      { label: 'Đã xử lý', value: processed, icon: CheckCircle2, tone: 'emerald' },
+      { label: 'Hủy đơn', value: cancelled, icon: Trash2, tone: 'rose' },
+      { label: 'Giá trị trang', value: formatVnd(totalAmount), icon: Package, tone: 'slate' },
     ];
   }, [orders]);
 
@@ -231,7 +226,7 @@ const Orders = () => {
         search: debouncedSearch.trim() || undefined,
         status: statusFilter || undefined,
       });
-      setOrders(Array.isArray(response?.data) ? response.data : []);
+      setOrders(Array.isArray(response?.data) ? response.data.map(normalizeOrder) : []);
       setPagination((prev) => ({
         ...prev,
         page: Number(response?.pagination?.page ?? prev.page),
@@ -264,14 +259,15 @@ const Orders = () => {
   }, [orders]);
 
   const openDetail = async (order) => {
+    const normalizedOrder = normalizeOrder(order);
     setDetailLoading(true);
-    setDetailOrder(order);
-    setDetailStatus(order.status || 'pending');
+    setDetailOrder(normalizedOrder);
+    setDetailStatus(normalizedOrder.status || ORDER_STATUS_NEW);
     try {
       const response = await adminOrderService.getOrderById(order.id);
-      const nextOrder = response?.data || order;
+      const nextOrder = normalizeOrder(response?.data || order);
       setDetailOrder(nextOrder);
-      setDetailStatus(nextOrder.status || 'pending');
+      setDetailStatus(nextOrder.status || ORDER_STATUS_NEW);
     } catch (error) {
       handleApiError(error, 'Không tải được chi tiết đơn hàng');
     } finally {
@@ -294,15 +290,15 @@ const Orders = () => {
     let active = true;
     openedQueryOrderIdRef.current = orderId;
     setDetailLoading(true);
-    setDetailOrder({ id: orderId, status: 'pending', total_amount: 0, item_count: 0 });
-    setDetailStatus('pending');
+    setDetailOrder({ id: orderId, status: ORDER_STATUS_NEW, total_amount: 0, item_count: 0 });
+    setDetailStatus(ORDER_STATUS_NEW);
 
     adminOrderService.getOrderById(orderId)
       .then((response) => {
         if (!active) return;
-        const order = response?.data;
+        const order = normalizeOrder(response?.data || {});
         setDetailOrder(order);
-        setDetailStatus(order?.status || 'pending');
+        setDetailStatus(order?.status || ORDER_STATUS_NEW);
       })
       .catch((error) => {
         if (!active) return;
@@ -333,14 +329,15 @@ const Orders = () => {
   };
 
   const updateOrderStatus = async (orderId, nextStatus, successMessage = 'Cập nhật trạng thái đơn hàng thành công') => {
+    const normalizedStatus = normalizeOrderStatus(nextStatus);
     setSubmitting(true);
     try {
-      const response = await adminOrderService.updateOrder(orderId, { status: nextStatus });
-      const updated = response?.data;
-      setOrders((prev) => prev.map((order) => (order.id === orderId ? { ...order, status: nextStatus, ...(updated || {}) } : order)));
+      const response = await adminOrderService.updateOrder(orderId, { status: normalizedStatus });
+      const updated = response?.data ? normalizeOrder(response.data) : null;
+      setOrders((prev) => prev.map((order) => (order.id === orderId ? normalizeOrder({ ...order, status: normalizedStatus, ...(updated || {}) }) : order)));
       if (detailOrder?.id === orderId) {
-        setDetailOrder((prev) => ({ ...prev, status: nextStatus, ...(updated || {}) }));
-        setDetailStatus(nextStatus);
+        setDetailOrder((prev) => normalizeOrder({ ...prev, status: normalizedStatus, ...(updated || {}) }));
+        setDetailStatus(normalizedStatus);
       }
       showToast(successMessage, 'success');
     } catch (error) {
@@ -351,15 +348,15 @@ const Orders = () => {
   };
 
   const softDeleteOrder = async (order) => {
-    if (!window.confirm(`Xoá mềm đơn ${getOrderCode(order)}?`)) return;
+    if (!window.confirm(`Xóa đơn ${getOrderCode(order)}?`)) return;
     setSubmitting(true);
     try {
       await adminOrderService.softDeleteOrder(order.id);
-      showToast('Đã xoá đơn hàng', 'success');
+      showToast('Đã xóa đơn hàng', 'success');
       if (detailOrder?.id === order.id) closeDetail();
       await loadOrders();
     } catch (error) {
-      handleApiError(error, 'Không xoá được đơn hàng');
+      handleApiError(error, 'Không xóa được đơn hàng');
     } finally {
       setSubmitting(false);
     }
@@ -368,7 +365,7 @@ const Orders = () => {
   const runBulkAction = async (action) => {
     if (selectedIds.length === 0) return;
     const isDelete = action === 'soft_delete';
-    if (isDelete && !window.confirm(`Xoá mềm ${selectedIds.length} đơn hàng đã chọn?`)) return;
+    if (isDelete && !window.confirm(`Xóa ${selectedIds.length} đơn hàng đã chọn?`)) return;
     setSubmitting(true);
     try {
       await adminOrderService.bulkOrders({
@@ -376,7 +373,7 @@ const Orders = () => {
         action,
         status: action === 'status' ? bulkStatus : undefined,
       });
-      showToast(isDelete ? 'Đã xoá các đơn đã chọn' : 'Đã cập nhật các đơn đã chọn', 'success');
+      showToast(isDelete ? 'Đã xóa các đơn đã chọn' : 'Đã cập nhật các đơn đã chọn', 'success');
       setSelectedIds([]);
       await loadOrders();
     } catch (error) {
@@ -403,6 +400,26 @@ const Orders = () => {
     setPagination((prev) => ({ ...prev, page: Math.min(totalPages, Math.max(1, page)) }));
   };
 
+  const renderStatusSelect = (order, className) => {
+    const actions = getAvailableActions(order.status);
+    return (
+      <select
+        value=""
+        disabled={actions.length === 0 || submitting}
+        onChange={(event) => {
+          const nextStatus = event.target.value;
+          if (nextStatus) updateOrderStatus(order.id, nextStatus);
+        }}
+        className={className}
+      >
+        <option value="">{actions.length ? 'Chuyển trạng thái' : orderStatusLabel(order.status)}</option>
+        {actions.map((action) => (
+          <option key={action.key} value={action.localStatus}>{action.label}</option>
+        ))}
+      </select>
+    );
+  };
+
   return (
     <div className="space-y-5">
       <section className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-900">
@@ -414,7 +431,7 @@ const Orders = () => {
             </div>
             <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">Quản lý đơn hàng</h1>
             <p className="mt-1 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
-              Tổng {headerTotalText} đơn. Theo dõi khách hàng, sản phẩm, thanh toán và trạng thái giao hàng trong một màn.
+              Tổng {headerTotalText} đơn. Luồng xử lý chỉ gồm Mới, Đã xử lý và Hủy đơn.
             </p>
           </div>
 
@@ -532,89 +549,73 @@ const Orders = () => {
                   {loading ? (
                     <LoadingRows />
                   ) : (
-                    orders.map((order) => {
-                      const actions = getAvailableActions(order.status);
-                      return (
-                        <tr key={order.id} className="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                          <td className="px-5 py-4 align-middle">
-                            <input
-                              type="checkbox"
-                              checked={selectedIds.includes(order.id)}
-                              onChange={(event) => toggleSelect(order.id, event.target.checked)}
-                              className="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
-                            />
-                          </td>
-                          <td className="px-5 py-4 align-middle">
-                            <button type="button" onClick={() => openDetail(order)} className="text-left">
-                              <div className="font-black text-slate-950 hover:text-rose-700 dark:text-white">#{getOrderCode(order)}</div>
-                              <div className="mt-1 inline-flex items-center gap-1.5 text-xs font-bold text-slate-500">
-                                <CalendarClock size={13} />
-                                {formatDateTime(order.created_at)}
-                              </div>
+                    orders.map((order) => (
+                      <tr key={order.id} className="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                        <td className="px-5 py-4 align-middle">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(order.id)}
+                            onChange={(event) => toggleSelect(order.id, event.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                          />
+                        </td>
+                        <td className="px-5 py-4 align-middle">
+                          <button type="button" onClick={() => openDetail(order)} className="text-left">
+                            <div className="font-black text-slate-950 hover:text-rose-700 dark:text-white">#{getOrderCode(order)}</div>
+                            <div className="mt-1 inline-flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                              <CalendarClock size={13} />
+                              {formatDateTime(order.created_at)}
+                            </div>
+                          </button>
+                        </td>
+                        <td className="px-5 py-4 align-middle">
+                          <div className="max-w-[15rem]">
+                            <div className="truncate font-black text-slate-900 dark:text-white">{order.receiver_name || 'Khách lẻ'}</div>
+                            <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                              <Phone size={13} />
+                              {order.receiver_phone || 'Chưa có SĐT'}
+                            </div>
+                            <div className="mt-1 truncate text-xs font-medium text-slate-500">{order.receiver_address || 'Chưa có địa chỉ'}</div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 align-middle">
+                          <div className="max-w-[14rem]">
+                            <div className="line-clamp-2 text-sm font-black text-slate-900 dark:text-white">{order.first_product_name || 'Sản phẩm trong đơn'}</div>
+                            <div className="mt-1 text-xs font-bold text-slate-500">{Number(order.item_count || 0)} mặt hàng</div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 align-middle">
+                          <div className="font-black text-rose-600">{formatVnd(order.total_amount)}</div>
+                          <div className="mt-1 text-xs font-bold text-slate-500">{paymentMeta[order.payment_status] || 'Chưa rõ thanh toán'}</div>
+                        </td>
+                        <td className="px-5 py-4 align-middle">
+                          <div className="space-y-2">
+                            <OrderStatusBadge status={order.status} />
+                            {renderStatusSelect(order, 'block h-9 w-36 rounded-xl border border-slate-200 bg-white px-2 text-xs font-black text-slate-700 outline-none disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200')}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 align-middle">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openDetail(order)}
+                              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-black text-slate-700 transition hover:border-rose-200 hover:text-rose-700 dark:border-slate-700 dark:text-slate-200"
+                            >
+                              <Eye size={16} />
+                              Chi tiết
                             </button>
-                          </td>
-                          <td className="px-5 py-4 align-middle">
-                            <div className="max-w-[15rem]">
-                              <div className="truncate font-black text-slate-900 dark:text-white">{order.receiver_name || 'Khách lẻ'}</div>
-                              <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-500">
-                                <Phone size={13} />
-                                {order.receiver_phone || 'Chưa có SĐT'}
-                              </div>
-                              <div className="mt-1 truncate text-xs font-medium text-slate-500">{order.receiver_address || 'Chưa có địa chỉ'}</div>
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 align-middle">
-                            <div className="max-w-[14rem]">
-                              <div className="line-clamp-2 text-sm font-black text-slate-900 dark:text-white">{order.first_product_name || 'Sản phẩm trong đơn'}</div>
-                              <div className="mt-1 text-xs font-bold text-slate-500">{Number(order.item_count || 0)} mặt hàng</div>
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 align-middle">
-                            <div className="font-black text-rose-600">{formatVnd(order.total_amount)}</div>
-                            <div className="mt-1 text-xs font-bold text-slate-500">{paymentMeta[order.payment_status] || 'Chưa rõ thanh toán'}</div>
-                          </td>
-                          <td className="px-5 py-4 align-middle">
-                            <div className="space-y-2">
-                              <OrderStatusBadge status={order.status} />
-                              <select
-                                value=""
-                                disabled={actions.length === 0 || submitting}
-                                onChange={(event) => {
-                                  const nextStatus = event.target.value;
-                                  if (nextStatus) updateOrderStatus(order.id, nextStatus);
-                                }}
-                                className="block h-9 w-36 rounded-xl border border-slate-200 bg-white px-2 text-xs font-black text-slate-700 outline-none disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-                              >
-                                <option value="">Chuyển trạng thái</option>
-                                {actions.map((action) => (
-                                  <option key={action.key} value={action.localStatus}>{action.label}</option>
-                                ))}
-                              </select>
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 align-middle">
-                            <div className="flex justify-end gap-2">
-                              <button
-                                type="button"
-                                onClick={() => openDetail(order)}
-                                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-black text-slate-700 transition hover:border-rose-200 hover:text-rose-700 dark:border-slate-700 dark:text-slate-200"
-                              >
-                                <Eye size={16} />
-                                Chi tiết
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => softDeleteOrder(order)}
-                                className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-rose-600 text-white transition hover:bg-rose-700"
-                                aria-label="Xoá đơn hàng"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
+                            <button
+                              type="button"
+                              onClick={() => softDeleteOrder(order)}
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-rose-600 text-white transition hover:bg-rose-700"
+                              aria-label="Xóa đơn hàng"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
@@ -628,7 +629,6 @@ const Orders = () => {
               ))
               : orders.map((order) => {
                 const meta = getStatusMeta(order.status);
-                const actions = getAvailableActions(order.status);
                 return (
                   <article key={order.id} className="rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                     <div className="flex items-start justify-between gap-3">
@@ -641,22 +641,19 @@ const Orders = () => {
                         />
                       </label>
                       <button type="button" onClick={() => openDetail(order)} className="min-w-0 flex-1 text-left">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-black text-slate-950 dark:text-white">#{getOrderCode(order)}</span>
-                          <OrderStatusBadge status={order.status} />
+                        <div className="font-black text-slate-950 dark:text-white">#{getOrderCode(order)}</div>
+                        <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                          <CalendarClock size={13} />
+                          {formatDateTime(order.created_at)}
                         </div>
-                        <div className="mt-1 text-xs font-bold text-slate-500">{formatDateTime(order.created_at)}</div>
                       </button>
-                      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${meta.card}`}>
-                        <meta.icon size={20} />
-                      </div>
+                      <span className={`shrink-0 rounded-2xl px-3 py-2 text-xs font-black ${meta.card}`}>{meta.label}</span>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                      <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-950/60">
-                        <div className="text-[11px] font-black uppercase tracking-wide text-slate-400">Khách hàng</div>
-                        <div className="mt-1 truncate text-sm font-black text-slate-900 dark:text-white">{order.receiver_name || 'Khách lẻ'}</div>
-                        <div className="mt-1 truncate text-xs font-bold text-slate-500">{order.receiver_phone || 'Chưa có SĐT'}</div>
+                    <div className="mt-4 grid grid-cols-[1fr_auto] gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate font-black text-slate-900 dark:text-white">{order.receiver_name || 'Khách lẻ'}</div>
+                        <div className="mt-1 text-xs font-bold text-slate-500">{order.receiver_phone || 'Chưa có SĐT'}</div>
                       </div>
                       <div className="rounded-2xl bg-rose-50 p-3 text-rose-700 dark:bg-rose-500/10 dark:text-rose-200">
                         <div className="text-[11px] font-black uppercase tracking-wide opacity-70">Tổng tiền</div>
@@ -672,24 +669,11 @@ const Orders = () => {
                     </div>
 
                     <div className="mt-3 grid grid-cols-[1fr_auto_auto] gap-2">
-                      <select
-                        value=""
-                        disabled={actions.length === 0 || submitting}
-                        onChange={(event) => {
-                          const nextStatus = event.target.value;
-                          if (nextStatus) updateOrderStatus(order.id, nextStatus);
-                        }}
-                        className="h-11 min-w-0 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 outline-none disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-                      >
-                        <option value="">{actions.length ? 'Chuyển trạng thái' : orderStatusLabel(order.status)}</option>
-                        {actions.map((action) => (
-                          <option key={action.key} value={action.localStatus}>{action.label}</option>
-                        ))}
-                      </select>
+                      {renderStatusSelect(order, 'h-11 min-w-0 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 outline-none disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200')}
                       <button type="button" onClick={() => openDetail(order)} className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-200" aria-label="Chi tiết đơn hàng">
                         <Eye size={18} />
                       </button>
-                      <button type="button" onClick={() => softDeleteOrder(order)} className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-600 text-white" aria-label="Xoá đơn hàng">
+                      <button type="button" onClick={() => softDeleteOrder(order)} className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-600 text-white" aria-label="Xóa đơn hàng">
                         <Trash2 size={18} />
                       </button>
                     </div>
@@ -705,20 +689,8 @@ const Orders = () => {
               Hiển thị <span className="font-black text-slate-900 dark:text-white">{orders.length}</span> / {headerTotalText} đơn hàng
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => goToPage(1)}
-                disabled={pagination.page <= 1}
-                className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
-              >
-                &laquo;
-              </button>
-              <button
-                type="button"
-                onClick={() => goToPage(Number(pagination.page || 1) - 1)}
-                disabled={pagination.page <= 1}
-                className="inline-flex h-10 items-center rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
-              >
+              <button type="button" onClick={() => goToPage(1)} disabled={pagination.page <= 1} className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200">&laquo;</button>
+              <button type="button" onClick={() => goToPage(Number(pagination.page || 1) - 1)} disabled={pagination.page <= 1} className="inline-flex h-10 items-center rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200">
                 <ChevronLeft size={16} />
               </button>
               {visiblePages.map((pageNumber) => (
@@ -736,22 +708,10 @@ const Orders = () => {
                   {pageNumber}
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={() => goToPage(Number(pagination.page || 1) + 1)}
-                disabled={pagination.page >= totalPages}
-                className="inline-flex h-10 items-center rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
-              >
+              <button type="button" onClick={() => goToPage(Number(pagination.page || 1) + 1)} disabled={pagination.page >= totalPages} className="inline-flex h-10 items-center rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200">
                 <ChevronRight size={16} />
               </button>
-              <button
-                type="button"
-                onClick={() => goToPage(totalPages)}
-                disabled={pagination.page >= totalPages}
-                className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
-              >
-                &raquo;
-              </button>
+              <button type="button" onClick={() => goToPage(totalPages)} disabled={pagination.page >= totalPages} className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200">&raquo;</button>
             </div>
           </div>
         </div>
@@ -762,30 +722,16 @@ const Orders = () => {
           <div className="mx-auto flex max-w-7xl flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
             <div className="text-sm font-black text-slate-950 dark:text-white">Đã chọn {selectedIds.length} đơn hàng</div>
             <div className="flex flex-wrap gap-2">
-              <select
-                value={bulkStatus}
-                onChange={(event) => setBulkStatus(event.target.value)}
-                className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-              >
+              <select value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
                 {Object.values(statusActionCatalog).map((action) => (
                   <option key={action.key} value={action.localStatus}>{action.label}</option>
                 ))}
               </select>
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={() => runBulkAction('status')}
-                className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-black text-slate-800 disabled:opacity-50 dark:border-slate-700 dark:text-slate-100"
-              >
+              <button type="button" disabled={submitting} onClick={() => runBulkAction('status')} className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-black text-slate-800 disabled:opacity-50 dark:border-slate-700 dark:text-slate-100">
                 Đổi trạng thái
               </button>
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={() => runBulkAction('soft_delete')}
-                className="h-10 rounded-xl bg-rose-600 px-4 text-sm font-black text-white hover:bg-rose-700 disabled:opacity-50"
-              >
-                Xoá đơn
+              <button type="button" disabled={submitting} onClick={() => runBulkAction('soft_delete')} className="h-10 rounded-xl bg-rose-600 px-4 text-sm font-black text-white hover:bg-rose-700 disabled:opacity-50">
+                Xóa đơn
               </button>
             </div>
           </div>
@@ -803,12 +749,7 @@ const Orders = () => {
                 </div>
                 <div className="mt-1 text-sm font-bold text-slate-500">{formatDateTime(detailOrder.created_at)}</div>
               </div>
-              <button
-                type="button"
-                onClick={closeDetail}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-200"
-                aria-label="Đóng chi tiết đơn hàng"
-              >
+              <button type="button" onClick={closeDetail} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-200" aria-label="Đóng chi tiết đơn hàng">
                 <X size={18} />
               </button>
             </div>
@@ -878,7 +819,7 @@ const Orders = () => {
                   <div className="space-y-4">
                     <section className="rounded-[1.4rem] border border-slate-200 p-4 dark:border-slate-800">
                       <div className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-slate-500">
-                        <Truck size={17} />
+                        <ClipboardList size={17} />
                         Xử lý đơn
                       </div>
                       <div className="mt-4 space-y-3">
@@ -886,7 +827,7 @@ const Orders = () => {
                           <span className="text-xs font-black uppercase tracking-wide text-slate-400">Trạng thái hiện tại</span>
                           <select
                             value={detailStatus}
-                            disabled={submitting || detailOrder.status === 'cancelled'}
+                            disabled={submitting || detailOrder.status === ORDER_STATUS_CANCELLED}
                             onChange={(event) => setDetailStatus(event.target.value)}
                             className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-900 outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
                           >

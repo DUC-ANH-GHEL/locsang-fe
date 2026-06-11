@@ -25,9 +25,9 @@ export const revenueData = [
 
   export const recentOrders = [
     { id: 'DH-2045', customer: 'Nguyễn Văn A', mainProduct: 'Ty giữa 28', total: 1250000, status: 'processing' },
-    { id: 'DH-2044', customer: 'Trần Thị B', mainProduct: 'Keo dán sắt', total: 880000, status: 'completed' },
+    { id: 'DH-2044', customer: 'Trần Thị B', mainProduct: 'Keo dán sắt', total: 880000, status: 'processing' },
     { id: 'DH-2043', customer: 'Phan Văn C', mainProduct: 'Bóng đèn LED', total: 650000, status: 'cancelled' },
-    { id: 'DH-2042', customer: 'Lê Xuân D', mainProduct: 'Ống nhựa PVC', total: 1380000, status: 'completed' },
+    { id: 'DH-2042', customer: 'Lê Xuân D', mainProduct: 'Ống nhựa PVC', total: 1380000, status: 'processing' },
     { id: 'DH-2041', customer: 'Vũ Thị E', mainProduct: 'Ty giữa 28', total: 1250000, status: 'processing' },
   ];
 

@@ -96,25 +96,27 @@ const formatDate = (value) => {
   return formatViDateTime(value, { dateStyle: 'medium', timeStyle: 'short' }) || '-';
 };
 
-const statusLabel = (status) => {
+const normalizeOrderStatus = (status) => {
   const normalized = String(status || '').toLowerCase();
-  if (normalized === 'pending') return 'Chờ xử lý';
-  if (normalized === 'processing') return 'Đang xử lý';
-  if (normalized === 'shipped') return 'Đang giao';
-  if (normalized === 'delivered') return 'Đã giao';
-  if (normalized === 'cancelled') return 'Đã hủy';
-  return normalized || '-';
+  if (normalized === 'processing') return 'processing';
+  if (normalized === 'cancelled') return 'cancelled';
+  return 'pending';
+};
+
+const statusLabel = (status) => {
+  const normalized = normalizeOrderStatus(status);
+  if (normalized === 'pending') return 'Mới';
+  if (normalized === 'processing') return 'Đã xử lý';
+  if (normalized === 'cancelled') return 'Hủy đơn';
+  return '-';
 };
 
 const statusClass = (status) => {
-  const normalized = String(status || '').toLowerCase();
-  if (normalized === 'delivered') return 'bg-emerald-100 text-emerald-700';
+  const normalized = normalizeOrderStatus(status);
+  if (normalized === 'processing') return 'bg-emerald-100 text-emerald-700';
   if (normalized === 'cancelled') return 'bg-red-100 text-red-700';
-  if (normalized === 'shipped') return 'bg-blue-100 text-blue-700';
-  if (normalized === 'processing') return 'bg-amber-100 text-amber-700';
-  return 'bg-gray-100 text-gray-700';
+  return 'bg-amber-100 text-amber-700';
 };
-
 const paymentMethodLabel = (value) => {
   const normalized = String(value || '').toLowerCase();
   if (normalized === 'cod') return 'Thanh toán khi nhận hàng';
@@ -156,8 +158,7 @@ const AccountOrders = () => {
 
   const canCancelOrder = (status) => {
     if (cancelPermissionDenied) return false;
-    const normalized = String(status || '').toLowerCase();
-    return normalized === 'pending' || normalized === 'processing';
+    return normalizeOrderStatus(status) === 'pending';
   };
 
   const loadOrders = useCallback(async (silent = false) => {
