@@ -3,7 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <script>
+      (function () {
+        var manifest = document.createElement('link');
+        manifest.rel = 'manifest';
+        manifest.href = window.location.pathname.indexOf('/admin') === 0
+          ? '/admin-manifest.webmanifest'
+          : '/manifest.webmanifest';
+        document.head.appendChild(manifest);
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Lộc Sang - phụ tùng và nhớt chính hãng Yanmar." />
     <meta name="language" content="vi" />

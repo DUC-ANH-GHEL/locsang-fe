@@ -1,0 +1,33 @@
+{
+  "name": "Lộc Sang Admin",
+  "short_name": "LS Admin",
+  "description": "Quản lý sản phẩm, đơn hàng và nội dung Lộc Sang.",
+  "start_url": "/admin",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#d90616",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Đơn hàng",
+      "short_name": "Đơn hàng",
+      "url": "/admin/orders",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Sản phẩm",
+      "short_name": "Sản phẩm",
+      "url": "/admin/products",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}

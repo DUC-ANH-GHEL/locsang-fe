@@ -1,5 +1,6 @@
 ﻿import { Suspense, lazy } from 'react'
-import { Routes, Route, Navigate  } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation  } from 'react-router-dom'
+import { useEffect } from 'react'
 // import jwt_decode from 'jwt-decode';
 
 import ClientLayout from './layouts/ClientLayout'
@@ -35,11 +36,35 @@ const EditCategory = lazy(() => import('./pages/admin/Category/EditCategory'));
 const Settings = lazy(() => import('./pages/admin/Settings'));
 const AdminAccounts = lazy(() => import('./pages/admin/Accounts'));
 
+const STOREFRONT_MANIFEST = '/manifest.webmanifest';
+const ADMIN_MANIFEST = '/admin-manifest.webmanifest';
 
+function PwaManifestRouteSync() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    const isAdminRoute = pathname.startsWith('/admin');
+    const manifestHref = isAdminRoute ? ADMIN_MANIFEST : STOREFRONT_MANIFEST;
+    const appTitle = isAdminRoute ? 'Lộc Sang Admin' : 'Lộc Sang';
+
+    let manifestLink = document.querySelector('link[rel="manifest"]');
+    if (!manifestLink) {
+      manifestLink = document.createElement('link');
+      manifestLink.setAttribute('rel', 'manifest');
+      document.head.appendChild(manifestLink);
+    }
+
+    manifestLink.setAttribute('href', manifestHref);
+    document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute('content', appTitle);
+  }, [pathname]);
+
+  return null;
+}
 
 function App() {
   return (
     <CartProvider>
+      <PwaManifestRouteSync />
       <ScrollToTop />
       <Suspense
         fallback={(
