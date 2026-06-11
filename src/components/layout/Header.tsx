@@ -24,14 +24,13 @@ const getCurrentTitle = (pathname: string) => {
   return match?.name || 'Admin';
 };
 
-const formatNotificationTime = (value?: string | null) => {
-  return formatViDateTime(value, {
+const formatNotificationTime = (value?: string | null) =>
+  formatViDateTime(value, {
     hour: '2-digit',
     minute: '2-digit',
     day: '2-digit',
     month: '2-digit',
   });
-};
 
 const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: HeaderProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -149,8 +148,8 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
             </button>
 
             {notificationOpen && (
-              <div className="fixed left-3 right-3 top-[4.95rem] z-50 max-h-[calc(100dvh-6rem)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 dark:border-slate-800 dark:bg-slate-900 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-3 sm:w-[22rem] sm:max-h-none">
-                <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800">
+              <div className="fixed left-3 right-3 top-[4.95rem] z-50 flex max-h-[min(31rem,calc(100dvh-10.8rem))] min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 dark:border-slate-800 dark:bg-slate-900 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-3 sm:w-[22rem] sm:max-h-[32rem]">
+                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800">
                   <div>
                     <div className="text-sm font-black text-slate-950 dark:text-white">Thông báo</div>
                     <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{unreadCount} thông báo chưa đọc</div>
@@ -168,7 +167,7 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
                   </button>
                 </div>
 
-                <div className="max-h-[calc(100dvh-14rem)] overflow-y-auto p-2 sm:max-h-[26rem]">
+                <div className="min-h-0 flex-1 overscroll-contain overflow-y-auto p-2">
                   {notificationsLoading && notifications.length === 0 ? (
                     <div className="space-y-2 p-2">
                       {[0, 1, 2].map((item) => (
@@ -193,7 +192,7 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
                           <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${unread ? 'bg-rose-600' : 'bg-slate-300 dark:bg-slate-700'}`} />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-black text-slate-950 dark:text-white">{notification.title}</span>
-                            <span className="mt-1 line-clamp-3 block text-xs font-semibold leading-5 text-slate-600 dark:text-slate-300">{notification.body}</span>
+                            <span className="mt-1 line-clamp-2 block text-xs font-semibold leading-5 text-slate-600 dark:text-slate-300">{notification.body}</span>
                             <span className="mt-2 block text-[11px] font-bold text-slate-400">{formatNotificationTime(notification.created_at)}</span>
                           </span>
                         </button>
@@ -203,7 +202,7 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
                 </div>
 
                 {notifications.length > 0 && (
-                  <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+                  <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 dark:border-slate-800">
                     <button type="button" onClick={markAllRead} className="min-w-0 text-left text-xs font-black text-slate-500 hover:text-rose-600 dark:text-slate-400">
                       Đánh dấu đã đọc
                     </button>

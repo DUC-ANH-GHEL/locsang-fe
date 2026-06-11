@@ -12,7 +12,5 @@ export const adminNavItems = [
 
 export const adminBottomNavItems = [
   adminNavItems[0],
-  adminNavItems[1],
   adminNavItems[4],
-  adminNavItems[3],
 ];

@@ -1,8 +1,8 @@
 {
-  "name": "Lộc Sang Admin",
+  "name": "Lộc Sang",
   "short_name": "Lộc Sang",
-  "description": "Quản lý sản phẩm và đơn hàng Lộc Sang.",
-  "start_url": "/admin",
+  "description": "Phụ tùng và nhớt Yanmar chính hãng tại Lộc Sang.",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -18,9 +18,15 @@
   ],
   "shortcuts": [
     {
-      "name": "Đơn hàng",
-      "short_name": "Đơn hàng",
-      "url": "/admin/orders",
+      "name": "Sản phẩm",
+      "short_name": "Sản phẩm",
+      "url": "/products",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Giỏ hàng",
+      "short_name": "Giỏ hàng",
+      "url": "/checkout",
       "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
   ]

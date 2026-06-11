@@ -87,7 +87,7 @@ const AdminDrawer = ({ open, onClose }) => {
 
 const AdminBottomNav = () => (
   <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.45rem)] pt-2 shadow-[0_-16px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/92 lg:hidden">
-    <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
+    <div className="mx-auto grid max-w-xs grid-cols-2 gap-2">
       {adminBottomNavItems.map((item) => {
         const Icon = item.icon;
         return (
