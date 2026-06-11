@@ -219,11 +219,11 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-white pb-[calc(env(safe-area-inset-bottom,0px)+5.8rem)] text-[#101010] md:bg-[#f5f5f5] md:pb-16">
       <div className="mx-auto w-full max-w-[944px] bg-white font-sans md:shadow-2xl md:shadow-black/10">
-        <section className="overflow-hidden border-b border-[#e4e4e4] bg-[#d70918]">
+        <section className="overflow-hidden border-b border-[#e4e4e4] bg-white">
           <img
             src={heroImage}
             alt={heroAlt}
-            className="block aspect-[944/317] w-full object-cover"
+            className="block aspect-[944/317] w-full object-contain"
           />
         </section>
 

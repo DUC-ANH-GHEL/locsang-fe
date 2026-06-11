@@ -197,8 +197,8 @@ const HomeContentEditor = () => {
               )}
             </Field>
 
-            <p className="rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-500 dark:bg-gray-950 dark:text-gray-400">
-              Khuyến nghị dùng ảnh ngang tỉ lệ 944:317 để banner hiển thị sát mock trên mobile.
+            <p className="rounded-xl bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-600 dark:bg-gray-950 dark:text-gray-300">
+              Nên dùng ảnh ngang, rộng gấp khoảng 3 lần chiều cao. Ảnh sẽ tự co hoặc phóng vừa khung trang chủ và luôn hiển thị đầy đủ, không bị cắt mất nội dung.
             </p>
           </div>
         </section>
@@ -206,13 +206,13 @@ const HomeContentEditor = () => {
         <aside className="space-y-4">
           <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-800 dark:text-gray-100">
-              Preview
+              Xem trước trên trang chủ
             </div>
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-[#d70918] dark:border-gray-800">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
               <img
                 src={previewImage}
-                alt="Banner Lộc Sang"
-                className="block aspect-[944/317] w-full object-cover"
+                alt="Banner trang chủ Lộc Sang"
+                className="block aspect-[944/317] w-full object-contain"
               />
             </div>
           </section>
@@ -222,11 +222,10 @@ const HomeContentEditor = () => {
             <div className="mt-2">
               {publishedAt ? `Đã xuất bản: ${formatViDateTime(publishedAt)}` : 'Chưa có thời điểm xuất bản.'}
             </div>
-            <div className="mt-3 rounded-xl bg-gray-50 p-3 dark:bg-gray-950">
-              Ảnh public hiện tại:{' '}
-              <span className="break-all font-semibold text-gray-900 dark:text-gray-100">
-                {published?.hero_image_url || fallbackBanner}
-              </span>
+            <div className="mt-3 rounded-xl bg-gray-50 p-3 leading-6 dark:bg-gray-950">
+              {published?.hero_image_url
+                ? 'Trang chủ đang hiển thị banner đã xuất bản gần nhất.'
+                : 'Chưa có banner đã xuất bản, trang chủ sẽ dùng ảnh mặc định.'}
             </div>
           </section>
         </aside>
