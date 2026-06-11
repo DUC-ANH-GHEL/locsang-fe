@@ -18,7 +18,14 @@ import { HomeContentPayload, homeContentService } from '../../services/homeConte
 import { getProductPricing } from '../../utils/productPricing';
 import { useSEO } from '../../hooks/useSEO';
 import { useCart } from '../../contexts/CartContext';
-import { HERO_IMAGE, PRODUCT_PLACEHOLDER } from '../../data/yanmarStorefront';
+import {
+  HERO_IMAGE,
+  PRODUCT_PLACEHOLDER,
+  canPurchaseProduct,
+  getDefaultCartVariant,
+  getStockLabel,
+  toCartPayload,
+} from '../../data/yanmarStorefront';
 
 type HomeProduct = {
   id: string;
@@ -29,6 +36,8 @@ type HomeProduct = {
   originalPrice?: number | null;
   image: string;
   discountLabel?: string;
+  canPurchase: boolean;
+  stockLabel: string;
   raw?: Product;
 };
 
@@ -71,6 +80,8 @@ const toHomeProduct = (product: Product): HomeProduct => {
     price: pricing.currentPrice || Number(product.price || 0),
     originalPrice,
     discountLabel: discount,
+    canPurchase: canPurchaseProduct(product),
+    stockLabel: getStockLabel(product),
     image,
     raw: product,
   };
@@ -156,7 +167,7 @@ const Home = () => {
     };
   }, []);
 
-  const apiProducts = useMemo(() => products.map(toHomeProduct), [products]);
+  const apiProducts = useMemo(() => products.map(toHomeProduct).filter((product) => product.canPurchase), [products]);
 
   const bestProducts = useMemo(
     () => apiProducts.slice(0, 3),
@@ -189,17 +200,12 @@ const Home = () => {
       .trim() || 'Phụ tùng và nhớt chính hãng Yanmar';
 
   const addProductToCart = (product: HomeProduct) => {
-    addToCart({
-      product_id: product.raw?.id,
-      sku: product.raw?.sku || product.code,
-      title: product.name,
-      image: product.image,
-      price: product.price,
-      variant_label: product.code,
-    });
+    if (!product.raw || !product.canPurchase) return;
+    addToCart(toCartPayload(product.raw, 1, getDefaultCartVariant(product.raw)));
   };
 
   const buyNow = (product: HomeProduct) => {
+    if (!product.canPurchase) return;
     addProductToCart(product);
     navigate('/checkout');
   };
@@ -355,20 +361,33 @@ const ProductCard = ({ product, onAdd, onBuy }: ProductCardProps) => (
             {formatVnd(product.originalPrice)}
           </div>
         )}
+        <div className={`mt-1 inline-flex rounded px-1.5 py-0.5 text-[0.62rem] font-black ${
+          product.canPurchase ? 'bg-[#e7f8ee] text-[#087a42]' : 'bg-[#fff1f2] text-[#c60010]'
+        }`}>
+          {product.stockLabel}
+        </div>
       </div>
     </div>
 
     <button
       type="button"
       onClick={() => onBuy(product)}
-      className="mt-2 h-8 rounded-md bg-[#e30613] text-[0.98rem] font-black text-white shadow-[0_2px_0_rgba(120,0,8,0.15)] active:translate-y-px max-[390px]:h-7 max-[390px]:text-[0.8rem]"
+      disabled={!product.canPurchase}
+      className={`mt-2 h-8 rounded-md text-[0.98rem] font-black shadow-[0_2px_0_rgba(120,0,8,0.15)] active:translate-y-px max-[390px]:h-7 max-[390px]:text-[0.8rem] ${
+        product.canPurchase ? 'bg-[#e30613] text-white' : 'cursor-not-allowed bg-[#e5e7eb] text-[#8a8f98]'
+      }`}
     >
-      Mua ngay
+      {product.canPurchase ? 'Mua ngay' : 'Tạm hết hàng'}
     </button>
     <button
       type="button"
       onClick={() => onAdd(product)}
-      className="mt-1.5 flex h-7 items-center justify-center rounded-md border border-[#e30613] bg-white px-1 text-[0.78rem] font-medium leading-none text-[#e30613] active:bg-[#fff1f2] max-[390px]:h-6 max-[390px]:text-[0.65rem]"
+      disabled={!product.canPurchase}
+      className={`mt-1.5 flex h-7 items-center justify-center rounded-md border bg-white px-1 text-[0.78rem] font-medium leading-none active:bg-[#fff1f2] max-[390px]:h-6 max-[390px]:text-[0.65rem] ${
+        product.canPurchase
+          ? 'border-[#e30613] text-[#e30613]'
+          : 'cursor-not-allowed border-[#d1d5db] text-[#9ca3af]'
+      }`}
     >
       <span className="whitespace-nowrap">Thêm vào giỏ</span>
     </button>

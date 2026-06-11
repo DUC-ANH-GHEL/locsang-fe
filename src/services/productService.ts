@@ -861,6 +861,13 @@ const normalizePublicProduct = (raw: any): Product => {
     sku: String(raw?.sku ?? `SKU-${raw?.id ?? 'N/A'}`),
     affiliate: toNumberOrUndefined(raw?.affiliate) ?? null,
     stock: Number(raw?.stock ?? 0),
+    allow_backorder: Boolean(raw?.allowBackorder ?? raw?.allow_backorder ?? false),
+    can_purchase: Boolean(
+      raw?.canPurchase ??
+        raw?.can_purchase ??
+        (Number(raw?.stock ?? 0) > 0 || Boolean(raw?.allowBackorder ?? raw?.allow_backorder ?? false)),
+    ),
+    stock_status: String(raw?.stockStatus ?? raw?.stock_status ?? ''),
     status,
     is_active: status === 'active',
     created_at: toDate(raw?.createdAt ?? raw?.created_at),
@@ -894,6 +901,13 @@ const normalizePublicProduct = (raw: any): Product => {
           stock: Number(v?.stock ?? 0),
           manage_stock: Boolean(v?.manageStock ?? v?.manage_stock ?? true),
           allow_backorder: Boolean(v?.allowBackorder ?? v?.allow_backorder ?? false),
+          can_purchase: Boolean(
+            v?.canPurchase ??
+              v?.can_purchase ??
+              (!Boolean(v?.manageStock ?? v?.manage_stock ?? true) ||
+                Number(v?.stock ?? 0) > 0 ||
+                Boolean(v?.allowBackorder ?? v?.allow_backorder ?? false)),
+          ),
           status: v?.status ?? 'active',
           is_active: Boolean(v?.isActive ?? v?.is_active ?? true),
           image: v?.imageUrl ?? v?.image_url ?? null,

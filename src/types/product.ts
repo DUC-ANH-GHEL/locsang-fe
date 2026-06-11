@@ -22,6 +22,7 @@ export type ProductVariant = {
   stock: number;
   manage_stock?: boolean;
   allow_backorder?: boolean;
+  can_purchase?: boolean;
   status?: ProductStatus;
   is_active?: boolean;
   image?: string | null;
@@ -124,6 +125,8 @@ export interface Product {
   cost_price?: number | null;
   manage_stock?: boolean;
   allow_backorder?: boolean;
+  can_purchase?: boolean;
+  stock_status?: 'in_stock' | 'backorder' | 'out' | string;
   options?: ProductOption[];
   variants?: ProductVariant[];
   reviews?: ProductReview[];

@@ -10,9 +10,11 @@ import { getProductPricing } from '../../utils/productPricing';
 import { useSEO } from '../../hooks/useSEO';
 import {
   formatVnd,
+  canPurchaseProduct,
   getDiscountLabel,
   getDisplayDescription,
   getProductImage,
+  getStockLabel,
   toCartPayload,
 } from '../../data/yanmarStorefront';
 
@@ -146,6 +148,7 @@ const ProductList = () => {
 
   const visibleProducts = useMemo(() => {
     let next = products.filter((product) => {
+      if (!canPurchaseProduct(product)) return false;
       if (!selectedCategoryName) return true;
       const categoryToken = normalizeText(selectedCategoryName);
       const haystack = normalizeText(`${product?.category_name || ''} ${product?.name || ''} ${product?.description || ''}`);
@@ -169,10 +172,12 @@ const ProductList = () => {
   }, [selectedCategoryName, showDiscountOnly, sortBy, products]);
 
   const addProduct = (product) => {
+    if (!canPurchaseProduct(product)) return;
     addToCart(toCartPayload(product, 1));
   };
 
   const buyNow = (product) => {
+    if (!canPurchaseProduct(product)) return;
     addProduct(product);
     navigate('/checkout');
   };
@@ -288,6 +293,8 @@ const ProductSkeleton = () => (
 const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
   const pricing = getProductPricing(product);
   const discountLabel = getDiscountLabel(product) || (pricing.hasDiscount ? '-15%' : '');
+  const canPurchase = canPurchaseProduct(product);
+  const stockLabel = getStockLabel(product);
 
   return (
     <article className="relative overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-2 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
@@ -317,20 +324,33 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
               {formatVnd(pricing.originalPrice)}
             </div>
           )}
+          <div className={`mt-2 inline-flex rounded-md px-2 py-1 text-[0.72rem] font-black ${
+            canPurchase ? 'bg-[#e7f8ee] text-[#087a42]' : 'bg-[#fff1f2] text-[#c60010]'
+          }`}>
+            {stockLabel}
+          </div>
         </div>
       </button>
 
       <button
         type="button"
         onClick={onBuy}
-        className="mt-2 h-10 w-full rounded-md bg-[#e30613] text-[1.05rem] font-black text-white active:translate-y-px max-[390px]:h-9 max-[390px]:text-[0.9rem]"
+        disabled={!canPurchase}
+        className={`mt-2 h-10 w-full rounded-md text-[1.05rem] font-black active:translate-y-px max-[390px]:h-9 max-[390px]:text-[0.9rem] ${
+          canPurchase ? 'bg-[#e30613] text-white' : 'cursor-not-allowed bg-[#e5e7eb] text-[#8a8f98]'
+        }`}
       >
-        Mua ngay
+        {canPurchase ? 'Mua ngay' : 'Tạm hết hàng'}
       </button>
       <button
         type="button"
         onClick={onAdd}
-        className="mt-1.5 flex h-9 w-full items-center justify-center gap-2 rounded-md border border-[#e30613] bg-white text-[0.98rem] font-bold text-[#e30613] active:bg-[#fff1f2] max-[390px]:text-[0.82rem]"
+        disabled={!canPurchase}
+        className={`mt-1.5 flex h-9 w-full items-center justify-center gap-2 rounded-md border text-[0.98rem] font-bold active:bg-[#fff1f2] max-[390px]:text-[0.82rem] ${
+          canPurchase
+            ? 'border-[#e30613] bg-white text-[#e30613]'
+            : 'cursor-not-allowed border-[#d1d5db] bg-white text-[#9ca3af]'
+        }`}
       >
         <ShoppingCart size={20} />
         Thêm vào giỏ

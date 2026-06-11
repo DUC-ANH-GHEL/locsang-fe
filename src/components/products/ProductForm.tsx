@@ -384,11 +384,11 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       Boolean(draft.categoryId),
       Boolean(imageItems.length),
       toNumber(draft.price) > 0,
-      Number.isInteger(toNumber(draft.stock)) && toNumber(draft.stock) >= 0,
+      Number.isInteger(toNumber(draft.stock)) && (toNumber(draft.stock) >= 0 || draft.allowBackorder),
     ];
     const done = checks.filter(Boolean).length;
     return Math.round((done / checks.length) * 100);
-  }, [draft.categoryId, draft.name, draft.price, draft.sku, draft.stock, imageItems.length]);
+  }, [draft.allowBackorder, draft.categoryId, draft.name, draft.price, draft.sku, draft.stock, imageItems.length]);
 
   const loadCategories = useCallback(async () => {
     const response = await getCategoriesApi();
@@ -663,7 +663,10 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     if (sku.length > 80) next.sku = 'SKU tối đa 80 ký tự.';
     if (!Number.isFinite(price) || price <= 0) next.price = 'Giá bán phải lớn hơn 0.';
     if (salePrice !== null && (salePrice <= 0 || salePrice > price)) next.salePrice = 'Giá sale phải lớn hơn 0 và không vượt giá bán.';
-    if (!Number.isInteger(stock) || stock < 0) next.stock = 'Tồn kho phải là số nguyên không âm.';
+    if (!Number.isInteger(stock)) next.stock = 'Tồn kho phải là số nguyên.';
+    if (Number.isInteger(stock) && stock < 0 && !draft.allowBackorder) {
+      next.stock = 'Tồn kho âm chỉ hợp lệ khi bật cho phép bán khi hết hàng.';
+    }
 
     draft.specifications.forEach((spec, index) => {
       const hasLabel = Boolean(spec.label.trim());
@@ -686,7 +689,10 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         seen.add(skuKey);
         if (!Number.isFinite(variantPrice) || variantPrice <= 0) next[`${prefix}-price`] = 'Giá biến thể phải lớn hơn 0.';
         if (variantSalePrice !== null && (variantSalePrice <= 0 || variantSalePrice > variantPrice)) next[`${prefix}-sale`] = 'Giá sale phải lớn hơn 0 và không vượt giá bán.';
-        if (!Number.isInteger(variantStock) || variantStock < 0) next[`${prefix}-stock`] = 'Tồn kho phải là số nguyên không âm.';
+        if (!Number.isInteger(variantStock)) next[`${prefix}-stock`] = 'Tồn kho phải là số nguyên.';
+        if (Number.isInteger(variantStock) && variantStock < 0 && !variant.allowBackorder) {
+          next[`${prefix}-stock`] = 'Tồn kho âm chỉ hợp lệ khi bật cho phép bán khi hết hàng.';
+        }
       });
     }
 
@@ -1151,6 +1157,11 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             </span>
           </span>
         </label>
+        {draft.status === 'active' && Number.isInteger(toNumber(draft.stock)) && toNumber(draft.stock) <= 0 && !draft.allowBackorder && (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+            Sản phẩm đang hết hàng và chưa cho phép bán khi hết hàng, nên sẽ không hiển thị trên storefront.
+          </div>
+        )}
         <div className="mt-4 grid gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-900 sm:grid-cols-2">
           <div>
             <div className="text-xs font-bold uppercase text-slate-500">Giá bán</div>

@@ -9,14 +9,14 @@ import { getProductPricing } from '../../utils/productPricing';
 import { useSEO } from '../../hooks/useSEO';
 import {
   formatVnd,
+  canPurchaseProduct,
+  getActiveVariants,
   getDiscountLabel,
   getDisplayDescription,
   getProductImage,
+  getStockLabel,
   toCartPayload,
 } from '../../data/yanmarStorefront';
-
-const getActiveVariants = (product) =>
-  (Array.isArray(product?.variants) ? product.variants : []).filter((variant) => variant?.is_active !== false);
 
 const getVariantLabel = (variant) => {
   if (!variant) return '';
@@ -105,7 +105,9 @@ const ProductDetail = () => {
   const pricing = getProductPricing(selectedVariant || product);
   const galleryImages = useMemo(() => getGalleryImages(product, selectedVariant), [product, selectedVariant]);
   const stock = Number(selectedVariant?.stock ?? product?.stock ?? 0);
-  const inStock = stock > 0 || Boolean(selectedVariant?.allow_backorder ?? product?.allow_backorder);
+  const inStock = canPurchaseProduct(product, selectedVariant);
+  const isBackorder = stock <= 0 && Boolean(selectedVariant?.allow_backorder ?? product?.allow_backorder);
+  const canIncreaseQuantity = inStock && (isBackorder || stock <= 0 || quantity < stock);
   const discountLabel = getDiscountLabel(selectedVariant || product) || (pricing.hasDiscount ? '-15%' : '');
   const specifications = useMemo(() => {
     const rawSpecs = Array.isArray(product?.specifications) ? product.specifications : [];
@@ -132,6 +134,7 @@ const ProductDetail = () => {
 
   const addProduct = () => {
     if (!product) return;
+    if (!inStock) return;
     addToCart(toCartPayload(product, quantity, selectedVariant));
   };
 
@@ -216,7 +219,7 @@ const ProductDetail = () => {
 
           <div className={`mt-3 inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-bold ${inStock ? 'bg-[#dff6df] text-[#23802a]' : 'bg-[#ffe3e5] text-[#c60010]'}`}>
             <BadgeCheck size={18} fill="currentColor" className="text-current" />
-            {inStock ? 'Còn hàng' : 'Tạm hết hàng'}
+            {getStockLabel(product, selectedVariant)}
           </div>
 
           {variants.length > 1 && (
@@ -247,7 +250,14 @@ const ProductDetail = () => {
             <div className="grid h-10 w-[10rem] grid-cols-3 overflow-hidden rounded-lg border border-[#dddddd] bg-white">
               <button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="text-2xl font-medium">-</button>
               <div className="flex items-center justify-center border-x border-[#eeeeee] text-lg font-black">{quantity}</div>
-              <button type="button" onClick={() => setQuantity((value) => value + 1)} className="text-2xl font-medium">+</button>
+              <button
+                type="button"
+                disabled={!canIncreaseQuantity}
+                onClick={() => setQuantity((value) => value + 1)}
+                className="text-2xl font-medium disabled:cursor-not-allowed disabled:text-[#b7b7b7]"
+              >
+                +
+              </button>
             </div>
           </div>
 
