@@ -110,10 +110,7 @@ const emptyDraft: ProductDraft = {
   allowBackorder: false,
   hasVariants: false,
   variants: [],
-  specifications: [
-    { localId: makeId(), label: 'Xuất xứ', value: '' },
-    { localId: makeId(), label: 'Dùng cho', value: '' },
-  ],
+  specifications: [{ localId: makeId(), label: '', value: '' }],
 };
 
 const statusOptions: Array<{ value: AdminProductStatus; label: string; hint: string }> = [
@@ -214,7 +211,7 @@ const normalizeSpecs = (product: any): SpecificationDraft[] => {
     }))
     .filter((item: SpecificationDraft) => item.label || item.value);
 
-  return specs.length > 0 ? specs : emptyDraft.specifications.map((item) => ({ ...item, localId: makeId() }));
+  return specs;
 };
 
 const normalizeVariant = (variant: any, index: number): VariantDraft => {
@@ -425,7 +422,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             ...saved.draft,
             slug: slugify(String(saved.draft.name || '')),
             specifications:
-              Array.isArray(saved.draft.specifications) && saved.draft.specifications.length > 0
+              Array.isArray(saved.draft.specifications)
                 ? saved.draft.specifications
                 : emptyDraft.specifications.map((item) => ({ ...item, localId: makeId() })),
             variants: Array.isArray(saved.draft.variants) ? saved.draft.variants : [],
