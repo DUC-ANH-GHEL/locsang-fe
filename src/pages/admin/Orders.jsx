@@ -22,6 +22,7 @@ import { adminOrderService } from '../../services/adminOrderService';
 import { useToast } from '../../components/Toast';
 import { parseApiError } from '../../utils/apiError';
 import { logout } from '../../services/authService';
+import { formatViDateTime } from '../../utils/dateTime';
 
 const PAGE_LIMIT = 20;
 
@@ -97,17 +98,13 @@ const formatVnd = (value) =>
   });
 
 const formatDateTime = (value) => {
-  if (!value) return 'Chưa có';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Chưa có';
-  return date.toLocaleString('vi-VN', {
-    timeZone: 'Asia/Ho_Chi_Minh',
+  return formatViDateTime(value, {
     hour: '2-digit',
     minute: '2-digit',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  });
+  }) || 'Chưa có';
 };
 
 const getOrderCode = (order) => order?.tracking_code || `LS-${String(order?.id || '').padStart(5, '0')}`;

@@ -5,6 +5,7 @@ import { logo_url } from '../../config/api';
 import { logout } from '../../services/authService';
 import { AdminNotification, adminNotificationService } from '../../services/adminNotificationService';
 import { adminNavItems } from './adminNavigation';
+import { formatViDateTime } from '../../utils/dateTime';
 
 interface HeaderProps {
   darkMode: boolean;
@@ -24,11 +25,7 @@ const getCurrentTitle = (pathname: string) => {
 };
 
 const formatNotificationTime = (value?: string | null) => {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleString('vi-VN', {
-    timeZone: 'Asia/Ho_Chi_Minh',
+  return formatViDateTime(value, {
     hour: '2-digit',
     minute: '2-digit',
     day: '2-digit',

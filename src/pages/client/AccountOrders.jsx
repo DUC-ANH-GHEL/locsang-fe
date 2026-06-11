@@ -5,6 +5,7 @@ import { useCart } from '../../contexts/CartContext';
 import { useToast } from '../../components/Toast/ToastContext';
 import { cancelStorefrontOrder, getStorefrontMyOrders, lookupPublicOrder } from '../../services/customerAccountService';
 import { useSEO } from '../../hooks/useSEO';
+import { formatViDateTime, parseApiDateTime } from '../../utils/dateTime';
 
 const CHECKOUT_FORM_STORAGE_KEY = 'locsang_storefront_checkout_form_v1';
 const ORDER_HISTORY_STORAGE_KEY = 'locsang_storefront_order_history_v1';
@@ -44,7 +45,7 @@ const loadGuestOrdersFromLocal = () => {
         items: Array.isArray(item?.items) ? item.items : [],
       }))
       .filter((item) => item.id > 0 || item.tracking_code)
-      .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime());
+      .sort((a, b) => (parseApiDateTime(b.created_at)?.getTime() || 0) - (parseApiDateTime(a.created_at)?.getTime() || 0));
   } catch {
     return [];
   }
@@ -92,9 +93,7 @@ const formatVnd = (value) =>
   }).format(Number(value || 0));
 
 const formatDate = (value) => {
-  const d = new Date(value || '');
-  if (Number.isNaN(d.getTime())) return '-';
-  return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(d);
+  return formatViDateTime(value, { dateStyle: 'medium', timeStyle: 'short' }) || '-';
 };
 
 const statusLabel = (status) => {

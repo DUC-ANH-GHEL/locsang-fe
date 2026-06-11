@@ -6,6 +6,7 @@ import {
   HomeContentPayload,
   homeContentService,
 } from '../../../services/homeContentService';
+import { formatViDateTime } from '../../../utils/dateTime';
 
 type EditableBannerField = 'hero_image_url';
 
@@ -219,7 +220,7 @@ const HomeContentEditor = () => {
           <section className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
             <div className="font-bold text-gray-900 dark:text-gray-100">Trạng thái xuất bản</div>
             <div className="mt-2">
-              {publishedAt ? `Đã xuất bản: ${new Date(publishedAt).toLocaleString('vi-VN')}` : 'Chưa có thời điểm xuất bản.'}
+              {publishedAt ? `Đã xuất bản: ${formatViDateTime(publishedAt)}` : 'Chưa có thời điểm xuất bản.'}
             </div>
             <div className="mt-3 rounded-xl bg-gray-50 p-3 dark:bg-gray-950">
               Ảnh public hiện tại:{' '}

@@ -21,6 +21,7 @@ import {
 } from '../../services/adminPushNotificationService';
 import { adminAccountService, AdminAccount } from '../../services/adminAccountService';
 import { useToast } from '../../components/Toast';
+import { formatViDate } from '../../utils/dateTime';
 
 const stateCopy: Record<AdminPushState, { title: string; description: string; tone: string }> = {
   unsupported: {
@@ -62,15 +63,11 @@ const getApiMessage = (error: any, fallback: string) => {
 };
 
 const formatDate = (value?: string | null) => {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleDateString('vi-VN', {
-    timeZone: 'Asia/Ho_Chi_Minh',
+  return formatViDate(value, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  });
+  }) || '-';
 };
 
 const isStrongPassword = (value: string) => value.length >= 8 && /[A-Za-zÀ-ỹ]/.test(value) && /\d/.test(value);

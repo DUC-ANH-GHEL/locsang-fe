@@ -18,6 +18,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Breadcrumb from '../../../components/layout/Breadcrumb';
 import { useToast } from '../../../components/Toast';
 import { productService } from '../../../services/productService';
+import { formatViDateTime } from '../../../utils/dateTime';
 
 const fallbackImage = '/favicon.svg';
 
@@ -387,8 +388,8 @@ const ProductReadonlyDetail = () => {
               <DetailBlock label="ID" value={product.id} />
               <DetailBlock label="Slug" value={product.slug} />
               <DetailBlock label="Tiền tệ" value={product.currency || 'VND'} />
-              <DetailBlock label="Ngày tạo" value={product.created_at ? new Date(product.created_at).toLocaleString('vi-VN') : '-'} />
-              <DetailBlock label="Cập nhật" value={product.updated_at ? new Date(product.updated_at).toLocaleString('vi-VN') : '-'} />
+              <DetailBlock label="Ngày tạo" value={formatViDateTime(product.created_at) || '-'} />
+              <DetailBlock label="Cập nhật" value={formatViDateTime(product.updated_at) || '-'} />
             </div>
           </section>
 

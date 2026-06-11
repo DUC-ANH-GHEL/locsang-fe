@@ -4,6 +4,7 @@ import { ProductFormData, ProductFormDataUpdate } from '../types/product';
 import { Product } from '../types/product';
 import { API_BASE_URL } from '../config/api';
 import { apiClient } from './apiClient';
+import { parseApiDateTime } from '../utils/dateTime';
 
 type GetProductsParams = {
   search?: string;
@@ -754,8 +755,8 @@ const getPublicApiBaseUrl = () => {
 
 const toDate = (value: any) => {
   if (!value) return new Date();
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? new Date() : d;
+  const d = parseApiDateTime(value);
+  return !d || Number.isNaN(d.getTime()) ? new Date() : d;
 };
 
 const STORE_DEFAULT_IMAGE_URL = '/favicon.svg';

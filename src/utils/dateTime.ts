@@ -1,4 +1,5 @@
 const TIMEZONE_RE = /(Z|[+-]\d{2}:\d{2})$/i;
+export const VI_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 
 const pad2 = (value: number): string => String(value).padStart(2, '0');
 
@@ -35,5 +36,21 @@ export const fromDateTimeLocalInput = (value?: string | null): string | null => 
 export const formatViDate = (value?: string | null, options?: Intl.DateTimeFormatOptions): string => {
   const date = parseApiDateTime(value);
   if (!date) return '';
-  return new Intl.DateTimeFormat('vi-VN', options || { dateStyle: 'medium' }).format(date);
+  return new Intl.DateTimeFormat('vi-VN', { timeZone: VI_TIME_ZONE, ...(options || { dateStyle: 'medium' }) }).format(date);
+};
+
+export const formatViDateTime = (value?: string | null, options?: Intl.DateTimeFormatOptions): string => {
+  const date = parseApiDateTime(value);
+  if (!date) return '';
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  };
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: VI_TIME_ZONE,
+    ...(options || defaultOptions),
+  }).format(date);
 };

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStorefrontAuth } from '../../contexts/StorefrontAuthContext';
 import { useSEO } from '../../hooks/useSEO';
+import { formatViDate } from '../../utils/dateTime';
 
 const PROFILE_STORAGE_KEY = 'locsang_storefront_profile_v1';
 
@@ -63,9 +64,7 @@ const AccountProfile = () => {
   }, [user]);
 
   const joinedDate = useMemo(() => {
-    const d = new Date(user?.created_at || '');
-    if (Number.isNaN(d.getTime())) return '-';
-    return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }).format(d);
+    return formatViDate(user?.created_at, { dateStyle: 'medium' }) || '-';
   }, [user?.created_at]);
 
   const onChange = (e) => {

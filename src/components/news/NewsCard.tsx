@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { News } from '../../types/news';
+import { formatViDate } from '../../utils/dateTime';
 
 interface NewsCardProps {
   news: News;
@@ -8,11 +9,11 @@ interface NewsCardProps {
 
 const NewsCard: React.FC<NewsCardProps> = ({ news }) => {
   const formatDate = (date: Date): string => {
-    return new Intl.DateTimeFormat('vi-VN', {
+    return formatViDate(date instanceof Date ? date.toISOString() : String(date || ''), {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
-    }).format(date);
+    });
   };
 
   return (
