@@ -361,6 +361,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [imageItems, setImageItems] = useState<ProductImageDraft[]>([]);
   const [existingVariantIds, setExistingVariantIds] = useState<number[]>([]);
+  const [defaultVariantId, setDefaultVariantId] = useState<number | undefined>(undefined);
   const [existingAttributeIds, setExistingAttributeIds] = useState<number[]>([]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(Boolean(id));
@@ -578,7 +579,9 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
 
         const productImages = extractImageUrls(product);
         setImageItems(productImages);
-        setExistingVariantIds(variants.map((variant) => variant.id).filter((value): value is number => Number.isFinite(Number(value))));
+        const variantIds = variants.map((variant) => variant.id).filter((value): value is number => Number.isFinite(Number(value)));
+        setExistingVariantIds(variantIds);
+        setDefaultVariantId(firstVariant?.id);
         setExistingAttributeIds(
           (Array.isArray(product?.attributes) ? product.attributes : [])
             .map((item: any) => Number(item?.id))
@@ -776,7 +779,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         }))
       : [
           {
-            id: existingVariantIds[0],
+            id: existingVariantIds[0] ?? defaultVariantId,
             sku: baseSku,
             price: toNumber(draft.price),
             sale_price: toOptionalNumber(draft.salePrice),
