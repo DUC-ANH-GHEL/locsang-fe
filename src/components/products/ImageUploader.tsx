@@ -7,7 +7,7 @@ type ImageItem = File | string; // File mới hoặc URL cũ
 const DEFAULT_MAX_IMAGES = 9;
 
 interface ImageUploaderProps {
-  onImagesUpdate: (images: File[], existing: string[]) => void;
+  onImagesUpdate: (images: File[], existing: string[], orderedImages: ImageItem[]) => void;
   initialImages?: Array<string | File>;
   label?: string;
   helpText?: string;
@@ -89,7 +89,7 @@ const ImageUploader = ({
     // Callback để truyền images ra ngoài
     const files = images.filter(img => img instanceof File) as File[];
     const existing = images.filter((img): img is string => typeof img === 'string');
-    onImagesUpdate(files, existing);
+    onImagesUpdate(files, existing, images);
 
     // Cleanup khi component unmount
     return () => {
@@ -350,9 +350,16 @@ const ImageUploader = ({
       )}
       {previews.length > 0 && (
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {previews.map((src, index) => (
-            <div
-              key={index}
+          {previews.map((src, index) => {
+            const imageItem = images[index];
+            const stableKey =
+              typeof imageItem === 'string'
+                ? imageItem
+                : `${imageItem?.name || 'image'}-${imageItem?.lastModified || 0}-${imageItem?.size || 0}-${index}`;
+
+            return (
+              <div
+              key={stableKey}
               data-image-index={index}
               className={`relative touch-none cursor-grab select-none rounded-md outline-none transition active:cursor-grabbing ${
                 dragOverIndex === index ? 'scale-[1.02] ring-2 ring-rose-500 ring-offset-2' : ''
@@ -414,6 +421,7 @@ const ImageUploader = ({
               <img
                 src={src}
                 alt={`Preview ${index + 1}`}
+                draggable={false}
                 className="h-24 w-full object-cover rounded-md"
               />
               {index === 0 && (
@@ -434,7 +442,8 @@ const ImageUploader = ({
                 ×
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

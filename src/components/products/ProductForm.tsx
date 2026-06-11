@@ -36,6 +36,8 @@ type CategoryOption = {
   name: string;
 };
 
+type ProductImageDraft = File | string;
+
 type SpecificationDraft = {
   localId: string;
   label: string;
@@ -236,40 +238,148 @@ const labelClass = 'mb-1 block text-sm font-bold text-slate-900 dark:text-slate-
 const inputClass =
   'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-rose-500 focus:ring-4 focus:ring-rose-100 disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-rose-500/15';
 
+const PRODUCT_DRAFT_DB_NAME = 'locsang-admin-product-drafts';
+const PRODUCT_DRAFT_STORE_NAME = 'productDrafts';
+const PRODUCT_CREATE_DRAFT_KEY = 'create-product';
+
+type SavedProductDraftImage =
+  | { kind: 'url'; url: string }
+  | { kind: 'file'; file: File };
+
+type SavedProductDraftPayload = {
+  draft: ProductDraft;
+  images: SavedProductDraftImage[];
+  savedAt: string;
+};
+
+const openProductDraftDb = () =>
+  new Promise<IDBDatabase>((resolve, reject) => {
+    if (typeof window === 'undefined' || !window.indexedDB) {
+      reject(new Error('IndexedDB is not available'));
+      return;
+    }
+
+    const request = window.indexedDB.open(PRODUCT_DRAFT_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(PRODUCT_DRAFT_STORE_NAME)) {
+        db.createObjectStore(PRODUCT_DRAFT_STORE_NAME);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('Cannot open product draft database'));
+  });
+
+const readProductDraft = async (key: string): Promise<SavedProductDraftPayload | null> => {
+  const db = await openProductDraftDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PRODUCT_DRAFT_STORE_NAME, 'readonly');
+    const request = tx.objectStore(PRODUCT_DRAFT_STORE_NAME).get(key);
+    request.onsuccess = () => resolve((request.result as SavedProductDraftPayload | undefined) || null);
+    request.onerror = () => reject(request.error || new Error('Cannot read product draft'));
+    tx.oncomplete = () => db.close();
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error || new Error('Cannot read product draft'));
+    };
+  });
+};
+
+const writeProductDraft = async (key: string, payload: SavedProductDraftPayload) => {
+  const db = await openProductDraftDb();
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(PRODUCT_DRAFT_STORE_NAME, 'readwrite');
+    tx.objectStore(PRODUCT_DRAFT_STORE_NAME).put(payload, key);
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error || new Error('Cannot write product draft'));
+    };
+  });
+};
+
+const deleteProductDraft = async (key: string) => {
+  const db = await openProductDraftDb();
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(PRODUCT_DRAFT_STORE_NAME, 'readwrite');
+    tx.objectStore(PRODUCT_DRAFT_STORE_NAME).delete(key);
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error || new Error('Cannot delete product draft'));
+    };
+  });
+};
+
+const hasDraftContent = (draft: ProductDraft, images: ProductImageDraft[]) =>
+  Boolean(
+    draft.name.trim() ||
+      draft.slug.trim() ||
+      draft.sku.trim() ||
+      draft.categoryId ||
+      draft.shortDescription.trim() ||
+      draft.description.trim() ||
+      draft.price.trim() ||
+      draft.salePrice.trim() ||
+      images.length > 0 ||
+      draft.specifications.some((item) => item.label.trim() || item.value.trim()) ||
+      draft.variants.length > 0,
+  );
+
+const serializeDraftImages = (images: ProductImageDraft[]): SavedProductDraftImage[] =>
+  images.map((item) => (typeof item === 'string' ? { kind: 'url', url: item } : { kind: 'file', file: item }));
+
+const deserializeDraftImages = (images: SavedProductDraftImage[] | undefined): ProductImageDraft[] =>
+  (images || [])
+    .map((item) => (item.kind === 'url' ? item.url : item.file instanceof File ? item.file : null))
+    .filter((item): item is ProductImageDraft => Boolean(item));
+
 const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormProps) => {
   const { showToast } = useToast();
   const [draft, setDraft] = useState<ProductDraft>(() => ({ ...emptyDraft, specifications: emptyDraft.specifications.map((item) => ({ ...item, localId: makeId() })) }));
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [imageItems, setImageItems] = useState<ProductImageDraft[]>([]);
   const [existingVariantIds, setExistingVariantIds] = useState<number[]>([]);
   const [existingAttributeIds, setExistingAttributeIds] = useState<number[]>([]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [slugTouched, setSlugTouched] = useState(Boolean(id));
   const [loading, setLoading] = useState(Boolean(id));
   const [saving, setSaving] = useState(false);
+  const [draftHydrated, setDraftHydrated] = useState(Boolean(id));
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const [quickCategoryOpen, setQuickCategoryOpen] = useState(false);
   const [quickCategoryName, setQuickCategoryName] = useState('');
   const [quickCategorySaving, setQuickCategorySaving] = useState(false);
   const [quickCategoryError, setQuickCategoryError] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
   const quickCategoryInputRef = useRef<HTMLInputElement>(null);
+  const draftRef = useRef<ProductDraft>(draft);
+  const imageItemsRef = useRef<ProductImageDraft[]>(imageItems);
+  const autosaveWarnedRef = useRef(false);
 
   const disabled = readOnly || saving;
-  const initialImages = useMemo(() => [...existingImages, ...imageFiles], [existingImages, imageFiles]);
+  const initialImages = useMemo(() => imageItems, [imageItems]);
 
   const completion = useMemo(() => {
     const checks = [
       Boolean(draft.name.trim()),
       Boolean(draft.sku.trim()),
       Boolean(draft.categoryId),
-      Boolean(existingImages.length + imageFiles.length),
+      Boolean(imageItems.length),
       toNumber(draft.price) > 0,
       Number.isInteger(toNumber(draft.stock)) && toNumber(draft.stock) >= 0,
     ];
     const done = checks.filter(Boolean).length;
     return Math.round((done / checks.length) * 100);
-  }, [draft.categoryId, draft.name, draft.price, draft.sku, draft.stock, existingImages.length, imageFiles.length]);
+  }, [draft.categoryId, draft.name, draft.price, draft.sku, draft.stock, imageItems.length]);
 
   const loadCategories = useCallback(async () => {
     const response = await getCategoriesApi();
@@ -280,6 +390,88 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         .filter((item: CategoryOption | null): item is CategoryOption => Boolean(item)),
     );
   }, []);
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  useEffect(() => {
+    imageItemsRef.current = imageItems;
+  }, [imageItems]);
+
+  useEffect(() => {
+    if (id || readOnly) {
+      setDraftHydrated(true);
+      return;
+    }
+
+    let cancelled = false;
+    const hydrateDraft = async () => {
+      try {
+        const saved = await readProductDraft(PRODUCT_CREATE_DRAFT_KEY);
+        if (cancelled) return;
+        if (saved?.draft) {
+          const restoredImages = deserializeDraftImages(saved.images);
+          setDraft({
+            ...emptyDraft,
+            ...saved.draft,
+            specifications:
+              Array.isArray(saved.draft.specifications) && saved.draft.specifications.length > 0
+                ? saved.draft.specifications
+                : emptyDraft.specifications.map((item) => ({ ...item, localId: makeId() })),
+            variants: Array.isArray(saved.draft.variants) ? saved.draft.variants : [],
+          });
+          setImageItems(restoredImages);
+          setImageFiles(restoredImages.filter((item): item is File => item instanceof File));
+          setExistingImages(restoredImages.filter((item): item is string => typeof item === 'string'));
+          setSlugTouched(Boolean(saved.draft.slug));
+          setDraftSavedAt(saved.savedAt || null);
+          if (hasDraftContent(saved.draft, restoredImages)) {
+            showToast('Đã khôi phục nháp sản phẩm đang nhập dở.', 'info');
+          }
+        }
+      } catch (error) {
+        console.warn('Cannot restore product draft', error);
+      } finally {
+        if (!cancelled) setDraftHydrated(true);
+      }
+    };
+
+    hydrateDraft();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, readOnly, showToast]);
+
+  useEffect(() => {
+    if (id || readOnly || !draftHydrated) return;
+
+    const saveDraft = async () => {
+      const currentDraft = draftRef.current;
+      const currentImages = imageItemsRef.current;
+      if (!hasDraftContent(currentDraft, currentImages)) return;
+
+      try {
+        const savedAt = new Date().toISOString();
+        await writeProductDraft(PRODUCT_CREATE_DRAFT_KEY, {
+          draft: currentDraft,
+          images: serializeDraftImages(currentImages),
+          savedAt,
+        });
+        setDraftSavedAt(savedAt);
+        autosaveWarnedRef.current = false;
+      } catch (error) {
+        if (!autosaveWarnedRef.current) {
+          autosaveWarnedRef.current = true;
+          console.warn('Cannot autosave product draft', error);
+          showToast('Không tự lưu được nháp sản phẩm trên trình duyệt này.', 'warning', 5000);
+        }
+      }
+    };
+
+    const timer = window.setInterval(saveDraft, 10000);
+    return () => window.clearInterval(timer);
+  }, [id, readOnly, draftHydrated, showToast]);
 
   const openQuickCategory = () => {
     setQuickCategoryOpen(true);
@@ -374,7 +566,10 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           specifications: normalizeSpecs(product),
         });
 
-        setExistingImages(extractImageUrls(product));
+        const productImages = extractImageUrls(product);
+        setExistingImages(productImages);
+        setImageFiles([]);
+        setImageItems(productImages);
         setExistingVariantIds(variants.map((variant) => variant.id).filter((value): value is number => Number.isFinite(Number(value))));
         setExistingAttributeIds(
           (Array.isArray(product?.attributes) ? product.attributes : [])
@@ -419,9 +614,10 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     });
   };
 
-  const onImagesUpdate = useCallback((files: File[], existing: string[]) => {
+  const onImagesUpdate = useCallback((files: File[], existing: string[], orderedImages?: ProductImageDraft[]) => {
     setImageFiles(files);
     setExistingImages(existing);
+    setImageItems(orderedImages || [...existing, ...files]);
     setErrors((prev) => {
       if (!prev.images) return prev;
       const next = { ...prev };
@@ -452,7 +648,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     const price = toNumber(draft.price);
     const salePrice = toOptionalNumber(draft.salePrice);
     const stock = toNumber(draft.stock);
-    const totalImages = existingImages.length + imageFiles.length;
+    const totalImages = imageItems.length;
 
     if (!name) next.name = 'Tên sản phẩm là bắt buộc.';
     if (name.length > 180) next.name = 'Tên sản phẩm tối đa 180 ký tự.';
@@ -528,8 +724,33 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     return [...existingImages, ...uploaded];
   };
 
+  const uploadOrderedImages = async () => {
+    const uploadedByFile = new Map<File, string>();
+    const orderedUrls: string[] = [];
+
+    for (const item of imageItems) {
+      if (typeof item === 'string') {
+        orderedUrls.push(item);
+        continue;
+      }
+
+      const existingUpload = uploadedByFile.get(item);
+      if (existingUpload) {
+        orderedUrls.push(existingUpload);
+        continue;
+      }
+
+      const result = await uploadAdminProductImage(item);
+      if (!result.url) throw new Error('Upload ảnh thất bại, không nhận được URL.');
+      uploadedByFile.set(item, result.url);
+      orderedUrls.push(result.url);
+    }
+
+    return orderedUrls;
+  };
+
   const buildPayload = async (): Promise<AdminProductPayload> => {
-    const imageUrls = await uploadNewImages();
+    const imageUrls = await uploadOrderedImages();
     const baseSku = draft.sku.trim();
     const baseStatus = draft.status === 'active' ? 'active' : 'inactive';
     const specs = draft.specifications
@@ -617,6 +838,8 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         await updateAdminProduct(id, payload);
       } else {
         await createAdminProduct(payload);
+        await deleteProductDraft(PRODUCT_CREATE_DRAFT_KEY).catch(() => undefined);
+        setDraftSavedAt(null);
       }
       showToast(id ? 'Đã cập nhật sản phẩm.' : 'Đã tạo sản phẩm.', 'success');
       onSuccess?.();
@@ -649,6 +872,9 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
   }
 
   const errorList = Object.values(errors);
+  const draftSavedTimeLabel = draftSavedAt
+    ? new Date(draftSavedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+    : null;
 
   return (
     <form ref={formRef} onSubmit={submit} className="space-y-4 pb-24">
@@ -671,6 +897,11 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             <div className="mt-2 h-2 w-40 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
               <div className="h-full rounded-full bg-rose-600" style={{ width: `${completion}%` }} />
             </div>
+            {!id && (
+              <div className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {draftSavedTimeLabel ? `Đã tự lưu nháp lúc ${draftSavedTimeLabel}` : 'Tự lưu nháp mỗi 10 giây'}
+              </div>
+            )}
           </div>
         </div>
       </div>
