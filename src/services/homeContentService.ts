@@ -20,8 +20,6 @@ export type HomeContentPayload = {
   header_brand_tagline: string;
   header_nav_shop_text: string;
   header_nav_new_arrivals_text: string;
-  header_nav_tips_text: string;
-  header_nav_shorts_text: string;
   header_nav_orders_text: string;
   footer_brand_name: string;
   footer_desktop_caption: string;
@@ -87,24 +85,8 @@ export type HomeContentPayload = {
   bottom_cta_description: string;
   bottom_cta_button_text: string;
   bottom_cta_button_link: string;
-  shorts_section_title: string;
-  shorts_section_subtitle: string;
-  shorts_section_link_text: string;
-  shorts_items: Array<{
-    title?: string;
-    url: string;
-    thumbnail_url?: string;
-  }>;
-  community_section_title: string;
-  community_section_subtitle: string;
-  testimonial_section_title: string;
   delivery_feature_title: string;
   delivery_feature_desc: string;
-  community_items: Array<{
-    image_url: string;
-    alt_text?: string;
-    link?: string;
-  }>;
 };
 
 export type HomeContentAdminResponse = {

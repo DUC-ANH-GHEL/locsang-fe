@@ -7,7 +7,7 @@ interface Order {
   customer: string;
   mainProduct: string;
   total: number;
-  status: 'pending' | 'processing' | 'cancelled';
+  status: 'pending' | 'processed' | 'cancelled';
 }
 
 interface OrdersTableProps {
@@ -17,7 +17,7 @@ interface OrdersTableProps {
 
 const normalizeOrderStatus = (status: string) => {
   const normalized = String(status || '').toLowerCase();
-  if (normalized === 'processing') return 'processing';
+  if (['processed', 'processing', 'shipped', 'delivered'].includes(normalized)) return 'processed';
   if (normalized === 'cancelled') return 'cancelled';
   return 'pending';
 };
@@ -25,7 +25,7 @@ const normalizeOrderStatus = (status: string) => {
 const OrdersTable: React.FC<OrdersTableProps> = ({ orders, loading }) => {
   const getStatusBadgeClass = (status: string) => {
     switch (normalizeOrderStatus(status)) {
-      case 'processing':
+      case 'processed':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'cancelled':
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
@@ -36,7 +36,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders, loading }) => {
 
   const getStatusText = (status: string) => {
     switch (normalizeOrderStatus(status)) {
-      case 'processing':
+      case 'processed':
         return 'Đã xử lý';
       case 'cancelled':
         return 'Hủy đơn';

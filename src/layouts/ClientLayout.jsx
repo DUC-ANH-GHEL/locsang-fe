@@ -9,11 +9,9 @@ const ClientLayout = () => {
   const location = useLocation()
   const [searchOpen, setSearchOpen] = useState(false)
   const isCheckoutRoute = location.pathname.startsWith('/checkout')
-  const isShortsRoute = location.pathname.startsWith('/shorts')
   const isHomeRoute = location.pathname === '/'
   const isCommerceRoute = isHomeRoute || location.pathname.startsWith('/products') || isCheckoutRoute
-  const shouldHideHeaderFooter = isCheckoutRoute || isShortsRoute
-  const shouldHideBottomNav = isShortsRoute
+  const shouldHideHeaderFooter = isCheckoutRoute
 
   return (
     <div className="min-h-screen">
@@ -26,7 +24,7 @@ const ClientLayout = () => {
           <Footer />
         </div>
       )}
-      {!shouldHideBottomNav && <MobileBottomNav onOpenSearch={() => setSearchOpen(true)} searchOpen={searchOpen} />}
+      <MobileBottomNav onOpenSearch={() => setSearchOpen(true)} searchOpen={searchOpen} />
       <ProductQuickSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   )

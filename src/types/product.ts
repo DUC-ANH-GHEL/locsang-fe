@@ -1,7 +1,5 @@
 // src/types/product.ts
 export type ProductStatus = 'draft' | 'active' | 'discontinued';
-export type PetType = 'dog' | 'cat' | 'both';
-export type Season = 'winter' | 'summer' | 'all';
 
 export type ProductOption = {
   name: string;
@@ -17,8 +15,7 @@ export type ProductVariant = {
   id?: number;
   sku: string;
   price: number;
-  compare_price?: number | null;
-  cost_price?: number | null;
+  sale_price?: number | null;
   stock: number;
   manage_stock?: boolean;
   allow_backorder?: boolean;
@@ -31,60 +28,6 @@ export type ProductVariant = {
   variant_name?: string | null;
   media_urls?: string[];
   video_urls?: string[];
-  weight_gram?: number | null;
-  dimension_text?: string | null;
-};
-
-export type ProductReview = {
-  id: number;
-  reviewer_name: string;
-  rating: number;
-  comment?: string | null;
-  is_verified_purchase?: boolean;
-  created_at?: Date | string;
-};
-
-export type ProductRatingSummary = {
-  average: number;
-  count: number;
-  breakdown: Record<string, number>;
-};
-
-export type ProductComboItem = {
-  label: string;
-  quantity: number;
-  local_product_id?: number | null;
-  local_product_slug?: string | null;
-  image?: string | null;
-  price?: number | null;
-  required?: boolean;
-};
-
-export type ProductComboOffer = {
-  title: string;
-  description?: string | null;
-  items: ProductComboItem[];
-};
-
-export type ProductPromotionItem = {
-  label: string;
-  quantity: number;
-  local_product_id?: number | null;
-  local_product_slug?: string | null;
-  image?: string | null;
-  price?: number | null;
-};
-
-export type ProductPromotionOffer = {
-  id?: string | null;
-  title: string;
-  description?: string | null;
-  promotion_type?: string | null;
-  promotion_kind?: string | null;
-  starts_at?: string | null;
-  ends_at?: string | null;
-  meta?: Record<string, any> | null;
-  items: ProductPromotionItem[];
 };
 
 export interface Product {
@@ -93,7 +36,6 @@ export interface Product {
   description: string;
   slug?: string | null;
   price: number;
-  original_price?: number | null;
   sale_price?: number | null;
   currency?: string;
   thumbnail?: string | null;
@@ -107,13 +49,10 @@ export interface Product {
   created_at: Date;
   updated_at: Date;
 
-  // PRD additions (optional, backward-compatible)
   short_description?: string | null;
   description_html?: string | null;
   video_url?: string | null;
   brand?: string | null;
-  pet_type?: PetType | null;
-  season?: Season | null;
   tags?: string[];
   specifications?: Array<{ label: string; value: string }>;
   has_variants?: boolean;
@@ -121,18 +60,12 @@ export interface Product {
   featured?: boolean;
   display_order?: number | null;
   low_stock_threshold?: number | null;
-  compare_price?: number | null;
-  cost_price?: number | null;
   manage_stock?: boolean;
   allow_backorder?: boolean;
   can_purchase?: boolean;
   stock_status?: 'in_stock' | 'backorder' | 'out' | string;
   options?: ProductOption[];
   variants?: ProductVariant[];
-  reviews?: ProductReview[];
-  rating_summary?: ProductRatingSummary;
-  combo_offers?: ProductComboOffer[];
-  promotion_offers?: ProductPromotionOffer[];
   raw_data?: Record<string, any>;
 }
 
@@ -144,24 +77,12 @@ export interface ProductFormData {
   sku: string;
   price: number;
   sale_price?: number | null;
-  compare_price?: number | null;
-  cost_price?: number | null;
   currency?: string;
-  affiliate: number;
-  weight: number;
-  length: number;
-  width: number;
-  height: number;
   stock: number;
   status: string;
   is_active: boolean;
   category_id: number;
   brand?: string;
-  material?: string;
-  size?: string;
-  color?: string;
-  pet_type?: string;
-  season?: string;
   labels: string[];
   images: Array<string | File>;
   video_url?: string | null;
@@ -186,13 +107,8 @@ export interface ProductFormData {
     | null
     | Array<{
         sku: string;
-        size?: string | null;
-        color?: string | null;
-        material?: string | null;
         price?: number | null;
         sale_price?: number | null;
-        compare_price?: number | null;
-        cost_price?: number | null;
         stock: number;
         is_active?: boolean;
         status?: ProductStatus;

@@ -25,12 +25,12 @@ import { formatViDateTime } from '../../utils/dateTime';
 
 const PAGE_LIMIT = 20;
 const ORDER_STATUS_NEW = 'pending';
-const ORDER_STATUS_PROCESSED = 'processing';
+const ORDER_STATUS_PROCESSED = 'processed';
 const ORDER_STATUS_CANCELLED = 'cancelled';
 
 const normalizeOrderStatus = (status) => {
   const normalized = String(status || '').toLowerCase();
-  if (normalized === ORDER_STATUS_PROCESSED) return ORDER_STATUS_PROCESSED;
+  if (['processed', 'processing', 'shipped', 'delivered'].includes(normalized)) return ORDER_STATUS_PROCESSED;
   if (normalized === ORDER_STATUS_CANCELLED) return ORDER_STATUS_CANCELLED;
   return ORDER_STATUS_NEW;
 };

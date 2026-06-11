@@ -11,7 +11,6 @@ export type ProductListFilters = {
   stock_status: 'all' | 'in_stock' | 'low' | 'out';
   min_price: string;
   max_price: string;
-  has_affiliate: 'all' | 'true' | 'false';
   featured: 'all' | 'true' | 'false';
 };
 

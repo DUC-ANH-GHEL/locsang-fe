@@ -18,7 +18,6 @@ const DEFAULT_FILTERS = {
   stock_status: 'all',
   min_price: '',
   max_price: '',
-  has_affiliate: 'all',
   featured: 'all',
 };
 
@@ -36,7 +35,6 @@ const Products = () => {
   const [categories, setCategories] = useState([]);
   const [bulkStatus, setBulkStatus] = useState('active');
   const [bulkCategory, setBulkCategory] = useState('');
-  const [bulkAffiliate, setBulkAffiliate] = useState('');
 
   const totalPages = useMemo(() => {
     const total = Number(pagination.total || 0);
@@ -100,7 +98,6 @@ const Products = () => {
         stock_status: filters.stock_status,
         min_price: filters.min_price,
         max_price: filters.max_price,
-        has_affiliate: filters.has_affiliate === 'all' ? 'all' : filters.has_affiliate === 'true',
         featured: filters.featured === 'all' ? 'all' : filters.featured === 'true',
         sort,
       };
@@ -356,11 +353,6 @@ const Products = () => {
               </select>
               <button type="button" disabled={!bulkCategory} onClick={() => bulkUpdate('category', { category_id: Number(bulkCategory) })} className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-black disabled:opacity-50 dark:border-slate-700">
                 Gán danh mục
-              </button>
-
-              <input value={bulkAffiliate} onChange={(event) => setBulkAffiliate(event.target.value)} inputMode="numeric" placeholder="Affiliate %" className="h-10 w-32 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold dark:border-slate-700 dark:bg-slate-950" />
-              <button type="button" disabled={!bulkAffiliate} onClick={() => bulkUpdate('affiliate', { affiliate: Number(bulkAffiliate) })} className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-black disabled:opacity-50 dark:border-slate-700">
-                Set %
               </button>
 
               <button

@@ -13,10 +13,6 @@ import ScrollToTop from './components/common/ScrollToTop';
 const Home = lazy(() => import('./pages/client/Home'));
 const ProductList = lazy(() => import('./pages/client/ProductList'));
 const ProductDetail = lazy(() => import('./pages/client/ProductDetail'));
-const Tips = lazy(() => import('./pages/client/Tips'));
-const TipDetail = lazy(() => import('./pages/client/TipDetail'));
-const ShortsFeed = lazy(() => import('./pages/client/ShortsFeed'));
-const Contact = lazy(() => import('./pages/client/Contact'));
 const Checkout = lazy(() => import('./pages/client/Checkout'));
 const AccountAuth = lazy(() => import('./pages/client/AccountAuth'));
 const AccountProfile = lazy(() => import('./pages/client/AccountProfile'));
@@ -82,10 +78,6 @@ function App() {
             <Route path="products" element={<ProductList />} />
             <Route path="products/:id/:slug" element={<ProductDetail />} />
             <Route path="products/:id" element={<ProductDetail />} />
-            <Route path="tips" element={<Tips />} />
-            <Route path="tips/:slug" element={<TipDetail />} />
-            <Route path="shorts" element={<ShortsFeed />} />
-            <Route path="contact" element={<Contact />} />
             <Route path="checkout" element={<Checkout />} />
             <Route path="account/login" element={<AccountAuth />} />
             <Route path="account" element={<AccountProfile />} />

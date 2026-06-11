@@ -128,7 +128,7 @@ function Footer() {
                 <li><a href="#">{footerContent.footer_info_item_1}</a></li>
                 <li><a href="#">{footerContent.footer_info_item_2}</a></li>
                 <li><a href="#">{footerContent.footer_info_item_3}</a></li>
-                <li><Link to="/contact">{footerContent.footer_info_item_4}</Link></li>
+                <li><span>{footerContent.footer_info_item_4}</span></li>
               </ul>
             </div>
             <div>

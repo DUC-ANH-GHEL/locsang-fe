@@ -1,6 +1,6 @@
 import { apiClient } from './apiClient';
 
-export type AdminOrderStatus = 'pending' | 'processing' | 'cancelled';
+export type AdminOrderStatus = 'pending' | 'processed' | 'cancelled';
 export type AdminPaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 
 export type AdminOrderListItem = {

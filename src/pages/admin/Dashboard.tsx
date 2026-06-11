@@ -10,14 +10,14 @@ const formatCurrency = (value: unknown) =>
 
 const normalizeOrderStatus = (status: unknown) => {
   const normalized = String(status || '').toLowerCase();
-  if (normalized === 'processing') return 'processing';
+  if (['processed', 'processing', 'shipped', 'delivered'].includes(normalized)) return 'processed';
   if (normalized === 'cancelled') return 'cancelled';
   return 'pending';
 };
 
 const statusLabel: Record<string, string> = {
   pending: 'Mới',
-  processing: 'Đã xử lý',
+  processed: 'Đã xử lý',
   cancelled: 'Hủy đơn',
 };
 

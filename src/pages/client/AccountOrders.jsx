@@ -98,7 +98,7 @@ const formatDate = (value) => {
 
 const normalizeOrderStatus = (status) => {
   const normalized = String(status || '').toLowerCase();
-  if (normalized === 'processing') return 'processing';
+  if (['processed', 'processing', 'shipped', 'delivered'].includes(normalized)) return 'processed';
   if (normalized === 'cancelled') return 'cancelled';
   return 'pending';
 };
@@ -106,14 +106,14 @@ const normalizeOrderStatus = (status) => {
 const statusLabel = (status) => {
   const normalized = normalizeOrderStatus(status);
   if (normalized === 'pending') return 'Mới';
-  if (normalized === 'processing') return 'Đã xử lý';
+  if (normalized === 'processed') return 'Đã xử lý';
   if (normalized === 'cancelled') return 'Hủy đơn';
   return '-';
 };
 
 const statusClass = (status) => {
   const normalized = normalizeOrderStatus(status);
-  if (normalized === 'processing') return 'bg-emerald-100 text-emerald-700';
+  if (normalized === 'processed') return 'bg-emerald-100 text-emerald-700';
   if (normalized === 'cancelled') return 'bg-red-100 text-red-700';
   return 'bg-amber-100 text-amber-700';
 };
