@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -185,7 +185,7 @@ const Orders = () => {
   const [detailStatus, setDetailStatus] = useState('');
   const [bulkStatus, setBulkStatus] = useState('processing');
   const [submitting, setSubmitting] = useState(false);
-  const [openedQueryOrderId, setOpenedQueryOrderId] = useState(null);
+  const openedQueryOrderIdRef = useRef(null);
 
   const totalPages = Math.max(1, Number(pagination.total_pages || Math.ceil(Number(pagination.total || 0) / PAGE_LIMIT) || 1));
   const headerTotalText = Number(pagination.total || 0).toLocaleString('vi-VN');
@@ -285,17 +285,17 @@ const Orders = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const orderId = Number(params.get('orderId') || 0);
-    if (!orderId || openedQueryOrderId === orderId) return;
+    if (!orderId || openedQueryOrderIdRef.current === orderId) return;
 
     const existing = orders.find((order) => Number(order.id) === orderId);
     if (existing) {
-      setOpenedQueryOrderId(orderId);
+      openedQueryOrderIdRef.current = orderId;
       openDetail(existing);
       return;
     }
 
     let active = true;
-    setOpenedQueryOrderId(orderId);
+    openedQueryOrderIdRef.current = orderId;
     setDetailLoading(true);
     setDetailOrder({ id: orderId, status: 'pending', total_amount: 0, item_count: 0 });
     setDetailStatus('pending');
@@ -320,12 +320,19 @@ const Orders = () => {
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, orders, openedQueryOrderId]);
+  }, [location.search]);
 
   const closeDetail = () => {
     setDetailOrder(null);
     setDetailStatus('');
     setDetailLoading(false);
+    const params = new URLSearchParams(location.search);
+    if (params.has('orderId')) {
+      params.delete('orderId');
+      const nextSearch = params.toString();
+      openedQueryOrderIdRef.current = null;
+      navigate({ pathname: location.pathname, search: nextSearch ? `?${nextSearch}` : '' }, { replace: true });
+    }
   };
 
   const updateOrderStatus = async (orderId, nextStatus, successMessage = 'Cập nhật trạng thái đơn hàng thành công') => {
