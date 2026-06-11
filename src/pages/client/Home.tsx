@@ -16,6 +16,7 @@ import { productService } from '../../services/productService';
 import { Category, getPublicCategories } from '../../services/categoryService';
 import { HomeContentPayload, homeContentService } from '../../services/homeContentService';
 import { getProductPricing } from '../../utils/productPricing';
+import { toProductDetailPath } from '../../utils/productUrl';
 import { useSEO } from '../../hooks/useSEO';
 import { useCart } from '../../contexts/CartContext';
 import {
@@ -210,6 +211,11 @@ const Home = () => {
     navigate('/checkout');
   };
 
+  const openProductDetail = (product: HomeProduct) => {
+    if (!product.raw) return;
+    navigate(toProductDetailPath(product.raw));
+  };
+
   return (
     <div className="min-h-screen bg-white pb-[calc(env(safe-area-inset-bottom,0px)+5.8rem)] text-[#101010] md:bg-[#f5f5f5] md:pb-16">
       <div className="mx-auto w-full max-w-[944px] bg-white font-sans md:shadow-2xl md:shadow-black/10">
@@ -256,6 +262,7 @@ const Home = () => {
             icon={<Flame size={24} fill="#e30613" className="text-[#e30613]" />}
             products={bestProducts}
             loading={(loading || loadFailed) && products.length === 0}
+            onOpen={openProductDetail}
             onAdd={addProductToCart}
             onBuy={buyNow}
           />
@@ -266,6 +273,7 @@ const Home = () => {
               icon={<Tag size={24} fill="#e30613" className="text-[#e30613]" />}
               products={saleProducts}
               loading={(loading || loadFailed) && products.length === 0}
+              onOpen={openProductDetail}
               onAdd={addProductToCart}
               onBuy={buyNow}
             />
@@ -281,11 +289,12 @@ type ProductSectionProps = {
   icon: React.ReactNode;
   products: HomeProduct[];
   loading?: boolean;
+  onOpen: (product: HomeProduct) => void;
   onAdd: (product: HomeProduct) => void;
   onBuy: (product: HomeProduct) => void;
 };
 
-const ProductSection = ({ title, icon, products, loading = false, onAdd, onBuy }: ProductSectionProps) => (
+const ProductSection = ({ title, icon, products, loading = false, onOpen, onAdd, onBuy }: ProductSectionProps) => (
   <section className="mt-5">
     <div className="mb-2.5 flex items-center justify-between">
       <div className="flex min-w-0 items-center gap-2">
@@ -307,7 +316,7 @@ const ProductSection = ({ title, icon, products, loading = false, onAdd, onBuy }
       {loading
         ? Array.from({ length: 3 }).map((_, index) => <ProductCardSkeleton key={index} />)
         : products.map((product) => (
-            <ProductCard key={product.id} product={product} onAdd={onAdd} onBuy={onBuy} />
+            <ProductCard key={product.id} product={product} onOpen={onOpen} onAdd={onAdd} onBuy={onBuy} />
           ))}
     </div>
   </section>
@@ -326,11 +335,12 @@ const ProductCardSkeleton = () => (
 
 type ProductCardProps = {
   product: HomeProduct;
+  onOpen: (product: HomeProduct) => void;
   onAdd: (product: HomeProduct) => void;
   onBuy: (product: HomeProduct) => void;
 };
 
-const ProductCard = ({ product, onAdd, onBuy }: ProductCardProps) => (
+const ProductCard = ({ product, onOpen, onAdd, onBuy }: ProductCardProps) => (
   <article className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#e3e3e3] bg-white p-2 shadow-[0_1px_5px_rgba(0,0,0,0.06)]">
     {product.discountLabel && (
       <div className="absolute left-1.5 top-1.5 z-10 rounded-md bg-[#e30613] px-1.5 py-0.5 text-[0.85rem] font-black leading-none text-white shadow-sm">
@@ -338,11 +348,12 @@ const ProductCard = ({ product, onAdd, onBuy }: ProductCardProps) => (
       </div>
     )}
 
-    <div className="flex h-[7.25rem] items-center justify-center rounded-lg bg-white max-[430px]:h-[6rem] max-[390px]:h-[5rem]">
-      <img src={product.image} alt={product.name} className="max-h-full max-w-full object-contain" />
-    </div>
+    <button type="button" onClick={() => onOpen(product)} className="block min-w-0 text-left">
+      <div className="flex h-[7.25rem] items-center justify-center rounded-lg bg-white max-[430px]:h-[6rem] max-[390px]:h-[5rem]">
+        <img src={product.image} alt={product.name} className="max-h-full max-w-full object-contain" />
+      </div>
 
-    <div className="mt-1 flex min-h-[6.7rem] flex-1 flex-col">
+      <div className="mt-1 flex min-h-[6.7rem] flex-1 flex-col">
       <h3 className="line-clamp-2 font-sans text-[0.94rem] font-black leading-[1.08] text-[#111] max-[390px]:text-[0.78rem]">
         {product.name}
       </h3>
@@ -367,7 +378,8 @@ const ProductCard = ({ product, onAdd, onBuy }: ProductCardProps) => (
           {product.stockLabel}
         </div>
       </div>
-    </div>
+      </div>
+    </button>
 
     <button
       type="button"

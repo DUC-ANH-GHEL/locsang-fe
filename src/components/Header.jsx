@@ -1,9 +1,8 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaRegUserCircle, FaShoppingCart, FaTrash } from 'react-icons/fa';
+import { FaShoppingCart, FaTrash } from 'react-icons/fa';
 import { ChevronLeft, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useCart } from '../contexts/CartContext';
-import { useStorefrontAuth } from '../contexts/StorefrontAuthContext';
 
 import { logo_url } from '../config/api';
 const BRAND_MARK = `${logo_url}?v=yanmar-3`;
@@ -32,27 +31,6 @@ const formatVnd = (value) =>
     currency: 'VND',
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
-
-const resolveStorefrontAvatar = (user) => {
-  if (!user || typeof user !== 'object') return '';
-
-  const candidates = [
-    user.avatar_url,
-    user.avatar,
-    user.profile_picture,
-    user.picture,
-    user.photo_url,
-    user.image,
-    user.image_url,
-  ];
-
-  for (const candidate of candidates) {
-    const value = String(candidate || '').trim();
-    if (value) return value;
-  }
-
-  return '';
-};
 
 const CartDropdown = ({
   cart,
@@ -136,14 +114,10 @@ const CartDropdown = ({
 const Header = () => {
   const { cart, removeFromCart, clearCart, updateCartItemQuantity } = useCart();
   const [cartOpen, setCartOpen] = useState(false);
-  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const desktopCartRef = useRef(null);
   const mobileCartRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, user } = useStorefrontAuth();
-  const resolvedAvatarUrl = resolveStorefrontAvatar(user);
-  const avatarUrl = avatarLoadFailed ? '' : resolvedAvatarUrl;
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -157,13 +131,10 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    setAvatarLoadFailed(false);
-  }, [resolvedAvatarUrl]);
-
   const total = cart.reduce((sum, p) => sum + Number(p.price || 0) * p.quantity, 0);
   const cartCount = cart.reduce((sum, p) => sum + p.quantity, 0);
 
+  const isHomeActive = location.pathname === '/';
   const isNewArrivalsActive = location.pathname.startsWith('/products');
   const isProductDetailMobileHeader = /^\/products\/\d+/.test(location.pathname);
 
@@ -179,6 +150,15 @@ const Header = () => {
           <Link to="/" className="flex min-w-0 items-center">
             <BrandLockup />
           </Link>
+
+          <nav className="flex items-center gap-7 text-[14px] font-black text-[#2a2a2a]">
+            <Link to="/" className={`transition hover:text-[#d90616] ${isHomeActive ? 'text-[#d90616]' : ''}`}>
+              Trang chủ
+            </Link>
+            <Link to="/products" className={`transition hover:text-[#d90616] ${isNewArrivalsActive ? 'text-[#d90616]' : ''}`}>
+              Sản phẩm
+            </Link>
+          </nav>
 
           <div className="flex items-center gap-4">
             <button
@@ -215,18 +195,6 @@ const Header = () => {
               )}
             </div>
 
-            <Link to={isAuthenticated ? '/account' : '/account/login'} className="inline-flex h-12 w-12 items-center justify-center text-[#d50918] transition hover:bg-[#fff0f1]" aria-label="Tài khoản">
-              {isAuthenticated && avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={String(user?.full_name || 'Tài khoản')}
-                  className="h-7 w-7 rounded-full object-cover ring-1 ring-[#e9dfd4]"
-                  onError={() => setAvatarLoadFailed(true)}
-                />
-              ) : (
-                <FaRegUserCircle size={27} />
-              )}
-            </Link>
           </div>
         </div>
       </div>
