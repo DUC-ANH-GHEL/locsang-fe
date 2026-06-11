@@ -447,16 +447,19 @@ export const bulkUpdateProducts = async (payload: {
 export const updateProductPartial = async (productId: number, patch: any) => {
   const rawPatch = patch && typeof patch === 'object' ? patch : {};
 
-  // If only stock is updated, prefer the dedicated endpoint.
-  const patchKeys = Object.keys(rawPatch);
-  if (patchKeys.length === 1 && patchKeys[0] === 'stock') {
-    const quantity = Number(rawPatch.stock);
-    if (Number.isFinite(quantity)) {
-      return updateProductStock(productId, quantity);
-    }
+  const adminPatch: Record<string, unknown> = {};
+  if (rawPatch.price !== undefined) adminPatch.price = Number(rawPatch.price);
+  if (rawPatch.stock !== undefined) adminPatch.stock = Number(rawPatch.stock);
+  if (rawPatch.status !== undefined) adminPatch.status = String(rawPatch.status).toLowerCase();
+  if (rawPatch.featured !== undefined) adminPatch.featured = Boolean(rawPatch.featured);
+  if (rawPatch.category_id !== undefined) adminPatch.category_id = Number(rawPatch.category_id);
+  if (rawPatch.affiliate !== undefined) adminPatch.affiliate = rawPatch.affiliate === null ? null : Number(rawPatch.affiliate);
+
+  if (Object.keys(adminPatch).length > 0) {
+    const response = await apiClient.patch(`/admin/products/${productId}`, adminPatch);
+    return response.data;
   }
 
-  // Map PRD status to existing backend field.
   const normalizedStatus = rawPatch.status !== undefined ? String(rawPatch.status).toLowerCase() : undefined;
   const derivedIsActive =
     normalizedStatus === 'active' ? true : normalizedStatus === 'draft' || normalizedStatus === 'discontinued' ? false : undefined;
