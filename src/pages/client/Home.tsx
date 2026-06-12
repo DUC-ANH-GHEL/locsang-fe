@@ -20,7 +20,6 @@ import {
   PRODUCT_PLACEHOLDER,
   canPurchaseProduct,
   getDefaultCartVariant,
-  getStockLabel,
   toCartPayload,
 } from '../../data/yanmarStorefront';
 import { CategoryIconPreview, getCategoryIconValue } from '../../utils/categoryIcons';
@@ -28,14 +27,11 @@ import { CategoryIconPreview, getCategoryIconValue } from '../../utils/categoryI
 type HomeProduct = {
   id: string;
   name: string;
-  code: string;
-  description: string;
   price: number;
   originalPrice?: number | null;
   image: string;
   discountLabel?: string;
   canPurchase: boolean;
-  stockLabel: string;
   raw?: Product;
 };
 
@@ -73,13 +69,10 @@ const toHomeProduct = (product: Product): HomeProduct => {
   return {
     id: String(product.id),
     name: product.name || 'Sản phẩm Yanmar',
-    code: product.sku || product.brand || 'Yanmar chính hãng',
-    description: product.short_description || product.description || 'Phụ tùng chính hãng',
     price: pricing.currentPrice || Number(product.price || 0),
     originalPrice,
     discountLabel: discount,
     canPurchase: canPurchaseProduct(product),
-    stockLabel: getStockLabel(product),
     image,
     raw: product,
   };
@@ -222,7 +215,7 @@ const Home = () => {
             <Search size={31} strokeWidth={2.5} className="shrink-0 text-[#777]" />
             <input
               type="search"
-              placeholder="Tìm phụ tùng, nhớt..."
+              placeholder="Tìm sản phẩm..."
               className="h-full min-w-0 flex-1 bg-transparent text-[1.35rem] font-medium outline-none placeholder:text-[#9b9b9b] max-[390px]:text-[1.05rem]"
               readOnly
               onClick={() => openProductSearch?.()}
@@ -354,16 +347,10 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }: ProductCardProps) => (
         <img src={product.image} alt={product.name} className="max-h-full max-w-full object-contain" />
       </div>
 
-      <div className="mt-1 flex min-h-[6.7rem] flex-1 flex-col">
+      <div className="mt-1 flex min-h-[5.1rem] flex-1 flex-col">
       <h3 className="line-clamp-2 font-sans text-[0.94rem] font-black leading-[1.08] text-[#111] max-[390px]:text-[0.78rem]">
         {product.name}
       </h3>
-      <p className="mt-1 line-clamp-1 text-[0.82rem] leading-tight text-[#686868] max-[390px]:text-[0.68rem]">
-        {product.code}
-      </p>
-      <p className="line-clamp-2 text-[0.78rem] leading-tight text-[#686868] max-[390px]:text-[0.65rem]">
-        {product.description}
-      </p>
       <div className="mt-auto pt-1.5">
         <div className="text-[1.12rem] font-black leading-none text-[#e30613] max-[390px]:text-[0.93rem]">
           {formatVnd(product.price)}
@@ -373,11 +360,6 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }: ProductCardProps) => (
             {formatVnd(product.originalPrice)}
           </div>
         )}
-        <div className={`mt-1 inline-flex rounded px-1.5 py-0.5 text-[0.62rem] font-black ${
-          product.canPurchase ? 'bg-[#e7f8ee] text-[#087a42]' : 'bg-[#fff1f2] text-[#c60010]'
-        }`}>
-          {product.stockLabel}
-        </div>
       </div>
       </div>
     </button>

@@ -8,9 +8,7 @@ import { toProductDetailPath } from '../utils/productUrl';
 import {
   canPurchaseProduct,
   formatVnd,
-  getDisplayDescription,
   getProductImage,
-  getStockLabel,
 } from '../data/yanmarStorefront';
 
 const normalizeText = (value) =>
@@ -25,104 +23,21 @@ const normalizeText = (value) =>
 
 const normalizeCode = (value) => normalizeText(value).replace(/\s+/g, '');
 
-const expandQueryTokens = (query) => {
-  const base = normalizeText(query).split(' ').filter(Boolean);
-  const expanded = new Set(base);
-
-  base.forEach((token) => {
-    if (['xy', 'xylanh', 'xilanh', 'cylinder'].includes(token)) {
-      ['xylanh', 'xy lanh', 'piston', 'cylinder'].forEach((item) => expanded.add(item));
-    }
-    if (['loc', 'filter'].includes(token)) {
-      ['loc', 'loc nhot', 'loc gio', 'loc nhien lieu', 'filter'].forEach((item) => expanded.add(item));
-    }
-    if (['nhot', 'dau', 'oil'].includes(token)) {
-      ['nhot', 'dau', 'oil', 'lubricant'].forEach((item) => expanded.add(item));
-    }
-    if (['curoa', 'belt'].includes(token)) {
-      ['curoa', 'day curoa', 'belt'].forEach((item) => expanded.add(item));
-    }
-    if (['bac', 'dan', 'vong', 'bi', 'bearing'].includes(token)) {
-      ['bac dan', 'vong bi', 'bearing'].forEach((item) => expanded.add(item));
-    }
-    if (['thuy', 'luc', 'hydraulic', 'bom'].includes(token)) {
-      ['thuy luc', 'hydraulic', 'bom'].forEach((item) => expanded.add(item));
-    }
-    if (['dong', 'co', 'engine'].includes(token)) {
-      ['dong co', 'engine', 'may'].forEach((item) => expanded.add(item));
-    }
-  });
-
-  return Array.from(expanded).map(normalizeText).filter(Boolean);
-};
-
-const collectProductText = (product) => {
-  const values = [
-    product?.name,
-    product?.sku,
-    product?.slug,
-    product?.category_name,
-    product?.brand,
-    product?.short_description,
-    product?.description,
-    Array.isArray(product?.tags) ? product.tags.join(' ') : '',
-  ];
-
-  if (Array.isArray(product?.specifications)) {
-    product.specifications.forEach((item) => values.push(item?.label, item?.value));
-  }
-
-  if (Array.isArray(product?.variants)) {
-    product.variants.forEach((variant) => {
-      values.push(variant?.sku, variant?.variant_name);
-      if (variant?.attribute_values && typeof variant.attribute_values === 'object') {
-        values.push(...Object.values(variant.attribute_values));
-      }
-      if (Array.isArray(variant?.attributes)) {
-        variant.attributes.forEach((item) => values.push(item?.name, item?.value));
-      }
-    });
-  }
-
-  return values.filter(Boolean).join(' ');
-};
-
 const scoreProduct = (product, query) => {
   const q = normalizeText(query);
   const qCode = normalizeCode(query);
-  const tokens = expandQueryTokens(query);
-  if (!q || tokens.length === 0) return 0;
+  if (!q) return 0;
 
   const name = normalizeText(product?.name);
-  const sku = normalizeText(product?.sku);
-  const skuCode = normalizeCode(product?.sku);
-  const slug = normalizeText(product?.slug);
-  const category = normalizeText(product?.category_name);
-  const description = normalizeText(getDisplayDescription(product));
-  const haystack = normalizeText(collectProductText(product));
-  const haystackCode = normalizeCode(collectProductText(product));
+  const nameCode = normalizeCode(product?.name);
 
   let score = 0;
 
-  if (skuCode && skuCode === qCode) score += 150;
   if (name === q) score += 140;
-  if (skuCode && skuCode.startsWith(qCode)) score += 95;
   if (name.startsWith(q)) score += 90;
-  if (slug.startsWith(q)) score += 65;
-  if (category.startsWith(q)) score += 48;
+  if (nameCode.startsWith(qCode)) score += 86;
   if (name.includes(q)) score += 64;
-  if (sku.includes(q) || skuCode.includes(qCode)) score += 56;
-  if (category.includes(q)) score += 34;
-  if (description.includes(q)) score += 18;
-  if (haystack.includes(q) || haystackCode.includes(qCode)) score += 20;
-
-  const matchedTokens = tokens.filter((token) => {
-    const tokenCode = normalizeCode(token);
-    return haystack.includes(token) || haystackCode.includes(tokenCode);
-  });
-
-  score += matchedTokens.length * 18;
-  if (matchedTokens.length === tokens.length) score += 32;
+  if (nameCode.includes(qCode)) score += 60;
 
   if (product?.featured) score += 8;
   if (Number(product?.stock || 0) > 0) score += 4;
@@ -148,8 +63,7 @@ const ProductQuickSearch = ({ open, onClose }) => {
   const cleanQuery = useMemo(() => String(query || '').trim(), [query]);
   const normalizedQuery = useMemo(() => normalizeText(cleanQuery), [cleanQuery]);
   const isEmptyQuery = cleanQuery.length === 0;
-  const isShortQuery = cleanQuery.length > 0 && normalizedQuery.length < 2;
-  const hasQuery = normalizedQuery.length >= 2;
+  const hasQuery = normalizedQuery.length >= 1;
 
   useEffect(() => {
     if (!open) return;
@@ -212,9 +126,8 @@ const ProductQuickSearch = ({ open, onClose }) => {
 
   const results = useMemo(() => {
     if (isEmptyQuery) return products.slice(0, 6);
-    if (!hasQuery) return [];
     return sortSearchResults(products, cleanQuery).slice(0, 8);
-  }, [cleanQuery, hasQuery, isEmptyQuery, products]);
+  }, [cleanQuery, isEmptyQuery, products]);
 
   const openProduct = (product) => {
     onClose();
@@ -246,7 +159,7 @@ const ProductQuickSearch = ({ open, onClose }) => {
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-black text-[#111]">Tìm sản phẩm</h2>
-              <p className="text-sm font-medium text-gray-500">Nhập tên sản phẩm, mã phụ tùng, loại lọc, nhớt hoặc cụm máy.</p>
+              <p className="text-sm font-medium text-gray-500">Nhập tên sản phẩm cần tìm.</p>
             </div>
             <button
               type="button"
@@ -265,7 +178,7 @@ const ProductQuickSearch = ({ open, onClose }) => {
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Ví dụ: lọc nhớt, xylanh, dây curoa, 119305..."
+              placeholder="Ví dụ: nhớt, lọc nhớt, xylanh..."
               className="h-14 w-full rounded-2xl border border-gray-200 bg-gray-50 pl-12 pr-4 text-base font-bold text-[#111] outline-none transition placeholder:text-gray-400 focus:border-[#e30613] focus:bg-white focus:ring-4 focus:ring-[#e30613]/10"
             />
           </form>
@@ -273,7 +186,7 @@ const ProductQuickSearch = ({ open, onClose }) => {
 
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           <div className="mb-2 px-1 text-xs font-black uppercase tracking-wide text-gray-400">
-            {hasQuery ? 'Kết quả phù hợp' : isShortQuery ? 'Nhập thêm để tìm chính xác hơn' : 'Gợi ý nhanh'}
+            {hasQuery ? 'Kết quả phù hợp' : 'Gợi ý nhanh'}
           </div>
 
           {loading && (
@@ -290,17 +203,10 @@ const ProductQuickSearch = ({ open, onClose }) => {
             </div>
           )}
 
-          {!loading && !loadFailed && isShortQuery && (
-            <div className="rounded-2xl bg-gray-50 p-5 text-center">
-              <div className="text-sm font-black text-gray-900">Nhập ít nhất 2 ký tự</div>
-              <div className="mt-1 text-sm text-gray-500">Ví dụ: xy, lọc, nhớt, dây, 119305.</div>
-            </div>
-          )}
-
-          {!loading && !loadFailed && !isShortQuery && results.length === 0 && (
+          {!loading && !loadFailed && results.length === 0 && (
             <div className="rounded-2xl bg-gray-50 p-5 text-center">
               <div className="text-sm font-black text-gray-900">Không thấy sản phẩm phù hợp</div>
-              <div className="mt-1 text-sm text-gray-500">Bạn có thể thử tên ngắn hơn, mã SKU hoặc loại phụ tùng.</div>
+              <div className="mt-1 text-sm text-gray-500">Bạn có thể thử tên ngắn hơn hoặc tên đầy đủ hơn.</div>
             </div>
           )}
 
@@ -322,14 +228,8 @@ const ProductQuickSearch = ({ open, onClose }) => {
                     />
                     <span className="min-w-0 flex-1 py-1">
                       <span className="line-clamp-2 text-sm font-black leading-snug text-[#111]">{product.name}</span>
-                      <span className="mt-1 block truncate text-xs font-semibold text-gray-500">
-                        {product.sku || getDisplayDescription(product)}
-                      </span>
                       <span className="mt-2 flex flex-wrap items-center gap-2">
                         <span className="text-base font-black text-[#e30613]">{formatVnd(pricing.currentPrice || product.price)}</span>
-                        <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700">
-                          {getStockLabel(product)}
-                        </span>
                       </span>
                     </span>
                   </button>

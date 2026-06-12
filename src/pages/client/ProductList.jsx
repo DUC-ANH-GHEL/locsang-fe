@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowDownUp, ChevronDown, Filter, ShoppingCart } from 'lucide-react';
+import { ArrowDownUp, ChevronDown, Filter } from 'lucide-react';
 
 import { useCart } from '../../contexts/CartContext';
 import { getPublicCategories } from '../../services/categoryService';
@@ -12,9 +12,7 @@ import {
   formatVnd,
   canPurchaseProduct,
   getDiscountLabel,
-  getDisplayDescription,
   getProductImage,
-  getStockLabel,
   toCartPayload,
 } from '../../data/yanmarStorefront';
 
@@ -314,7 +312,6 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
   const pricing = getProductPricing(product);
   const discountLabel = getDiscountLabel(product) || (pricing.hasDiscount ? '-15%' : '');
   const canPurchase = canPurchaseProduct(product);
-  const stockLabel = getStockLabel(product);
 
   return (
     <article className="relative overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-2 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
@@ -329,13 +326,10 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
           <img src={getProductImage(product)} alt={product.name} className="max-h-[8.4rem] max-w-full object-contain max-[390px]:max-h-[6.8rem]" />
         </div>
 
-        <div className="mt-2 min-h-[7.2rem]">
+        <div className="mt-2 min-h-[5.8rem]">
           <h2 className="line-clamp-2 font-sans text-[1.08rem] font-black leading-[1.12] text-[#111] max-[390px]:text-[0.92rem]">
             {product.name}
           </h2>
-          <p className="mt-1 line-clamp-2 text-[0.88rem] leading-tight text-[#666] max-[390px]:text-[0.76rem]">
-            {getDisplayDescription(product)}
-          </p>
           <div className="mt-3 text-[1.42rem] font-black leading-none text-[#e30613] max-[390px]:text-[1.1rem]">
             {formatVnd(pricing.currentPrice)}
           </div>
@@ -344,11 +338,6 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
               {formatVnd(pricing.originalPrice)}
             </div>
           )}
-          <div className={`mt-2 inline-flex rounded-md px-2 py-1 text-[0.72rem] font-black ${
-            canPurchase ? 'bg-[#e7f8ee] text-[#087a42]' : 'bg-[#fff1f2] text-[#c60010]'
-          }`}>
-            {stockLabel}
-          </div>
         </div>
       </button>
 
@@ -366,13 +355,12 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
         type="button"
         onClick={onAdd}
         disabled={!canPurchase}
-        className={`mt-1.5 flex h-9 w-full items-center justify-center gap-2 rounded-md border text-[0.98rem] font-bold active:bg-[#fff1f2] max-[390px]:text-[0.82rem] ${
+        className={`mt-1.5 flex h-9 w-full items-center justify-center rounded-md border text-[0.98rem] font-bold active:bg-[#fff1f2] max-[390px]:text-[0.82rem] ${
           canPurchase
             ? 'border-[#e30613] bg-white text-[#e30613]'
             : 'cursor-not-allowed border-[#d1d5db] bg-white text-[#9ca3af]'
         }`}
       >
-        <ShoppingCart size={20} />
         Thêm vào giỏ
       </button>
     </article>
