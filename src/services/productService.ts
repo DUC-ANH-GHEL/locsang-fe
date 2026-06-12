@@ -2,6 +2,7 @@ import axios from 'axios';
 import { Product } from '../types/product';
 import { API_BASE_URL } from '../config/api';
 import { apiClient } from './apiClient';
+import { optimizeImageForUpload } from '../utils/imageUploadOptimization';
 import { parseApiDateTime } from '../utils/dateTime';
 
 type GetProductsParams = {
@@ -390,8 +391,9 @@ export const getAdminProducts = async (query: AdminProductsQuery): Promise<Admin
 };
 
 export const uploadAdminProductImage = async (file: File): Promise<{ url: string; public_id?: string | null }> => {
+  const uploadFile = await optimizeImageForUpload(file);
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', uploadFile);
   const response = await apiClient.post('/admin/products/upload-image', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });

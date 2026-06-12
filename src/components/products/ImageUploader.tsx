@@ -1,5 +1,5 @@
 import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
-import imageCompression from 'browser-image-compression';
+import { optimizeImageForUpload } from '../../utils/imageUploadOptimization';
 
 type ImageItem = File | string;
 
@@ -113,26 +113,19 @@ const ImageUploader = ({
 
   const compressIfNeeded = async (file: File): Promise<File> => {
     const maxBytes = 10 * 1024 * 1024;
-    if (file.size <= maxBytes) return file;
 
     if ((file.type || '') === 'image/svg+xml') {
-      throw new Error(`${file.name}: SVG > 10MB không hỗ trợ nén`);
+      throw new Error(`${file.name}: SVG không hỗ trợ chuyển sang WebP. Vui lòng dùng JPG, PNG hoặc WebP.`);
     }
 
-    const compressed = await imageCompression(file, {
+    const result = await optimizeImageForUpload(file, {
       maxSizeMB: 10,
       maxWidthOrHeight: 2560,
-      useWebWorker: true,
       initialQuality: 0.85,
     });
 
-    const result =
-      compressed instanceof File
-        ? compressed
-        : new File([compressed], file.name, { type: file.type || 'image/jpeg' });
-
     if (result.size > maxBytes) {
-      throw new Error(`${file.name}: không nén xuống <= 10MB`);
+      throw new Error(`${file.name}: ảnh sau khi tối ưu vẫn lớn hơn 10MB.`);
     }
 
     return result;

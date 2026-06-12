@@ -1,6 +1,7 @@
 import { apiClient } from './apiClient';
 import { API_BASE_URL } from '../config/api';
 import axios from 'axios';
+import { optimizeImageForUpload } from '../utils/imageUploadOptimization';
 
 const PUBLIC_API_BASE_URL = API_BASE_URL.replace(/\/api\/v1\/?$/, '/api');
 
@@ -124,8 +125,9 @@ export const homeContentService = {
     file: File,
     onProgress?: (percent: number) => void,
   ): Promise<HomeContentImageUploadResponse> => {
+    const uploadFile = await optimizeImageForUpload(file);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', uploadFile);
     const res = await apiClient.post('/admin/home-content/upload-image', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: (event) => {
