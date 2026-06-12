@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronRight, ShoppingCart } from 'lucide-react';
 
@@ -6,6 +6,7 @@ import { useCart } from '../../contexts/CartContext';
 import { productService } from '../../services/productService';
 import { toProductDetailPath } from '../../utils/productUrl';
 import { getProductPricing } from '../../utils/productPricing';
+import { flyProductImageToCart } from '../../utils/cartFlyAnimation';
 import { useSEO } from '../../hooks/useSEO';
 import {
   formatVnd,
@@ -60,6 +61,7 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const mainImageRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,14 +145,15 @@ const ProductDetail = () => {
     canonicalPath: product ? toProductDetailPath(product) : `/products/${id}`,
   });
 
-  const addProduct = () => {
+  const addProduct = ({ animate = true } = {}) => {
     if (!product) return;
     if (!inStock) return;
+    if (animate) flyProductImageToCart(mainImageRef.current);
     addToCart(toCartPayload(product, quantity, selectedVariant));
   };
 
   const buyNow = () => {
-    addProduct();
+    addProduct({ animate: false });
     navigate('/checkout');
   };
 
@@ -188,6 +191,8 @@ const ProductDetail = () => {
           )}
           <div className="flex min-h-[25rem] items-center justify-center px-5 py-6 max-[430px]:min-h-[20rem] max-[390px]:min-h-[17rem]">
             <img
+              ref={mainImageRef}
+              data-cart-fly-image
               src={galleryImages[selectedImageIndex] || getProductImage(product)}
               alt={product.name}
               className="max-h-[23rem] max-w-full object-contain max-[430px]:max-h-[18.5rem] max-[390px]:max-h-[15.5rem]"
@@ -286,7 +291,7 @@ const ProductDetail = () => {
             </button>
             <button
               type="button"
-              onClick={addProduct}
+              onClick={() => addProduct()}
               disabled={!inStock}
               className="flex h-12 items-center justify-center gap-3 rounded-lg border border-[#e30613] bg-white text-[1rem] font-black uppercase text-[#e30613] transition hover:bg-[#fff1f2] disabled:cursor-not-allowed disabled:border-[#bbbbbb] disabled:text-[#999]"
             >
@@ -380,7 +385,7 @@ const ProductDetail = () => {
           </button>
           <button
             type="button"
-            onClick={addProduct}
+            onClick={() => addProduct()}
             disabled={!inStock}
             className="flex h-10 w-full items-center justify-center gap-3 rounded-lg border border-[#e30613] bg-white text-[1rem] font-black uppercase text-[#e30613] disabled:border-[#bbbbbb] disabled:text-[#999]"
           >

@@ -7,6 +7,7 @@ import { getPublicCategories } from '../../services/categoryService';
 import { productService } from '../../services/productService';
 import { toProductDetailPath } from '../../utils/productUrl';
 import { getProductPricing } from '../../utils/productPricing';
+import { flyProductImageToCartFromEvent } from '../../utils/cartFlyAnimation';
 import { useSEO } from '../../hooks/useSEO';
 import {
   formatVnd,
@@ -182,8 +183,9 @@ const ProductList = () => {
     return next;
   }, [selectedCategoryName, selectedSaleOnly, sortBy, products]);
 
-  const addProduct = (product) => {
+  const addProduct = (product, event) => {
     if (!canPurchaseProduct(product)) return;
+    flyProductImageToCartFromEvent(event);
     addToCart(toCartPayload(product, 1));
   };
 
@@ -250,7 +252,7 @@ const ProductList = () => {
                   key={product.id}
                   product={product}
                   onOpen={() => navigate(toProductDetailPath(product))}
-                  onAdd={() => addProduct(product)}
+                  onAdd={(event) => addProduct(product, event)}
                   onBuy={() => buyNow(product)}
                 />
               ))}
@@ -289,7 +291,7 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
   const canPurchase = canPurchaseProduct(product);
 
   return (
-    <article className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+    <article data-product-card className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
       {discountLabel && (
         <div className="absolute left-2 top-2 z-10 rounded-md bg-[#e30613] px-2 py-1 text-[0.92rem] font-black leading-none text-white max-[390px]:text-[0.8rem]">
           {discountLabel}
@@ -298,7 +300,7 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
 
       <button type="button" onClick={onOpen} className="block w-full text-left">
         <div className="aspect-square w-full overflow-hidden rounded-lg bg-[#f7f7f7]">
-          <img src={getProductImage(product)} alt={product.name} className="h-full w-full object-cover" />
+          <img data-cart-fly-image src={getProductImage(product)} alt={product.name} className="h-full w-full object-cover" />
         </div>
 
         <div className="px-0.5 pt-2">

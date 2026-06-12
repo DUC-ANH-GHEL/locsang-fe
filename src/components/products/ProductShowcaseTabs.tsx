@@ -5,6 +5,7 @@ import 'aos/dist/aos.css';
 import './ProductShowcaseTabs.css';
 import { FaShoppingCart } from 'react-icons/fa';
 import { useCart } from '../../contexts/CartContext';
+import { flyProductImageToCart } from '../../utils/cartFlyAnimation';
 
 const IMAGE_DEFAULT_URL = '/favicon.svg';
 
@@ -57,29 +58,7 @@ function ProductShowcaseTabs() {
   // Hiệu ứng bay vào giỏ hàng
   const flyToCart = (imgIdx) => {
     const img = imgRefs.current[imgIdx];
-    const cartIcon = document.querySelector('.cart-fly-target');
-    if (!img || !cartIcon) return;
-    const imgRect = img.getBoundingClientRect();
-    const cartRect = cartIcon.getBoundingClientRect();
-    const clone = img.cloneNode(true);
-    clone.style.position = 'fixed';
-    clone.style.left = imgRect.left + 'px';
-    clone.style.top = imgRect.top + 'px';
-    clone.style.width = imgRect.width + 'px';
-    clone.style.height = imgRect.height + 'px';
-    clone.style.zIndex = 9999;
-    clone.style.transition = 'all 0.8s cubic-bezier(.6,-0.28,.74,.05)';
-    document.body.appendChild(clone);
-    setTimeout(() => {
-      clone.style.left = cartRect.left + cartRect.width/2 - imgRect.width/4 + 'px';
-      clone.style.top = cartRect.top + cartRect.height/2 - imgRect.height/4 + 'px';
-      clone.style.width = imgRect.width/2 + 'px';
-      clone.style.height = imgRect.height/2 + 'px';
-      clone.style.opacity = 0.5;
-    }, 10);
-    setTimeout(() => {
-      document.body.removeChild(clone);
-    }, 850);
+    flyProductImageToCart(img);
   };
 
   // Thêm vào giỏ hàng

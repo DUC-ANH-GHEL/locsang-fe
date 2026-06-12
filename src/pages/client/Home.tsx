@@ -8,6 +8,7 @@ import { Category, getPublicCategories } from '../../services/categoryService';
 import { HomeContentPayload, homeContentService } from '../../services/homeContentService';
 import { getProductPricing } from '../../utils/productPricing';
 import { toProductDetailPath } from '../../utils/productUrl';
+import { flyProductImageToCartFromEvent } from '../../utils/cartFlyAnimation';
 import { useSEO } from '../../hooks/useSEO';
 import { useCart } from '../../contexts/CartContext';
 import {
@@ -190,8 +191,9 @@ const Home = () => {
       .join(' ')
       .trim() || 'Phụ tùng và nhớt chính hãng Yanmar';
 
-  const addProductToCart = (product: HomeProduct) => {
+  const addProductToCart = (product: HomeProduct, event?: React.MouseEvent<HTMLElement>) => {
     if (!product.raw || !product.canPurchase) return;
+    flyProductImageToCartFromEvent(event);
     addToCart(toCartPayload(product.raw, 1, getDefaultCartVariant(product.raw)));
   };
 
@@ -282,7 +284,7 @@ type ProductSectionProps = {
   products: HomeProduct[];
   loading?: boolean;
   onOpen: (product: HomeProduct) => void;
-  onAdd: (product: HomeProduct) => void;
+  onAdd: (product: HomeProduct, event?: React.MouseEvent<HTMLElement>) => void;
   onBuy: (product: HomeProduct) => void;
   onViewAll?: () => void;
 };
@@ -327,12 +329,12 @@ const ProductCardSkeleton = () => (
 type ProductCardProps = {
   product: HomeProduct;
   onOpen: (product: HomeProduct) => void;
-  onAdd: (product: HomeProduct) => void;
+  onAdd: (product: HomeProduct, event?: React.MouseEvent<HTMLElement>) => void;
   onBuy: (product: HomeProduct) => void;
 };
 
 const ProductCard = ({ product, onOpen, onAdd, onBuy }: ProductCardProps) => (
-  <article className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#e3e3e3] bg-white p-1.5 shadow-[0_1px_5px_rgba(0,0,0,0.06)]">
+  <article data-product-card className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#e3e3e3] bg-white p-1.5 shadow-[0_1px_5px_rgba(0,0,0,0.06)]">
     {product.discountLabel && (
       <div className="absolute left-2 top-2 z-10 rounded-md bg-[#e30613] px-2 py-1 text-[0.92rem] font-black leading-none text-white shadow-sm max-[390px]:text-[0.8rem]">
         {product.discountLabel}
@@ -341,7 +343,7 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }: ProductCardProps) => (
 
     <button type="button" onClick={() => onOpen(product)} className="block min-w-0 text-left">
       <div className="aspect-square w-full overflow-hidden rounded-lg bg-[#f7f7f7]">
-        <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+        <img data-cart-fly-image src={product.image} alt={product.name} className="h-full w-full object-cover" />
       </div>
 
       <div className="px-0.5 pt-2">
@@ -373,7 +375,7 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }: ProductCardProps) => (
     </button>
     <button
       type="button"
-      onClick={() => onAdd(product)}
+      onClick={(event) => onAdd(product, event)}
       disabled={!product.canPurchase}
       className={`mt-1.5 flex h-9 items-center justify-center rounded-md border bg-white px-1 text-[0.86rem] font-bold leading-none active:bg-[#fff1f2] max-[390px]:h-8 max-[390px]:text-[0.76rem] ${
         product.canPurchase

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ShoppingCart, X } from 'lucide-react';
 
@@ -76,6 +76,7 @@ const Checkout = () => {
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [orderResult, setOrderResult] = useState(null);
+  const fieldRefs = useRef({});
 
   useSEO({
     title: 'Thanh toán',
@@ -115,11 +116,24 @@ const Checkout = () => {
     setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
+  const focusFirstError = (nextErrors) => {
+    const firstField = ['name', 'phone', 'address', 'note'].find((field) => nextErrors[field]);
+    const target = firstField ? fieldRefs.current[firstField] : null;
+    if (!target) return;
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.focus({ preventScroll: true });
+    });
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     const nextErrors = validate(form);
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+    if (Object.keys(nextErrors).length > 0) {
+      focusFirstError(nextErrors);
+      return;
+    }
 
     if (cart.length === 0) {
       setSubmitError('Giỏ hàng đang trống.');
@@ -217,10 +231,10 @@ const Checkout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white pb-[calc(env(safe-area-inset-bottom,0px)+6rem)] font-sans text-[#111] md:bg-[#f5f5f5]">
+    <div className="min-h-screen bg-white pb-[calc(env(safe-area-inset-bottom,0px)+8.5rem)] font-sans text-[#111] md:bg-[#f5f5f5]">
       <CheckoutHeader cartCount={cartCount} onBack={() => navigate(-1)} />
 
-      <main className="mx-auto w-full max-w-[944px] bg-white px-3.5 pb-6 pt-4 sm:px-6 md:shadow-2xl md:shadow-black/10">
+      <main className="mx-auto w-full max-w-[944px] bg-white px-3.5 pb-8 pt-4 sm:px-6 md:shadow-2xl md:shadow-black/10">
         <CheckoutSteps />
 
         <section className="mt-5 overflow-hidden rounded-xl border border-[#e2e2e2] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.05)]">
@@ -241,13 +255,16 @@ const Checkout = () => {
           <SummaryRow label="Tổng cộng" value={formatVnd(total)} strong />
         </section>
 
-        <form onSubmit={handleSubmit} className="mt-4">
+        <form id="checkout-form" onSubmit={handleSubmit} className="mt-4">
           <section className="rounded-xl border border-[#e2e2e2] bg-white px-4 py-4 shadow-[0_2px_10px_rgba(0,0,0,0.05)]">
             <h2 className="font-sans text-[1.15rem] font-black uppercase text-[#111]">Thông tin khách hàng</h2>
 
             <Field
               label="Họ và tên"
               name="name"
+              inputRef={(node) => {
+                fieldRefs.current.name = node;
+              }}
               value={form.name}
               placeholder="Nhập họ và tên"
               error={errors.name}
@@ -256,6 +273,9 @@ const Checkout = () => {
             <Field
               label="Số điện thoại"
               name="phone"
+              inputRef={(node) => {
+                fieldRefs.current.phone = node;
+              }}
               value={form.phone}
               placeholder="Nhập số điện thoại"
               error={errors.phone}
@@ -265,6 +285,9 @@ const Checkout = () => {
             <Field
               label="Địa chỉ nhận hàng"
               name="address"
+              inputRef={(node) => {
+                fieldRefs.current.address = node;
+              }}
               value={form.address}
               placeholder="Nhập địa chỉ nhận hàng"
               error={errors.address}
@@ -275,6 +298,9 @@ const Checkout = () => {
               label="Ghi chú"
               optional="tùy chọn"
               name="note"
+              inputRef={(node) => {
+                fieldRefs.current.note = node;
+              }}
               value={form.note}
               placeholder="Nhập ghi chú nếu có"
               onChange={handleChange}
@@ -287,15 +313,24 @@ const Checkout = () => {
               {submitError}
             </div>
           )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="mt-4 h-14 w-full rounded-lg bg-[#e30613] text-[1.35rem] font-black text-white shadow-[0_8px_18px_rgba(227,6,19,0.2)] disabled:bg-[#bbbbbb]"
-          >
-            {submitting ? 'Đang đặt hàng...' : 'Đặt hàng ngay'}
-          </button>
         </form>
+
+        <div className="fixed inset-x-0 bottom-0 z-[70] border-t border-[#eeeeee] bg-white/95 px-3.5 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-3 shadow-[0_-10px_28px_rgba(0,0,0,0.12)] backdrop-blur md:sticky md:bottom-4 md:mt-5 md:rounded-2xl md:border md:px-4 md:pb-4 md:shadow-[0_14px_34px_rgba(0,0,0,0.12)]">
+          <div className="mx-auto flex max-w-[944px] items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold uppercase text-[#7a8799]">Tổng thanh toán</p>
+              <p className="truncate text-xl font-black text-[#e30613]">{formatVnd(total)}</p>
+            </div>
+            <button
+              type="submit"
+              form="checkout-form"
+              disabled={submitting}
+              className="h-14 min-w-[12.5rem] rounded-xl bg-[#e30613] px-5 text-lg font-black text-white shadow-[0_10px_22px_rgba(227,6,19,0.24)] active:translate-y-px disabled:bg-[#bbbbbb] max-[390px]:min-w-[10.5rem] max-[390px]:text-base"
+            >
+              {submitting ? 'Đang đặt...' : 'Đặt hàng ngay'}
+            </button>
+          </div>
+        </div>
       </main>
     </div>
   );
@@ -381,7 +416,7 @@ const SummaryRow = ({ label, value, strong = false }) => (
   </div>
 );
 
-const Field = ({ label, optional, error, textarea = false, ...props }) => (
+const Field = ({ label, optional, error, textarea = false, inputRef, ...props }) => (
   <label className="mt-4 block">
     <span className="text-base font-bold text-[#111]">
       {label} {optional && <span className="font-medium text-[#777]">({optional})</span>}
@@ -389,6 +424,7 @@ const Field = ({ label, optional, error, textarea = false, ...props }) => (
     {textarea ? (
       <textarea
         {...props}
+        ref={inputRef}
         rows={props.name === 'address' ? 2 : 3}
         className={`mt-2 w-full resize-none rounded-md border px-4 py-3 text-base outline-none placeholder:text-[#888] focus:border-[#e30613] ${
           error ? 'border-[#e30613]' : 'border-[#cfcfcf]'
@@ -397,6 +433,7 @@ const Field = ({ label, optional, error, textarea = false, ...props }) => (
     ) : (
       <input
         {...props}
+        ref={inputRef}
         className={`mt-2 h-12 w-full rounded-md border px-4 text-base outline-none placeholder:text-[#888] focus:border-[#e30613] ${
           error ? 'border-[#e30613]' : 'border-[#cfcfcf]'
         }`}
