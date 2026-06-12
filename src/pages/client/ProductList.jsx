@@ -274,10 +274,10 @@ const ProductList = () => {
 };
 
 const ProductSkeleton = () => (
-  <div className="overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-    <div className="h-[8rem] rounded-lg bg-[#f2f2f2] max-[390px]:h-[7rem]" />
+  <div className="overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+    <div className="aspect-square rounded-lg bg-[#f2f2f2]" />
     <div className="mt-3 h-4 w-4/5 rounded bg-[#eeeeee]" />
-    <div className="mt-4 h-7 w-3/4 rounded bg-[#eeeeee]" />
+    <div className="mt-3 h-7 w-3/4 rounded bg-[#eeeeee]" />
     <div className="mt-4 h-10 rounded-md bg-[#eeeeee]" />
     <div className="mt-1.5 h-9 rounded-md bg-[#f5f5f5]" />
   </div>
@@ -289,7 +289,7 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
   const canPurchase = canPurchaseProduct(product);
 
   return (
-    <article className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+    <article className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
       {discountLabel && (
         <div className="absolute left-2 top-2 z-10 rounded-md bg-[#e30613] px-2 py-1 text-[0.92rem] font-black leading-none text-white max-[390px]:text-[0.8rem]">
           {discountLabel}
@@ -297,21 +297,21 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
       )}
 
       <button type="button" onClick={onOpen} className="block w-full text-left">
-        <div className="flex h-[8.4rem] items-center justify-center rounded-lg bg-white max-[390px]:h-[7rem]">
-          <img src={getProductImage(product)} alt={product.name} className="max-h-full max-w-full object-contain" />
+        <div className="aspect-square w-full overflow-hidden rounded-lg bg-[#f7f7f7]">
+          <img src={getProductImage(product)} alt={product.name} className="h-full w-full object-cover" />
         </div>
 
-        <div className="mt-2 flex min-h-[5.1rem] flex-col">
+        <div className="px-0.5 pt-2">
           <h2 className="line-clamp-2 font-sans text-[1rem] font-black leading-[1.12] text-[#111] max-[390px]:text-[0.88rem]">
             {product.name}
           </h2>
-          <div className="mt-auto pt-2">
-            <div className="text-[1.22rem] font-black leading-none text-[#e30613] max-[390px]:text-[1.02rem]">
-              {formatVnd(pricing.currentPrice)}
+          <div className="mt-2">
+            <div className="text-[1.28rem] font-black leading-none text-[#e30613] max-[390px]:text-[1.08rem]">
+              {formatVnd(pricing.currentPrice).replace('₫', 'đ')}
             </div>
             {pricing.originalPrice && (
               <div className="mt-1 text-[0.82rem] leading-none text-[#777] line-through max-[390px]:text-[0.7rem]">
-                {formatVnd(pricing.originalPrice)}
+                {formatVnd(pricing.originalPrice).replace('₫', 'đ')}
               </div>
             )}
           </div>

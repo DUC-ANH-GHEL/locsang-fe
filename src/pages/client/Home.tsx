@@ -308,11 +308,10 @@ const ProductSection = ({ title, icon, products, loading = false, onOpen, onAdd,
 );
 
 const ProductCardSkeleton = () => (
-  <div className="rounded-xl border border-[#e3e3e3] bg-white p-2.5 shadow-[0_1px_5px_rgba(0,0,0,0.06)]">
-    <div className="h-[7.8rem] rounded-lg bg-[#f2f2f2] max-[390px]:h-[6.8rem]" />
+  <div className="rounded-xl border border-[#e3e3e3] bg-white p-1.5 shadow-[0_1px_5px_rgba(0,0,0,0.06)]">
+    <div className="aspect-square rounded-lg bg-[#f2f2f2]" />
     <div className="mt-2 h-4 rounded bg-[#eeeeee]" />
-    <div className="mt-1 h-3 w-3/4 rounded bg-[#eeeeee]" />
-    <div className="mt-4 h-5 w-4/5 rounded bg-[#eeeeee]" />
+    <div className="mt-2 h-5 w-4/5 rounded bg-[#eeeeee]" />
     <div className="mt-3 h-10 rounded-md bg-[#eeeeee]" />
     <div className="mt-1.5 h-9 rounded-md bg-[#f5f5f5]" />
   </div>
@@ -326,7 +325,7 @@ type ProductCardProps = {
 };
 
 const ProductCard = ({ product, onOpen, onAdd, onBuy }: ProductCardProps) => (
-  <article className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#e3e3e3] bg-white p-2.5 shadow-[0_1px_5px_rgba(0,0,0,0.06)]">
+  <article className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#e3e3e3] bg-white p-1.5 shadow-[0_1px_5px_rgba(0,0,0,0.06)]">
     {product.discountLabel && (
       <div className="absolute left-2 top-2 z-10 rounded-md bg-[#e30613] px-2 py-1 text-[0.92rem] font-black leading-none text-white shadow-sm max-[390px]:text-[0.8rem]">
         {product.discountLabel}
@@ -334,21 +333,21 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }: ProductCardProps) => (
     )}
 
     <button type="button" onClick={() => onOpen(product)} className="block min-w-0 text-left">
-      <div className="flex h-[8.25rem] items-center justify-center rounded-lg bg-white max-[430px]:h-[7.25rem] max-[390px]:h-[6.4rem]">
-        <img src={product.image} alt={product.name} className="max-h-full max-w-full object-contain" />
+      <div className="aspect-square w-full overflow-hidden rounded-lg bg-[#f7f7f7]">
+        <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
       </div>
 
-      <div className="mt-2 flex min-h-[5.25rem] flex-1 flex-col">
+      <div className="px-0.5 pt-2">
         <h3 className="line-clamp-2 font-sans text-[1rem] font-black leading-[1.12] text-[#111] max-[390px]:text-[0.88rem]">
           {product.name}
         </h3>
-        <div className="mt-auto pt-1.5">
-          <div className="text-[1.22rem] font-black leading-none text-[#e30613] max-[390px]:text-[1.02rem]">
-            {formatVnd(product.price)}
+        <div className="mt-2">
+          <div className="text-[1.28rem] font-black leading-none text-[#e30613] max-[390px]:text-[1.08rem]">
+            {formatVnd(product.price).replace('₫', 'đ')}
           </div>
           {product.originalPrice && (
-            <div className="mt-1 text-[0.78rem] leading-none text-[#7f7f7f] line-through max-[390px]:text-[0.65rem]">
-              {formatVnd(product.originalPrice)}
+            <div className="mt-1 text-[0.8rem] leading-none text-[#7f7f7f] line-through max-[390px]:text-[0.68rem]">
+              {formatVnd(product.originalPrice).replace('₫', 'đ')}
             </div>
           )}
         </div>
