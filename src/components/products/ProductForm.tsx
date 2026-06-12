@@ -896,7 +896,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     : null;
 
   return (
-    <form ref={formRef} onSubmit={submit} className="space-y-4 pb-24">
+    <form ref={formRef} onSubmit={submit} className="space-y-4 pb-[calc(env(safe-area-inset-bottom,0px)+12rem)] lg:pb-24">
       <div className="rounded-2xl border border-rose-100 bg-gradient-to-r from-rose-50 to-white p-4 dark:border-rose-500/20 dark:from-rose-500/10 dark:to-slate-950 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -1357,7 +1357,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         )}
       </section>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 lg:left-[255px]">
+      <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+5.8rem)] z-[45] border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 lg:bottom-0 lg:left-[255px]">
         <div className="mx-auto flex max-w-5xl gap-3">
           <button
             type="button"

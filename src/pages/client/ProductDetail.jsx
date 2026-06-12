@@ -68,8 +68,11 @@ const ProductDetail = () => {
         ]);
         if (cancelled) return;
 
-        const detail = detailResult.status === 'fulfilled' && detailResult.value ? detailResult.value : null;
         const list = listResult.status === 'fulfilled' && Array.isArray(listResult.value) ? listResult.value : [];
+        const detail =
+          detailResult.status === 'fulfilled' && detailResult.value
+            ? detailResult.value
+            : list.find((item) => Number(item?.id) === Number(productId)) || null;
 
         setProduct(detail);
         setLoadFailed(false);
