@@ -46,6 +46,28 @@ const FALLBACK_CATEGORY_LINKS: CategoryLink[] = [
   { title: 'Lọc nhớt', image: getCategoryIconValue('oil_filter') },
 ];
 
+const HOME_CONTENT_CACHE_KEY = 'locsang_public_home_content_v1';
+
+const loadCachedHomeContent = (): HomeContentPayload | null => {
+  try {
+    const raw = localStorage.getItem(HOME_CONTENT_CACHE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed as HomeContentPayload;
+  } catch {
+    return null;
+  }
+};
+
+const cacheHomeContent = (content: HomeContentPayload | null | undefined) => {
+  if (!content) return;
+  try {
+    localStorage.setItem(HOME_CONTENT_CACHE_KEY, JSON.stringify(content));
+  } catch {
+    // Cache này chỉ để tránh chớp banner mặc định; lỗi storage không ảnh hưởng luồng chính.
+  }
+};
+
 const formatVnd = (value: number) =>
   new Intl.NumberFormat('vi-VN', {
     style: 'currency',
@@ -83,7 +105,8 @@ const Home = () => {
   const openProductSearch = outletContext?.openProductSearch;
   const { addToCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
-  const [homeContent, setHomeContent] = useState<HomeContentPayload | null>(null);
+  const [homeContent, setHomeContent] = useState<HomeContentPayload | null>(() => loadCachedHomeContent());
+  const [homeContentLoaded, setHomeContentLoaded] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -124,9 +147,14 @@ const Home = () => {
     const loadHomeContent = async () => {
       try {
         const response = await homeContentService.getPublicHomeContent();
-        if (!cancelled) setHomeContent(response.content || null);
+        if (!cancelled) {
+          const content = response.content || null;
+          setHomeContent(content);
+          cacheHomeContent(content);
+          setHomeContentLoaded(true);
+        }
       } catch {
-        if (!cancelled) setHomeContent(null);
+        if (!cancelled) setHomeContentLoaded(true);
       }
     };
 
@@ -184,7 +212,7 @@ const Home = () => {
       : baseLinks;
   }, [activeCategoryIds, categories, saleProducts.length]);
 
-  const heroImage = homeContent?.hero_image_url?.trim() || HERO_IMAGE;
+  const heroImage = homeContent?.hero_image_url?.trim() || (homeContentLoaded ? HERO_IMAGE : '');
   const heroAlt =
     [homeContent?.hero_headline_line1, homeContent?.hero_headline_line2]
       .filter(Boolean)
@@ -212,7 +240,11 @@ const Home = () => {
     <div className="bg-white pb-7 text-[#101010] md:bg-[#f5f5f5] md:pb-10">
       <div className="mx-auto w-full max-w-[944px] bg-white font-sans md:shadow-2xl md:shadow-black/10">
         <section className="overflow-hidden border-b border-[#e4e4e4] bg-white">
-          <img src={heroImage} alt={heroAlt} className="block aspect-[944/317] w-full object-contain" />
+          {heroImage ? (
+            <img src={heroImage} alt={heroAlt} className="block aspect-[944/317] w-full object-contain" />
+          ) : (
+            <div className="aspect-[944/317] w-full animate-pulse bg-[#f6f7f9]" aria-label="Đang tải banner" />
+          )}
         </section>
 
         <main className="px-3.5 pt-4 sm:px-6">
