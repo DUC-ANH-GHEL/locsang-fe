@@ -29,6 +29,10 @@ const moveItem = <T,>(items: T[], fromIndex: number, toIndex: number) => {
   return next;
 };
 
+const isImageItem = (item: unknown): item is ImageItem => item instanceof File || (typeof item === 'string' && item.trim().length > 0);
+
+const sanitizeImageItems = (items: unknown[]): ImageItem[] => items.filter(isImageItem);
+
 const ImageUploader = ({
   onImagesUpdate,
   initialImages = [],
@@ -38,8 +42,7 @@ const ImageUploader = ({
   maxImages = DEFAULT_MAX_IMAGES,
   disabled = false,
 }: ImageUploaderProps) => {
-  const [images, setImages] = useState<ImageItem[]>([...initialImages]);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [images, setImages] = useState<ImageItem[]>(() => sanitizeImageItems(initialImages));
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -63,8 +66,17 @@ const ImageUploader = ({
     return key;
   };
 
+  const getPreviewSrc = (item: ImageItem) => {
+    if (typeof item === 'string') return item;
+    const existing = objectUrlMapRef.current.get(item);
+    if (existing) return existing;
+    const created = URL.createObjectURL(item);
+    objectUrlMapRef.current.set(item, created);
+    return created;
+  };
+
   useEffect(() => {
-    const next = [...initialImages];
+    const next = sanitizeImageItems(initialImages);
     setImages((prev) => (areImageListsEqual(prev, next) ? prev : next));
   }, [initialImages]);
 
@@ -83,18 +95,6 @@ const ImageUploader = ({
       }
     }
 
-    const nextPreviews = images
-      .map((item) => {
-        if (typeof item === 'string') return item;
-        const existing = map.get(item);
-        if (existing) return existing;
-        const created = URL.createObjectURL(item);
-        map.set(item, created);
-        return created;
-      })
-      .filter(Boolean);
-
-    setPreviews(nextPreviews);
     onImagesUpdate(
       images.filter((item): item is File => item instanceof File),
       images.filter((item): item is string => typeof item === 'string'),
@@ -270,10 +270,10 @@ const ImageUploader = ({
 
       {uploadError && <div className="mt-2 text-xs font-bold text-red-600">{uploadError}</div>}
 
-      {previews.length > 0 && (
+      {images.length > 0 && (
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {previews.map((src, index) => {
-            const imageItem = images[index];
+          {images.map((imageItem, index) => {
+            const src = getPreviewSrc(imageItem);
             const isDragging = draggingIndex === index;
             const isHoverTarget = dragOverIndex === index;
 
