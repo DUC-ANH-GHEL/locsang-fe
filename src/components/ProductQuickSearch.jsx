@@ -86,34 +86,38 @@ const ProductQuickSearch = ({ open, onClose }) => {
     if (!open) return;
 
     let cancelled = false;
-    const loadProducts = async () => {
-      try {
-        setLoading(true);
-        setLoadFailed(false);
-        const data = await productService.getStorefrontProducts({
-          status: 'active',
-          limit: 100,
-          page: 1,
-        });
+    const debounce = window.setTimeout(() => {
+      const loadProducts = async () => {
+        try {
+          setLoading(true);
+          setLoadFailed(false);
+          const data = await productService.getStorefrontProducts({
+            status: 'active',
+            limit: 100,
+            page: 1,
+            search: hasQuery ? cleanQuery : undefined,
+          });
 
-        if (!cancelled) {
-          setProducts((Array.isArray(data) ? data : []).filter(canPurchaseProduct));
+          if (!cancelled) {
+            setProducts((Array.isArray(data) ? data : []).filter(canPurchaseProduct));
+          }
+        } catch {
+          if (!cancelled) {
+            setProducts([]);
+            setLoadFailed(true);
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
         }
-      } catch {
-        if (!cancelled) {
-          setProducts([]);
-          setLoadFailed(true);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
+      };
 
-    loadProducts();
+      loadProducts();
+    }, hasQuery ? 180 : 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(debounce);
     };
-  }, [open]);
+  }, [cleanQuery, hasQuery, open]);
 
   useEffect(() => {
     if (!open) {
