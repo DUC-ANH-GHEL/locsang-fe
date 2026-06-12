@@ -59,32 +59,32 @@ const CategoryIconPicker = ({ name, value, onChange, disabled = false }: Categor
         <div>
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Icon danh mục</div>
           <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Nếu không chọn, hệ thống tự chọn icon theo tên danh mục. Bạn cũng có thể chọn icon có sẵn hoặc upload ảnh riêng.
+            Nếu không chọn, hệ thống tự chọn icon theo tên danh mục. Bộ icon này chỉ gồm nhóm sản phẩm Lộc Sang.
           </div>
         </div>
         <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 dark:border-rose-900/40 dark:bg-rose-950/20">
           <CategoryIconPreview
             name={name}
             value={value}
-            size={34}
+            size={36}
             iconClassName="text-rose-600 dark:text-rose-300"
             imageClassName="h-12 w-12 rounded-xl object-contain"
           />
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
         <button
           type="button"
           disabled={disabled}
           onClick={() => onChange('')}
-          className={`flex min-h-[4.7rem] flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center text-xs font-black transition ${
+          className={`flex min-h-[4.9rem] flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center text-xs font-black transition ${
             !value
               ? 'border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-950/30'
               : 'border-gray-200 text-gray-700 hover:border-rose-200 dark:border-gray-800 dark:text-gray-200'
           }`}
         >
-          <CategoryIconPreview name={name} value="" size={24} iconClassName="text-rose-600" />
+          <CategoryIconPreview name={name} value="" size={28} iconClassName="text-rose-600" />
           Tự động
           <span className="text-[10px] font-semibold text-gray-400">{autoOption.label}</span>
         </button>
@@ -95,13 +95,13 @@ const CategoryIconPicker = ({ name, value, onChange, disabled = false }: Categor
             type="button"
             disabled={disabled}
             onClick={() => onChange(getCategoryIconValue(option.key))}
-            className={`flex min-h-[4.7rem] flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center text-xs font-black transition ${
+            className={`flex min-h-[4.9rem] flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center text-xs font-black transition ${
               selectedKey === option.key
                 ? 'border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-950/30'
                 : 'border-gray-200 text-gray-700 hover:border-rose-200 dark:border-gray-800 dark:text-gray-200'
             }`}
           >
-            <CategoryIconPreview name={option.label} value={getCategoryIconValue(option.key)} size={26} iconClassName="text-rose-600" />
+            <CategoryIconPreview name={option.label} value={getCategoryIconValue(option.key)} size={30} iconClassName="text-rose-600" />
             {option.label}
           </button>
         ))}

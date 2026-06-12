@@ -49,7 +49,7 @@ type CategoryLink = {
 const FALLBACK_CATEGORY_LINKS: CategoryLink[] = [
   { title: 'Phụ tùng', image: getCategoryIconValue('parts') },
   { title: 'Nhớt động cơ', image: getCategoryIconValue('oil') },
-  { title: 'Lọc gió & lọc nhớt', image: getCategoryIconValue('filter') },
+  { title: 'Lọc gió & lọc nhớt', image: getCategoryIconValue('oil_filter') },
 ];
 
 const formatVnd = (value: number) =>
