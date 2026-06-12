@@ -44,6 +44,7 @@ export interface Product {
   category_name?: string;
   sku: string;
   stock: number;
+  sold_count?: number;
   status: 'active' | 'inactive';
   is_active: boolean;
   created_at: Date;
@@ -57,7 +58,6 @@ export interface Product {
   specifications?: Array<{ label: string; value: string }>;
   has_variants?: boolean;
   product_status?: ProductStatus;
-  featured?: boolean;
   display_order?: number | null;
   low_stock_threshold?: number | null;
   manage_stock?: boolean;
@@ -88,7 +88,6 @@ export interface ProductFormData {
   video_url?: string | null;
   tags?: string[];
   product_status?: ProductStatus;
-  featured?: boolean;
   display_order?: number | null;
   low_stock_threshold?: number | null;
   manage_stock?: boolean;

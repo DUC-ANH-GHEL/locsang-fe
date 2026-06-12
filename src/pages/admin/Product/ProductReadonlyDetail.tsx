@@ -227,7 +227,6 @@ const ProductReadonlyDetail = () => {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-black ring-1 ${statusInfo.className}`}>{statusInfo.label}</span>
-            {product.featured && <span className="inline-flex items-center rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-700 ring-1 ring-rose-100 dark:bg-rose-500/10 dark:text-rose-200 dark:ring-rose-500/20">Nổi bật</span>}
           </div>
           <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">{getText(product.name)}</h1>
           <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
@@ -421,7 +420,6 @@ const ProductReadonlyDetail = () => {
             </div>
             <div className="space-y-3">
               <DetailBlock label="Hiển thị storefront" value={status === 'active' ? 'Có' : 'Không'} />
-              <DetailBlock label="Sản phẩm nổi bật" value={product.featured ? 'Có' : 'Không'} />
               <DetailBlock label="Quản lý tồn kho" value={stockTotal > 0 ? 'Còn hàng' : 'Hết hàng'} />
             </div>
           </section>

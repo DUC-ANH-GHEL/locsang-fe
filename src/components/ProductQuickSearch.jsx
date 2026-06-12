@@ -39,7 +39,6 @@ const scoreProduct = (product, query) => {
   if (name.includes(q)) score += 64;
   if (nameCode.includes(qCode)) score += 60;
 
-  if (product?.featured) score += 8;
   if (Number(product?.stock || 0) > 0) score += 4;
 
   return score;

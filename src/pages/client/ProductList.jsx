@@ -19,7 +19,7 @@ import {
 const FALLBACK_CATEGORY_CHIPS = ['Nhớt động cơ', 'Lọc gió', 'Lọc nhớt', 'Dây curoa'];
 
 const SORT_OPTIONS = [
-  { value: 'featured', label: 'Sắp xếp' },
+  { value: 'default', label: 'Sắp xếp' },
   { value: 'price_asc', label: 'Giá thấp trước' },
   { value: 'price_desc', label: 'Giá cao trước' },
   { value: 'name_asc', label: 'Tên A-Z' },
@@ -39,7 +39,7 @@ const ProductList = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [sortBy, setSortBy] = useState('featured');
+  const [sortBy, setSortBy] = useState('default');
   const selectedCategoryId = searchParams.get('categoryId') || '';
   const selectedCategoryName = searchParams.get('category') || '';
   const selectedSaleOnly = searchParams.get('sale') === '1';

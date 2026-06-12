@@ -32,6 +32,7 @@ type HomeProduct = {
   image: string;
   discountLabel?: string;
   canPurchase: boolean;
+  soldCount: number;
   raw?: Product;
 };
 
@@ -73,6 +74,7 @@ const toHomeProduct = (product: Product): HomeProduct => {
     originalPrice,
     discountLabel: discount,
     canPurchase: canPurchaseProduct(product),
+    soldCount: Number(product.sold_count || 0),
     image,
     raw: product,
   };
@@ -105,6 +107,8 @@ const Home = () => {
           status: 'active',
           limit: 24,
           page: 1,
+          sortBy: 'bestSelling',
+          order: 'desc',
         });
         if (!cancelled) {
           setProducts(Array.isArray(data) ? data : []);
@@ -151,7 +155,10 @@ const Home = () => {
   const apiProducts = useMemo(() => products.map(toHomeProduct).filter((product) => product.canPurchase), [products]);
 
   const bestProducts = useMemo(
-    () => apiProducts.slice(0, 3),
+    () =>
+      [...apiProducts]
+        .sort((a, b) => b.soldCount - a.soldCount || a.name.localeCompare(b.name, 'vi'))
+        .slice(0, 3),
     [apiProducts],
   );
 

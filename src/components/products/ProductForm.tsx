@@ -74,7 +74,6 @@ type ProductDraft = {
   sku: string;
   categoryId: string;
   status: AdminProductStatus;
-  featured: boolean;
   brand: string;
   shortDescription: string;
   description: string;
@@ -100,7 +99,6 @@ const emptyDraft: ProductDraft = {
   sku: '',
   categoryId: '',
   status: 'draft',
-  featured: false,
   brand: 'Yanmar',
   shortDescription: '',
   description: '',
@@ -554,7 +552,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           sku: String(firstVariant?.sku || product?.sku || '').trim(),
           categoryId: product?.category_id ? String(product.category_id) : '',
           status: (product?.status || (product?.is_active ? 'active' : 'draft')) as AdminProductStatus,
-          featured: Boolean(product?.featured),
           brand: String(product?.brand || 'Yanmar').trim(),
           shortDescription: String(product?.short_description || product?.shortDescription || '').trim(),
           description: String(product?.description || '').trim(),
@@ -809,7 +806,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       short_description: draft.shortDescription.trim() || null,
       description: draft.description.trim() || null,
       status: draft.status,
-      featured: draft.featured,
       category_id: Number(draft.categoryId),
       brand: draft.brand.trim() || 'Yanmar',
       tags: [],
@@ -1091,16 +1087,6 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           <div>
             <label className={labelClass}>Thương hiệu</label>
             <input className={inputClass} value={draft.brand} disabled={disabled} onChange={(event) => setField('brand', event.target.value)} />
-            <label className="mt-3 flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200">
-              <input
-                type="checkbox"
-                checked={draft.featured}
-                disabled={disabled}
-                onChange={(event) => setField('featured', event.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-rose-600"
-              />
-              Ghim nổi bật trên storefront
-            </label>
           </div>
         </div>
       </section>

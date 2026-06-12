@@ -18,7 +18,6 @@ const DEFAULT_FILTERS = {
   stock_status: 'all',
   min_price: '',
   max_price: '',
-  featured: 'all',
 };
 
 const Products = () => {
@@ -98,7 +97,6 @@ const Products = () => {
         stock_status: filters.stock_status,
         min_price: filters.min_price,
         max_price: filters.max_price,
-        featured: filters.featured === 'all' ? 'all' : filters.featured === 'true',
         sort,
       };
       const res = await productService.getAdminProducts(query);
@@ -146,23 +144,20 @@ const Products = () => {
   const applyTab = (key) => {
     setActiveTab(key);
     if (key === 'all') {
-      setFilterPatch({ status: 'all', stock_status: 'all', featured: 'all' });
+      setFilterPatch({ status: 'all', stock_status: 'all' });
       return;
     }
     if (key === 'active') {
-      setFilterPatch({ status: 'active', stock_status: 'all', featured: 'all' });
+      setFilterPatch({ status: 'active', stock_status: 'all' });
       return;
     }
     if (key === 'draft') {
-      setFilterPatch({ status: 'draft', stock_status: 'all', featured: 'all' });
+      setFilterPatch({ status: 'draft', stock_status: 'all' });
       return;
     }
     if (key === 'out') {
-      setFilterPatch({ stock_status: 'out', status: 'all', featured: 'all' });
+      setFilterPatch({ stock_status: 'out', status: 'all' });
       return;
-    }
-    if (key === 'featured') {
-      setFilterPatch({ featured: 'true', status: 'all' });
     }
   };
 

@@ -25,7 +25,6 @@ export type AdminProductsQuery = {
   stock_status?: StockStatus | 'all';
   min_price?: number | string;
   max_price?: number | string;
-  featured?: boolean | 'all';
   sort?:
     | 'name_asc'
     | 'name_desc'
@@ -54,7 +53,6 @@ export type AdminProductListItem = {
   category?: string | null;
   category_id?: number | null;
   brand?: string | null;
-  featured?: boolean | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -90,7 +88,6 @@ export type AdminProductPayload = {
   short_description?: string | null;
   description?: string | null;
   status: AdminProductStatus;
-  featured?: boolean;
   category_id: number;
   brand?: string | null;
   tags?: string[];
@@ -120,6 +117,8 @@ type StorefrontProductsParams = {
   minPrice?: string | number;
   maxPrice?: string | number;
   status?: 'active' | 'inactive';
+  sortBy?: 'createdAt' | 'price' | 'name' | 'bestSelling';
+  order?: 'asc' | 'desc';
 };
 
 const STORE_DEFAULT_IMAGE_URL = '/favicon.svg';
@@ -201,7 +200,6 @@ const mapProductToAdminListItemFallback = (product: any): AdminProductListItem =
     category: product?.category?.name ?? product?.category ?? null,
     category_id: typeof product?.category_id === 'number' ? product.category_id : toNumberOrUndefined(product?.category_id) ?? null,
     brand: product?.brand ?? null,
-    featured: Boolean(product?.featured ?? false),
     created_at: product?.created_at ?? product?.createdAt ?? null,
     updated_at: product?.updated_at ?? product?.updatedAt ?? null,
   };
@@ -274,6 +272,7 @@ const normalizePublicProduct = (raw: any): Product => {
     category_name: String(raw?.category?.name ?? raw?.category_name ?? ''),
     sku: String(raw?.sku ?? `SKU-${raw?.id ?? 'N/A'}`),
     stock,
+    sold_count: Number(raw?.soldCount ?? raw?.sold_count ?? 0),
     allow_backorder: allowBackorder,
     can_purchase: Boolean(raw?.canPurchase ?? raw?.can_purchase ?? (stock > 0 || allowBackorder)),
     stock_status: String(raw?.stockStatus ?? raw?.stock_status ?? ''),
@@ -285,7 +284,6 @@ const normalizePublicProduct = (raw: any): Product => {
     tags: Array.isArray(raw?.tags) ? raw.tags : [],
     specifications,
     has_variants: Boolean(raw?.hasVariants ?? raw?.has_variants ?? false),
-    featured: Boolean(raw?.featured ?? false),
     variants: variants.map((variant: any) => {
       const variantStock = Number(variant?.stock ?? 0);
       const variantAllowBackorder = Boolean(variant?.allowBackorder ?? variant?.allow_backorder ?? false);
@@ -346,7 +344,6 @@ export const getAdminProducts = async (query: AdminProductsQuery): Promise<Admin
         stock_status: query?.stock_status && query.stock_status !== 'all' ? query.stock_status : undefined,
         min_price: toNumberOrUndefined(query?.min_price),
         max_price: toNumberOrUndefined(query?.max_price),
-        featured: typeof query?.featured === 'boolean' ? String(query.featured) : undefined,
         sort: query?.sort ?? undefined,
       },
     });
@@ -460,7 +457,6 @@ export const updateProductPartial = async (productId: number, patch: any) => {
   }
   if (rawPatch.stock !== undefined) adminPatch.stock = Number(rawPatch.stock);
   if (rawPatch.status !== undefined) adminPatch.status = String(rawPatch.status).toLowerCase();
-  if (rawPatch.featured !== undefined) adminPatch.featured = Boolean(rawPatch.featured);
   if (rawPatch.category_id !== undefined) adminPatch.category_id = Number(rawPatch.category_id);
 
   if (Object.keys(adminPatch).length === 0) return { success: true, skipped: true };
@@ -497,6 +493,8 @@ export const getStorefrontProducts = async (params: StorefrontProductsParams = {
       minPrice: params.minPrice,
       maxPrice: params.maxPrice,
       status: params.status ?? 'active',
+      sortBy: params.sortBy,
+      order: params.order,
     },
   });
 

@@ -11,7 +11,6 @@ export type ProductListFilters = {
   stock_status: 'all' | 'in_stock' | 'low' | 'out';
   min_price: string;
   max_price: string;
-  featured: 'all' | 'true' | 'false';
 };
 
 export type CategoryOption = { id: number; name: string };
@@ -30,7 +29,6 @@ const tabs = [
   { key: 'active', label: 'Đang bán' },
   { key: 'draft', label: 'Nháp' },
   { key: 'out', label: 'Hết hàng' },
-  { key: 'featured', label: 'Nổi bật' },
 ];
 
 const selectClass =
@@ -182,14 +180,6 @@ const FillterBar = ({ filters, onChange, onReset, categories, activeTab, onTabCh
               <input value={filters.max_price} onChange={(event) => onChange({ max_price: event.target.value })} inputMode="numeric" className={selectClass} />
             </div>
 
-            <div>
-              <label className={labelClass}>Nổi bật</label>
-              <select value={filters.featured} onChange={(event) => onChange({ featured: event.target.value as ProductListFilters['featured'] })} className={selectClass}>
-                <option value="all">Tất cả</option>
-                <option value="true">Nổi bật</option>
-                <option value="false">Không nổi bật</option>
-              </select>
-            </div>
           </div>
         </div>
       )}
