@@ -6,7 +6,8 @@ import { useCart } from '../../contexts/CartContext';
 import { checkoutService } from '../../services/checkoutService';
 import { useStorefrontAuth } from '../../contexts/StorefrontAuthContext';
 import { useSEO } from '../../hooks/useSEO';
-import { formatVnd, YANMAR_LOGO } from '../../data/yanmarStorefront';
+import { formatVnd } from '../../data/yanmarStorefront';
+import BrandLockup from '../../components/BrandLockup';
 
 const VN_PHONE_REGEX = /^(?:\+?84|0)\d{9,10}$/;
 const CHECKOUT_FORM_STORAGE_KEY = 'locsang_storefront_checkout_form_v1';
@@ -342,7 +343,7 @@ const CheckoutHeader = ({ cartCount, onBack }) => (
       <button type="button" onClick={onBack} className="inline-flex h-12 w-12 items-center justify-center text-[#e30613]" aria-label="Quay lại">
         <ChevronLeft size={42} strokeWidth={2.5} />
       </button>
-      <img src={YANMAR_LOGO} alt="Yanmar Lộc Sang" className="h-[3.7rem] w-auto object-contain max-[390px]:h-[3rem]" />
+      <BrandLockup compact className="scale-[1.08] max-[390px]:scale-100" />
       <button type="button" className="relative inline-flex h-12 w-12 items-center justify-center text-[#e30613]" aria-label="Giỏ hàng">
         <ShoppingCart size={37} strokeWidth={2.4} />
         {cartCount > 0 && (

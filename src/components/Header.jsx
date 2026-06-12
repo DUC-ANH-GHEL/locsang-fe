@@ -3,28 +3,7 @@ import { FaShoppingCart, FaTrash } from 'react-icons/fa';
 import { ChevronLeft, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useCart } from '../contexts/CartContext';
-
-import { logo_url } from '../config/api';
-
-const BRAND_MARK = `${logo_url}?v=yanmar-3`;
-
-const BrandLockup = ({ compact = false }) => (
-  <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
-    <img
-      src={BRAND_MARK}
-      alt="Yanmar"
-      className={`${compact ? 'h-6 w-[2.65rem]' : 'h-8 w-[3.55rem]'} shrink-0 object-contain`}
-    />
-    <div className="flex flex-col items-start leading-[0.82] text-[#d50918]">
-      <span className={`${compact ? 'text-[19px]' : 'text-[25px]'} font-black italic uppercase tracking-normal`}>
-        YANMAR
-      </span>
-      <span className={`${compact ? 'text-[11px]' : 'text-[15px]'} font-black uppercase tracking-normal`}>
-        LỘC SANG
-      </span>
-    </div>
-  </div>
-);
+import BrandLockup from './BrandLockup';
 
 const formatVnd = (value) =>
   new Intl.NumberFormat('vi-VN', {
@@ -145,7 +124,7 @@ const Header = ({ onOpenSearch }) => {
     <header className="fixed inset-x-0 top-0 z-50 bg-white">
       <div className="hidden border-b border-[#e5e5e5] bg-white md:block">
         <div className="mx-auto flex h-[4.75rem] max-w-[944px] items-center justify-between px-6">
-          <Link to="/" className="flex min-w-0 items-center">
+          <Link to="/" className="flex min-w-0 items-center" aria-label="Về trang chủ Lộc Sang">
             <BrandLockup />
           </Link>
 
@@ -211,7 +190,7 @@ const Header = ({ onOpenSearch }) => {
             <span aria-hidden="true" />
           )}
 
-          <Link to="/" className="col-start-2 flex min-w-0 justify-center">
+          <Link to="/" className="col-start-2 flex min-w-0 justify-center" aria-label="Về trang chủ Lộc Sang">
             <BrandLockup compact />
           </Link>
 
