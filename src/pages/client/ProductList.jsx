@@ -16,7 +16,7 @@ import {
   toCartPayload,
 } from '../../data/yanmarStorefront';
 
-const FALLBACK_CATEGORY_CHIPS = ['Nhớt động cơ', 'Lọc gió', 'Lọc nhớt', 'Dây curoa'];
+const FALLBACK_CATEGORY_CHIPS = ['Nhớt', 'Động cơ', 'Lọc nhớt', 'Dây curoa'];
 
 const SORT_OPTIONS = [
   { value: 'default', label: 'Sắp xếp' },
@@ -46,10 +46,10 @@ const ProductList = () => {
   const activeCategoryKey = selectedSaleOnly
     ? 'sale'
     : selectedCategoryId
-    ? `id:${selectedCategoryId}`
-    : selectedCategoryName
-      ? `name:${selectedCategoryName}`
-      : 'all';
+      ? `id:${selectedCategoryId}`
+      : selectedCategoryName
+        ? `name:${selectedCategoryName}`
+        : 'all';
 
   useSEO({
     title: 'Phụ tùng và nhớt Yanmar',
@@ -194,13 +194,13 @@ const ProductList = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-[calc(env(safe-area-inset-bottom,0px)+6rem)] text-[#111] md:bg-[#f5f5f5]">
-      <main className="mx-auto w-full max-w-[944px] bg-white px-3.5 pb-6 pt-5 font-sans sm:px-6 md:shadow-2xl md:shadow-black/10">
-        <h1 className="font-sans text-[2.55rem] font-black leading-none tracking-normal text-black max-[390px]:text-[2.05rem]">
+    <div className="bg-white text-[#111] md:bg-[#f5f5f5]">
+      <main className="mx-auto w-full max-w-[944px] bg-white px-3.5 pb-8 pt-5 font-sans sm:px-6 md:shadow-2xl md:shadow-black/10">
+        <h1 className="font-sans text-[2.05rem] font-black leading-none tracking-normal text-black max-[390px]:text-[1.82rem]">
           Phụ tùng & nhớt
         </h1>
 
-        <div className="mt-5 flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="mt-4 flex gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {categoryChips.map((category) => {
             const active = category.key === activeCategoryKey;
             return (
@@ -208,7 +208,7 @@ const ProductList = () => {
                 key={category.key}
                 type="button"
                 onClick={() => selectCategory(category)}
-                className={`shrink-0 rounded-xl border px-5 py-2.5 text-[1.05rem] font-bold transition max-[390px]:px-4 max-[390px]:text-[0.92rem] ${
+                className={`h-11 shrink-0 rounded-xl border px-4 text-[0.98rem] font-black transition active:scale-[0.98] max-[390px]:px-3.5 max-[390px]:text-[0.88rem] ${
                   active
                     ? 'border-[#e30613] bg-[#e30613] text-white shadow-[0_8px_20px_rgba(227,6,19,0.18)]'
                     : 'border-[#d6d6d6] bg-white text-[#202020]'
@@ -221,9 +221,9 @@ const ProductList = () => {
         </div>
 
         <div className="mt-4">
-          <label className="relative flex h-[3.55rem] w-full items-center justify-between rounded-xl border border-[#d9d9d9] bg-white px-4 text-[#111] sm:max-w-[18rem]">
-            <span className="flex items-center gap-2 text-[1.08rem] font-black max-[390px]:text-[0.92rem]">
-              <ArrowDownUp size={27} className="text-[#e30613]" />
+          <label className="relative flex h-14 w-full items-center justify-between rounded-xl border border-[#d9d9d9] bg-white px-4 text-[#111] sm:max-w-[18rem]">
+            <span className="flex items-center gap-2 text-[1.02rem] font-black max-[390px]:text-[0.92rem]">
+              <ArrowDownUp size={26} className="text-[#e30613]" />
               {SORT_OPTIONS.find((item) => item.value === sortBy)?.label || 'Sắp xếp'}
             </span>
             <ChevronDown size={22} />
@@ -261,10 +261,8 @@ const ProductList = () => {
             <p className="text-lg font-black text-[#111]">Chưa có sản phẩm phù hợp</p>
             <button
               type="button"
-              onClick={() => {
-                setSearchParams(new URLSearchParams());
-              }}
-              className="mt-4 rounded-xl bg-[#e30613] px-5 py-2.5 text-sm font-black text-white"
+              onClick={() => setSearchParams(new URLSearchParams())}
+              className="mt-4 h-11 rounded-xl bg-[#e30613] px-5 text-sm font-black text-white active:scale-[0.98]"
             >
               Xem tất cả
             </button>
@@ -276,10 +274,9 @@ const ProductList = () => {
 };
 
 const ProductSkeleton = () => (
-  <div className="overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-2 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-    <div className="min-h-[8.9rem] rounded-lg bg-[#f2f2f2] max-[390px]:min-h-[7.2rem]" />
+  <div className="overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+    <div className="h-[8rem] rounded-lg bg-[#f2f2f2] max-[390px]:h-[7rem]" />
     <div className="mt-3 h-4 w-4/5 rounded bg-[#eeeeee]" />
-    <div className="mt-2 h-4 w-2/3 rounded bg-[#eeeeee]" />
     <div className="mt-4 h-7 w-3/4 rounded bg-[#eeeeee]" />
     <div className="mt-4 h-10 rounded-md bg-[#eeeeee]" />
     <div className="mt-1.5 h-9 rounded-md bg-[#f5f5f5]" />
@@ -292,30 +289,32 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
   const canPurchase = canPurchaseProduct(product);
 
   return (
-    <article className="relative overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-2 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+    <article className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
       {discountLabel && (
-        <div className="absolute left-2 top-2 z-10 rounded-md bg-[#e30613] px-2 py-1 text-[1rem] font-black leading-none text-white max-[390px]:text-[0.85rem]">
+        <div className="absolute left-2 top-2 z-10 rounded-md bg-[#e30613] px-2 py-1 text-[0.92rem] font-black leading-none text-white max-[390px]:text-[0.8rem]">
           {discountLabel}
         </div>
       )}
 
       <button type="button" onClick={onOpen} className="block w-full text-left">
-        <div className="flex min-h-[8.9rem] items-center justify-center rounded-lg bg-white max-[390px]:min-h-[7.2rem]">
-          <img src={getProductImage(product)} alt={product.name} className="max-h-[8.4rem] max-w-full object-contain max-[390px]:max-h-[6.8rem]" />
+        <div className="flex h-[8.4rem] items-center justify-center rounded-lg bg-white max-[390px]:h-[7rem]">
+          <img src={getProductImage(product)} alt={product.name} className="max-h-full max-w-full object-contain" />
         </div>
 
-        <div className="mt-2 min-h-[5.8rem]">
-          <h2 className="line-clamp-2 font-sans text-[1.08rem] font-black leading-[1.12] text-[#111] max-[390px]:text-[0.92rem]">
+        <div className="mt-2 flex min-h-[5.1rem] flex-col">
+          <h2 className="line-clamp-2 font-sans text-[1rem] font-black leading-[1.12] text-[#111] max-[390px]:text-[0.88rem]">
             {product.name}
           </h2>
-          <div className="mt-3 text-[1.42rem] font-black leading-none text-[#e30613] max-[390px]:text-[1.1rem]">
-            {formatVnd(pricing.currentPrice)}
-          </div>
-          {pricing.originalPrice && (
-            <div className="mt-1 text-[1rem] leading-none text-[#777] line-through max-[390px]:text-[0.82rem]">
-              {formatVnd(pricing.originalPrice)}
+          <div className="mt-auto pt-2">
+            <div className="text-[1.22rem] font-black leading-none text-[#e30613] max-[390px]:text-[1.02rem]">
+              {formatVnd(pricing.currentPrice)}
             </div>
-          )}
+            {pricing.originalPrice && (
+              <div className="mt-1 text-[0.82rem] leading-none text-[#777] line-through max-[390px]:text-[0.7rem]">
+                {formatVnd(pricing.originalPrice)}
+              </div>
+            )}
+          </div>
         </div>
       </button>
 
@@ -323,7 +322,7 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
         type="button"
         onClick={onBuy}
         disabled={!canPurchase}
-        className={`mt-2 h-10 w-full rounded-md text-[1.05rem] font-black active:translate-y-px max-[390px]:h-9 max-[390px]:text-[0.9rem] ${
+        className={`mt-2 h-10 w-full rounded-md text-[1rem] font-black active:translate-y-px max-[390px]:h-9 max-[390px]:text-[0.88rem] ${
           canPurchase ? 'bg-[#e30613] text-white' : 'cursor-not-allowed bg-[#e5e7eb] text-[#8a8f98]'
         }`}
       >
@@ -333,7 +332,7 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
         type="button"
         onClick={onAdd}
         disabled={!canPurchase}
-        className={`mt-1.5 flex h-9 w-full items-center justify-center rounded-md border text-[0.98rem] font-bold active:bg-[#fff1f2] max-[390px]:text-[0.82rem] ${
+        className={`mt-1.5 flex h-9 w-full items-center justify-center rounded-md border text-[0.86rem] font-bold active:bg-[#fff1f2] max-[390px]:h-8 max-[390px]:text-[0.76rem] ${
           canPurchase
             ? 'border-[#e30613] bg-white text-[#e30613]'
             : 'cursor-not-allowed border-[#d1d5db] bg-white text-[#9ca3af]'

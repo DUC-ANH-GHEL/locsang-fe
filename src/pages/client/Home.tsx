@@ -1,11 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import {
-  ChevronRight,
-  Flame,
-  Search,
-  Tag,
-} from 'lucide-react';
+import { ChevronRight, Flame, Search, Tag } from 'lucide-react';
 
 import { Product } from '../../types/product';
 import { productService } from '../../services/productService';
@@ -45,8 +40,9 @@ type CategoryLink = {
 
 const FALLBACK_CATEGORY_LINKS: CategoryLink[] = [
   { title: 'Phụ tùng', image: getCategoryIconValue('parts') },
-  { title: 'Nhớt động cơ', image: getCategoryIconValue('oil') },
-  { title: 'Lọc gió & lọc nhớt', image: getCategoryIconValue('oil_filter') },
+  { title: 'Nhớt', image: getCategoryIconValue('oil') },
+  { title: 'Động cơ', image: getCategoryIconValue('engine') },
+  { title: 'Lọc nhớt', image: getCategoryIconValue('oil_filter') },
 ];
 
 const formatVnd = (value: number) =>
@@ -158,14 +154,11 @@ const Home = () => {
     () =>
       [...apiProducts]
         .sort((a, b) => b.soldCount - a.soldCount || a.name.localeCompare(b.name, 'vi'))
-        .slice(0, 3),
+        .slice(0, 4),
     [apiProducts],
   );
 
-  const saleProducts = useMemo(() => {
-    const discounted = apiProducts.filter((product) => product.discountLabel).slice(0, 3);
-    return discounted;
-  }, [apiProducts]);
+  const saleProducts = useMemo(() => apiProducts.filter((product) => product.discountLabel).slice(0, 4), [apiProducts]);
 
   const categoryLinks = useMemo<CategoryLink[]>(() => {
     const liveLinks = categories
@@ -207,51 +200,44 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-[calc(env(safe-area-inset-bottom,0px)+5.8rem)] text-[#101010] md:bg-[#f5f5f5] md:pb-16">
+    <div className="bg-white pb-7 text-[#101010] md:bg-[#f5f5f5] md:pb-10">
       <div className="mx-auto w-full max-w-[944px] bg-white font-sans md:shadow-2xl md:shadow-black/10">
         <section className="overflow-hidden border-b border-[#e4e4e4] bg-white">
-          <img
-            src={heroImage}
-            alt={heroAlt}
-            className="block aspect-[944/317] w-full object-contain"
-          />
+          <img src={heroImage} alt={heroAlt} className="block aspect-[944/317] w-full object-contain" />
         </section>
 
         <main className="px-3.5 pt-4 sm:px-6">
-          <label className="flex h-[4.35rem] items-center gap-3 rounded-[1.15rem] border border-[#dedede] bg-white px-5 text-[#8b8b8b] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-            <Search size={31} strokeWidth={2.5} className="shrink-0 text-[#777]" />
-            <input
-              type="search"
-              placeholder="Tìm sản phẩm..."
-              className="h-full min-w-0 flex-1 bg-transparent text-[1.35rem] font-medium outline-none placeholder:text-[#9b9b9b] max-[390px]:text-[1.05rem]"
-              readOnly
-              onClick={() => openProductSearch?.()}
-              onFocus={() => openProductSearch?.()}
-            />
-          </label>
+          <button
+            type="button"
+            onClick={() => openProductSearch?.()}
+            className="flex h-16 w-full items-center gap-3 rounded-[1.15rem] border border-[#dedede] bg-white px-5 text-left text-[#8b8b8b] shadow-[0_1px_4px_rgba(0,0,0,0.04)] active:scale-[0.99]"
+          >
+            <Search size={29} strokeWidth={2.5} className="shrink-0 text-[#777]" />
+            <span className="min-w-0 flex-1 truncate text-[1.12rem] font-bold text-[#9b9b9b] max-[390px]:text-[1rem]">
+              Tìm sản phẩm...
+            </span>
+          </button>
 
-          <div className="mt-4 grid grid-cols-4 gap-3 max-[390px]:gap-2">
-            {categoryLinks.map((category) => {
-              return (
-                <button
-                  key={category.title}
-                  type="button"
-                  onClick={() => navigate(category.saleOnly ? '/products?sale=1' : category.categoryId ? `/products?categoryId=${category.categoryId}` : '/products')}
-                  className="flex min-h-[5.6rem] flex-col items-center justify-center rounded-xl border border-[#e4e4e4] bg-white px-1.5 py-2 text-center shadow-[0_1px_4px_rgba(0,0,0,0.04)]"
-                >
-                  <CategoryIconPreview
-                    name={category.title}
-                    value={category.image}
-                    size={38}
-                    iconClassName="text-[#e30613]"
-                    imageClassName="h-[38px] w-[38px] rounded-lg object-contain"
-                  />
-                  <span className="mt-2 text-[0.92rem] font-black leading-[1.06] text-[#111] max-[390px]:text-[0.78rem]">
-                    {category.title}
-                  </span>
-                </button>
-              );
-            })}
+          <div className="mt-4 grid grid-cols-4 gap-2.5 max-[390px]:gap-2">
+            {categoryLinks.map((category) => (
+              <button
+                key={category.title}
+                type="button"
+                onClick={() => navigate(category.saleOnly ? '/products?sale=1' : category.categoryId ? `/products?categoryId=${category.categoryId}` : '/products')}
+                className="flex min-h-[5.6rem] flex-col items-center justify-center rounded-xl border border-[#e4e4e4] bg-white px-1 py-2 text-center shadow-[0_1px_4px_rgba(0,0,0,0.04)] active:scale-[0.98]"
+              >
+                <CategoryIconPreview
+                  name={category.title}
+                  value={category.image}
+                  size={36}
+                  iconClassName="text-[#e30613]"
+                  imageClassName="h-9 w-9 rounded-lg object-contain"
+                />
+                <span className="mt-2 line-clamp-2 text-[0.82rem] font-black leading-[1.05] text-[#111] max-[390px]:text-[0.72rem]">
+                  {category.title}
+                </span>
+              </button>
+            ))}
           </div>
 
           <ProductSection
@@ -296,7 +282,7 @@ type ProductSectionProps = {
 
 const ProductSection = ({ title, icon, products, loading = false, onOpen, onAdd, onBuy, onViewAll }: ProductSectionProps) => (
   <section className="mt-5">
-    <div className="mb-2.5 flex items-center justify-between">
+    <div className="mb-2.5 flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-2">
         {icon}
         <h2 className="truncate font-sans text-[1.35rem] font-black leading-tight text-[#111] max-[390px]:text-[1.12rem]">
@@ -306,31 +292,29 @@ const ProductSection = ({ title, icon, products, loading = false, onOpen, onAdd,
       <button
         type="button"
         onClick={onViewAll}
-        className="flex shrink-0 items-center gap-1 text-[1rem] font-medium text-[#e30613] max-[390px]:text-[0.84rem]"
+        className="flex h-9 shrink-0 items-center gap-1 rounded-full px-1 text-[0.95rem] font-bold text-[#e30613] max-[390px]:text-[0.82rem]"
       >
         Xem tất cả
         <ChevronRight size={19} strokeWidth={2.6} />
       </button>
     </div>
 
-    <div className="grid grid-cols-3 gap-2.5 max-[390px]:gap-2">
+    <div className="grid grid-cols-2 gap-3">
       {loading
-        ? Array.from({ length: 3 }).map((_, index) => <ProductCardSkeleton key={index} />)
-        : products.map((product) => (
-            <ProductCard key={product.id} product={product} onOpen={onOpen} onAdd={onAdd} onBuy={onBuy} />
-          ))}
+        ? Array.from({ length: 4 }).map((_, index) => <ProductCardSkeleton key={index} />)
+        : products.map((product) => <ProductCard key={product.id} product={product} onOpen={onOpen} onAdd={onAdd} onBuy={onBuy} />)}
     </div>
   </section>
 );
 
 const ProductCardSkeleton = () => (
-  <div className="rounded-xl border border-[#e3e3e3] bg-white p-2 shadow-[0_1px_5px_rgba(0,0,0,0.06)]">
-    <div className="h-[6rem] rounded-lg bg-[#f2f2f2] max-[390px]:h-[5rem]" />
+  <div className="rounded-xl border border-[#e3e3e3] bg-white p-2.5 shadow-[0_1px_5px_rgba(0,0,0,0.06)]">
+    <div className="h-[7.8rem] rounded-lg bg-[#f2f2f2] max-[390px]:h-[6.8rem]" />
     <div className="mt-2 h-4 rounded bg-[#eeeeee]" />
     <div className="mt-1 h-3 w-3/4 rounded bg-[#eeeeee]" />
     <div className="mt-4 h-5 w-4/5 rounded bg-[#eeeeee]" />
-    <div className="mt-3 h-8 rounded-md bg-[#eeeeee]" />
-    <div className="mt-1.5 h-7 rounded-md bg-[#f5f5f5]" />
+    <div className="mt-3 h-10 rounded-md bg-[#eeeeee]" />
+    <div className="mt-1.5 h-9 rounded-md bg-[#f5f5f5]" />
   </div>
 );
 
@@ -342,32 +326,32 @@ type ProductCardProps = {
 };
 
 const ProductCard = ({ product, onOpen, onAdd, onBuy }: ProductCardProps) => (
-  <article className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#e3e3e3] bg-white p-2 shadow-[0_1px_5px_rgba(0,0,0,0.06)]">
+  <article className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#e3e3e3] bg-white p-2.5 shadow-[0_1px_5px_rgba(0,0,0,0.06)]">
     {product.discountLabel && (
-      <div className="absolute left-1.5 top-1.5 z-10 rounded-md bg-[#e30613] px-1.5 py-0.5 text-[0.85rem] font-black leading-none text-white shadow-sm">
+      <div className="absolute left-2 top-2 z-10 rounded-md bg-[#e30613] px-2 py-1 text-[0.92rem] font-black leading-none text-white shadow-sm max-[390px]:text-[0.8rem]">
         {product.discountLabel}
       </div>
     )}
 
     <button type="button" onClick={() => onOpen(product)} className="block min-w-0 text-left">
-      <div className="flex h-[7.25rem] items-center justify-center rounded-lg bg-white max-[430px]:h-[6rem] max-[390px]:h-[5rem]">
+      <div className="flex h-[8.25rem] items-center justify-center rounded-lg bg-white max-[430px]:h-[7.25rem] max-[390px]:h-[6.4rem]">
         <img src={product.image} alt={product.name} className="max-h-full max-w-full object-contain" />
       </div>
 
-      <div className="mt-1 flex min-h-[5.1rem] flex-1 flex-col">
-      <h3 className="line-clamp-2 font-sans text-[0.94rem] font-black leading-[1.08] text-[#111] max-[390px]:text-[0.78rem]">
-        {product.name}
-      </h3>
-      <div className="mt-auto pt-1.5">
-        <div className="text-[1.12rem] font-black leading-none text-[#e30613] max-[390px]:text-[0.93rem]">
-          {formatVnd(product.price)}
-        </div>
-        {product.originalPrice && (
-          <div className="mt-1 text-[0.78rem] leading-none text-[#7f7f7f] line-through max-[390px]:text-[0.65rem]">
-            {formatVnd(product.originalPrice)}
+      <div className="mt-2 flex min-h-[5.25rem] flex-1 flex-col">
+        <h3 className="line-clamp-2 font-sans text-[1rem] font-black leading-[1.12] text-[#111] max-[390px]:text-[0.88rem]">
+          {product.name}
+        </h3>
+        <div className="mt-auto pt-1.5">
+          <div className="text-[1.22rem] font-black leading-none text-[#e30613] max-[390px]:text-[1.02rem]">
+            {formatVnd(product.price)}
           </div>
-        )}
-      </div>
+          {product.originalPrice && (
+            <div className="mt-1 text-[0.78rem] leading-none text-[#7f7f7f] line-through max-[390px]:text-[0.65rem]">
+              {formatVnd(product.originalPrice)}
+            </div>
+          )}
+        </div>
       </div>
     </button>
 
@@ -375,7 +359,7 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }: ProductCardProps) => (
       type="button"
       onClick={() => onBuy(product)}
       disabled={!product.canPurchase}
-      className={`mt-2 h-8 rounded-md text-[0.98rem] font-black shadow-[0_2px_0_rgba(120,0,8,0.15)] active:translate-y-px max-[390px]:h-7 max-[390px]:text-[0.8rem] ${
+      className={`mt-2 h-10 rounded-md text-[1rem] font-black shadow-[0_2px_0_rgba(120,0,8,0.15)] active:translate-y-px max-[390px]:h-9 max-[390px]:text-[0.88rem] ${
         product.canPurchase ? 'bg-[#e30613] text-white' : 'cursor-not-allowed bg-[#e5e7eb] text-[#8a8f98]'
       }`}
     >
@@ -385,7 +369,7 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }: ProductCardProps) => (
       type="button"
       onClick={() => onAdd(product)}
       disabled={!product.canPurchase}
-      className={`mt-1.5 flex h-7 items-center justify-center rounded-md border bg-white px-1 text-[0.78rem] font-medium leading-none active:bg-[#fff1f2] max-[390px]:h-6 max-[390px]:text-[0.65rem] ${
+      className={`mt-1.5 flex h-9 items-center justify-center rounded-md border bg-white px-1 text-[0.86rem] font-bold leading-none active:bg-[#fff1f2] max-[390px]:h-8 max-[390px]:text-[0.76rem] ${
         product.canPurchase
           ? 'border-[#e30613] text-[#e30613]'
           : 'cursor-not-allowed border-[#d1d5db] text-[#9ca3af]'

@@ -133,7 +133,7 @@ const Header = ({ onOpenSearch }) => {
   const cartCount = cart.reduce((sum, p) => sum + p.quantity, 0);
 
   const isHomeActive = location.pathname === '/';
-  const isNewArrivalsActive = location.pathname.startsWith('/products');
+  const isProductsActive = location.pathname.startsWith('/products');
   const isProductDetailMobileHeader = /^\/products\/\d+/.test(location.pathname);
 
   const handleCheckout = () => {
@@ -153,7 +153,7 @@ const Header = ({ onOpenSearch }) => {
             <Link to="/" className={`transition hover:text-[#d90616] ${isHomeActive ? 'text-[#d90616]' : ''}`}>
               Trang chủ
             </Link>
-            <Link to="/products" className={`transition hover:text-[#d90616] ${isNewArrivalsActive ? 'text-[#d90616]' : ''}`}>
+            <Link to="/products" className={`transition hover:text-[#d90616] ${isProductsActive ? 'text-[#d90616]' : ''}`}>
               Sản phẩm
             </Link>
           </nav>
