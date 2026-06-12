@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { BadgeCheck, ChevronDown, ChevronRight, Droplet, Settings, ShieldCheck, ShoppingCart } from 'lucide-react';
+import { ChevronRight, ShoppingCart } from 'lucide-react';
 
 import { useCart } from '../../contexts/CartContext';
 import { productService } from '../../services/productService';
@@ -14,7 +14,6 @@ import {
   getDiscountLabel,
   getDisplayDescription,
   getProductImage,
-  getStockLabel,
   toCartPayload,
 } from '../../data/yanmarStorefront';
 
@@ -41,6 +40,14 @@ const getGalleryImages = (product, variant) => {
 
   return images.slice(0, 5);
 };
+
+const cleanText = (value) =>
+  String(value || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -111,6 +118,8 @@ const ProductDetail = () => {
   const isBackorder = stock <= 0 && Boolean(selectedVariant?.allow_backorder ?? product?.allow_backorder);
   const canIncreaseQuantity = inStock && (isBackorder || stock <= 0 || quantity < stock);
   const discountLabel = getDiscountLabel(selectedVariant || product) || (pricing.hasDiscount ? '-15%' : '');
+  const shortDescription = useMemo(() => cleanText(product?.short_description), [product?.short_description]);
+  const longDescription = useMemo(() => cleanText(product?.description), [product?.description]);
 
   useEffect(() => {
     if (selectedImageIndex >= galleryImages.length) {
@@ -120,20 +129,13 @@ const ProductDetail = () => {
 
   const specifications = useMemo(() => {
     const rawSpecs = Array.isArray(product?.specifications) ? product.specifications : [];
-    const specs = rawSpecs
+    return rawSpecs
       .map((item) => ({
         label: String(item?.label || item?.key || item?.name || '').trim(),
         value: String(item?.value || '').trim(),
       }))
       .filter((item) => item.label && item.value);
-
-    if (specs.length > 0) return specs;
-    return [
-      { label: 'Danh mục', value: product?.category_name || 'Phụ tùng Yanmar' },
-      { label: 'Mã sản phẩm', value: selectedVariant?.sku || product?.sku || 'Yanmar' },
-      { label: 'Thương hiệu', value: product?.brand || 'Yanmar' },
-    ];
-  }, [product, selectedVariant]);
+  }, [product?.specifications]);
 
   useSEO({
     title: product?.name || 'Chi tiết sản phẩm Yanmar',
@@ -228,10 +230,11 @@ const ProductDetail = () => {
             )}
           </div>
 
-          <div className={`mt-3 inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-bold ${inStock ? 'bg-[#dff6df] text-[#23802a]' : 'bg-[#ffe3e5] text-[#c60010]'}`}>
-            <BadgeCheck size={18} fill="currentColor" className="text-current" />
-            {getStockLabel(product, selectedVariant)}
-          </div>
+          {shortDescription && (
+            <p className="mt-3 whitespace-pre-line text-[1.05rem] font-semibold leading-6 text-[#444] max-[390px]:text-[0.98rem]">
+              {shortDescription}
+            </p>
+          )}
 
           {variants.length > 1 && (
             <div className="mt-4">
@@ -292,26 +295,28 @@ const ProductDetail = () => {
             </button>
           </div>
 
-          <div className="mt-4 rounded-xl border border-[#e1e1e1] bg-white px-4 py-3">
-            <FeatureRow icon={<ShieldCheck size={22} fill="#e30613" />} text="Nhớt chính hãng Yanmar" />
-            <FeatureRow icon={<Settings size={22} fill="#e30613" />} text="Bảo vệ động cơ tối ưu, vận hành êm ái" />
-            <FeatureRow icon={<Droplet size={22} fill="#e30613" />} text="Dễ sử dụng, phù hợp nhiều điều kiện làm việc" />
-          </div>
 
-          <div className="mt-3 overflow-hidden rounded-xl border border-[#e1e1e1] bg-white">
-            <button type="button" className="flex w-full items-center justify-between border-b border-[#eeeeee] px-4 py-3 text-left">
-              <span className="flex items-center gap-2 text-sm font-black uppercase text-[#e30613]">
-                <Settings size={20} fill="#e30613" />
-                Thông số kỹ thuật
-              </span>
-              <ChevronDown size={22} />
-            </button>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 py-3 text-sm max-[390px]:text-xs">
-              {specifications.map((spec) => (
-                <SpecRow key={`${spec.label}-${spec.value}`} label={spec.label} value={spec.value} />
-              ))}
+          {longDescription && (
+            <div className="mt-4 rounded-xl border border-[#e1e1e1] bg-white p-4">
+              <h2 className="text-[1.05rem] font-black uppercase text-[#111]">Mô tả sản phẩm</h2>
+              <p className="mt-2 whitespace-pre-line text-[1rem] font-medium leading-7 text-[#444]">
+                {longDescription}
+              </p>
             </div>
-          </div>
+          )}
+
+          {specifications.length > 0 && (
+            <div className="mt-3 overflow-hidden rounded-xl border border-[#e1e1e1] bg-white">
+              <div className="border-b border-[#eeeeee] px-4 py-3 text-sm font-black uppercase text-[#e30613]">
+                Thông số kỹ thuật
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 py-3 text-sm max-[390px]:text-xs">
+                {specifications.map((spec) => (
+                  <SpecRow key={`${spec.label}-${spec.value}`} label={spec.label} value={spec.value} />
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="px-4 pb-5">
@@ -322,21 +327,40 @@ const ProductDetail = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-4 gap-3 max-[430px]:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {relatedProducts.map((item) => {
               const itemPricing = getProductPricing(item);
+              const itemDiscount = getDiscountLabel(item);
               return (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => navigate(toProductDetailPath(item))}
-                  className="rounded-lg border border-[#e1e1e1] bg-white p-2 text-left shadow-[0_1px_4px_rgba(0,0,0,0.04)]"
+                  className="relative overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-1.5 text-left shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-[0.99]"
                 >
-                  <div className="flex aspect-square items-center justify-center">
-                    <img src={getProductImage(item)} alt={item.name} className="max-h-full max-w-full object-contain" />
+                  {itemDiscount && (
+                    <span className="absolute left-2 top-2 z-10 rounded-md bg-[#e30613] px-2 py-1 text-[0.85rem] font-black leading-none text-white">
+                      {itemDiscount}
+                    </span>
+                  )}
+                  <div className="aspect-square w-full overflow-hidden rounded-lg bg-[#f7f7f7]">
+                    <img src={getProductImage(item)} alt={item.name} className="h-full w-full object-cover" />
                   </div>
-                  <div className="mt-2 line-clamp-2 text-sm font-bold leading-tight text-[#111]">{item.name}</div>
-                  <div className="mt-1 text-base font-black text-[#e30613]">{formatVnd(itemPricing.currentPrice)}</div>
+                  <div className="px-0.5 pb-1.5 pt-2">
+                    <div className="line-clamp-2 min-h-[2.15rem] text-[1rem] font-black leading-[1.08] text-[#111] max-[390px]:text-[0.9rem]">
+                      {item.name}
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-end gap-1.5">
+                      <span className="text-[1.2rem] font-black leading-none text-[#e30613] max-[390px]:text-[1.05rem]">
+                        {formatVnd(itemPricing.currentPrice)}
+                      </span>
+                      {itemPricing.originalPrice && (
+                        <span className="text-[0.82rem] font-bold leading-none text-[#888] line-through">
+                          {formatVnd(itemPricing.originalPrice)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </button>
               );
             })}
@@ -369,12 +393,6 @@ const ProductDetail = () => {
   );
 };
 
-const FeatureRow = ({ icon, text }) => (
-  <div className="flex items-center gap-3 py-1 text-sm font-bold text-[#111]">
-    <span className="text-[#e30613]">{icon}</span>
-    <span>{text}</span>
-  </div>
-);
 
 const SpecRow = ({ label, value }) => (
   <>
