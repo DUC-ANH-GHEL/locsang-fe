@@ -42,10 +42,12 @@ const ProductList = () => {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [sortBy, setSortBy] = useState('featured');
-  const [showDiscountOnly, setShowDiscountOnly] = useState(false);
   const selectedCategoryId = searchParams.get('categoryId') || '';
   const selectedCategoryName = searchParams.get('category') || '';
-  const activeCategoryKey = selectedCategoryId
+  const selectedSaleOnly = searchParams.get('sale') === '1';
+  const activeCategoryKey = selectedSaleOnly
+    ? 'sale'
+    : selectedCategoryId
     ? `id:${selectedCategoryId}`
     : selectedCategoryName
       ? `name:${selectedCategoryName}`
@@ -109,6 +111,11 @@ const ProductList = () => {
     };
   }, []);
 
+  const hasSaleProducts = useMemo(
+    () => products.some((product) => canPurchaseProduct(product) && getProductPricing(product).hasDiscount),
+    [products],
+  );
+
   const categoryChips = useMemo(() => {
     const liveCategories = categories
       .filter((category) => category.name)
@@ -118,26 +125,32 @@ const ProductList = () => {
         categoryId: String(category.id),
       }));
 
+    const saleChip = hasSaleProducts ? [{ key: 'sale', label: 'Khuyến mãi', saleOnly: true }] : [];
+
     if (liveCategories.length > 0) {
-      return [{ key: 'all', label: 'Tất cả' }, ...liveCategories];
+      return [{ key: 'all', label: 'Tất cả' }, ...saleChip, ...liveCategories];
     }
 
     return [
       { key: 'all', label: 'Tất cả' },
+      ...saleChip,
       ...FALLBACK_CATEGORY_CHIPS.map((label) => ({
         key: `name:${label}`,
         label,
         categoryName: label,
       })),
     ];
-  }, [categories]);
+  }, [categories, hasSaleProducts]);
 
   const selectCategory = (category) => {
     const next = new URLSearchParams(searchParams);
     next.delete('categoryId');
     next.delete('category');
+    next.delete('sale');
 
-    if (category.categoryId) {
+    if (category.saleOnly) {
+      next.set('sale', '1');
+    } else if (category.categoryId) {
       next.set('categoryId', category.categoryId);
     } else if (category.categoryName) {
       next.set('category', category.categoryName);
@@ -155,7 +168,7 @@ const ProductList = () => {
       return haystack.includes(categoryToken);
     });
 
-    if (showDiscountOnly) {
+    if (selectedSaleOnly) {
       next = next.filter((product) => getProductPricing(product).hasDiscount);
     }
 
@@ -169,7 +182,7 @@ const ProductList = () => {
     }
 
     return next;
-  }, [selectedCategoryName, showDiscountOnly, sortBy, products]);
+  }, [selectedCategoryName, selectedSaleOnly, sortBy, products]);
 
   const addProduct = (product) => {
     if (!canPurchaseProduct(product)) return;
@@ -232,9 +245,17 @@ const ProductList = () => {
 
           <button
             type="button"
-            onClick={() => setShowDiscountOnly((value) => !value)}
+            onClick={() => {
+              const next = new URLSearchParams(searchParams);
+              if (selectedSaleOnly) {
+                next.delete('sale');
+              } else {
+                next.set('sale', '1');
+              }
+              setSearchParams(next);
+            }}
             className={`flex h-[3.55rem] items-center justify-between rounded-xl border px-4 transition ${
-              showDiscountOnly ? 'border-[#e30613] bg-[#fff1f2] text-[#e30613]' : 'border-[#d9d9d9] bg-white text-[#111]'
+              selectedSaleOnly ? 'border-[#e30613] bg-[#fff1f2] text-[#e30613]' : 'border-[#d9d9d9] bg-white text-[#111]'
             }`}
           >
             <span className="flex items-center gap-2 text-[1.08rem] font-black max-[390px]:text-[0.92rem]">
@@ -266,7 +287,6 @@ const ProductList = () => {
               type="button"
               onClick={() => {
                 setSearchParams(new URLSearchParams());
-                setShowDiscountOnly(false);
               }}
               className="mt-4 rounded-xl bg-[#e30613] px-5 py-2.5 text-sm font-black text-white"
             >

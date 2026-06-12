@@ -46,13 +46,13 @@ type CategoryLink = {
   title: string;
   icon: typeof Settings;
   categoryId?: number;
+  saleOnly?: boolean;
 };
 
 const FALLBACK_CATEGORY_LINKS: CategoryLink[] = [
   { title: 'Phụ tùng', icon: Settings },
   { title: 'Nhớt động cơ', icon: Droplet },
   { title: 'Lọc gió & lọc nhớt', icon: Package },
-  { title: 'Khuyến mãi', icon: BadgePercent },
 ];
 
 const formatVnd = (value: number) =>
@@ -185,15 +185,18 @@ const Home = () => {
   const categoryLinks = useMemo<CategoryLink[]>(() => {
     const liveLinks = categories
       .filter((category) => category.name)
-      .slice(0, 4)
+      .slice(0, saleProducts.length > 0 ? 3 : 4)
       .map((category) => ({
         title: category.name,
         icon: iconForCategory(category.name),
         categoryId: category.id,
       }));
 
-    return liveLinks.length > 0 ? liveLinks : FALLBACK_CATEGORY_LINKS;
-  }, [categories]);
+    const baseLinks = liveLinks.length > 0 ? liveLinks : FALLBACK_CATEGORY_LINKS.slice(0, saleProducts.length > 0 ? 3 : 4);
+    return saleProducts.length > 0
+      ? [{ title: 'Khuyến mãi', icon: BadgePercent, saleOnly: true }, ...baseLinks]
+      : baseLinks;
+  }, [categories, saleProducts.length]);
 
   const heroImage = homeContent?.hero_image_url?.trim() || HERO_IMAGE;
   const heroAlt =
@@ -249,7 +252,7 @@ const Home = () => {
                 <button
                   key={category.title}
                   type="button"
-                  onClick={() => navigate(category.categoryId ? `/products?categoryId=${category.categoryId}` : '/products')}
+                  onClick={() => navigate(category.saleOnly ? '/products?sale=1' : category.categoryId ? `/products?categoryId=${category.categoryId}` : '/products')}
                   className="flex min-h-[5.6rem] flex-col items-center justify-center rounded-xl border border-[#e4e4e4] bg-white px-1.5 py-2 text-center shadow-[0_1px_4px_rgba(0,0,0,0.04)]"
                 >
                   <Icon size={38} strokeWidth={2.8} className="text-[#e30613]" />
@@ -269,6 +272,7 @@ const Home = () => {
             onOpen={openProductDetail}
             onAdd={addProductToCart}
             onBuy={buyNow}
+            onViewAll={() => navigate('/products')}
           />
 
           {(saleProducts.length > 0 || ((loading || loadFailed) && products.length === 0)) && (
@@ -280,6 +284,7 @@ const Home = () => {
               onOpen={openProductDetail}
               onAdd={addProductToCart}
               onBuy={buyNow}
+              onViewAll={() => navigate('/products?sale=1')}
             />
           )}
         </main>
@@ -296,9 +301,10 @@ type ProductSectionProps = {
   onOpen: (product: HomeProduct) => void;
   onAdd: (product: HomeProduct) => void;
   onBuy: (product: HomeProduct) => void;
+  onViewAll?: () => void;
 };
 
-const ProductSection = ({ title, icon, products, loading = false, onOpen, onAdd, onBuy }: ProductSectionProps) => (
+const ProductSection = ({ title, icon, products, loading = false, onOpen, onAdd, onBuy, onViewAll }: ProductSectionProps) => (
   <section className="mt-5">
     <div className="mb-2.5 flex items-center justify-between">
       <div className="flex min-w-0 items-center gap-2">
@@ -309,6 +315,7 @@ const ProductSection = ({ title, icon, products, loading = false, onOpen, onAdd,
       </div>
       <button
         type="button"
+        onClick={onViewAll}
         className="flex shrink-0 items-center gap-1 text-[1rem] font-medium text-[#e30613] max-[390px]:text-[0.84rem]"
       >
         Xem tất cả
