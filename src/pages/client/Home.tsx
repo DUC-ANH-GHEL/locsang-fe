@@ -101,7 +101,7 @@ const Home = () => {
         setLoading(true);
         const data = await productService.getStorefrontProducts({
           status: 'active',
-          limit: 24,
+          limit: 100,
           page: 1,
           sortBy: 'bestSelling',
           order: 'desc',
@@ -149,6 +149,14 @@ const Home = () => {
   }, []);
 
   const apiProducts = useMemo(() => products.map(toHomeProduct).filter((product) => product.canPurchase), [products]);
+  const activeCategoryIds = useMemo(() => {
+    const ids = new Set<number>();
+    apiProducts.forEach((product) => {
+      const categoryId = Number(product.raw?.category_id);
+      if (Number.isFinite(categoryId) && categoryId > 0) ids.add(categoryId);
+    });
+    return ids;
+  }, [apiProducts]);
 
   const bestProducts = useMemo(
     () =>
@@ -162,19 +170,18 @@ const Home = () => {
 
   const categoryLinks = useMemo<CategoryLink[]>(() => {
     const liveLinks = categories
-      .filter((category) => category.name)
-      .slice(0, saleProducts.length > 0 ? 3 : 4)
+      .filter((category) => category.name && activeCategoryIds.has(Number(category.id)))
       .map((category) => ({
         title: category.name,
         categoryId: category.id,
         image: category.image,
       }));
 
-    const baseLinks = liveLinks.length > 0 ? liveLinks : FALLBACK_CATEGORY_LINKS.slice(0, saleProducts.length > 0 ? 3 : 4);
+    const baseLinks = liveLinks.length > 0 ? liveLinks : FALLBACK_CATEGORY_LINKS;
     return saleProducts.length > 0
       ? [{ title: 'Khuyến mãi', image: getCategoryIconValue('sale'), saleOnly: true }, ...baseLinks]
       : baseLinks;
-  }, [categories, saleProducts.length]);
+  }, [activeCategoryIds, categories, saleProducts.length]);
 
   const heroImage = homeContent?.hero_image_url?.trim() || HERO_IMAGE;
   const heroAlt =
@@ -218,13 +225,13 @@ const Home = () => {
             </span>
           </button>
 
-          <div className="mt-4 grid grid-cols-4 gap-2.5 max-[390px]:gap-2">
+          <div className="mt-4 flex gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] max-[390px]:gap-2 [&::-webkit-scrollbar]:hidden">
             {categoryLinks.map((category) => (
               <button
                 key={category.title}
                 type="button"
                 onClick={() => navigate(category.saleOnly ? '/products?sale=1' : category.categoryId ? `/products?categoryId=${category.categoryId}` : '/products')}
-                className="flex min-h-[5.6rem] flex-col items-center justify-center rounded-xl border border-[#e4e4e4] bg-white px-1 py-2 text-center shadow-[0_1px_4px_rgba(0,0,0,0.04)] active:scale-[0.98]"
+                className="flex min-h-[5.6rem] w-[5.35rem] shrink-0 flex-col items-center justify-center rounded-xl border border-[#e4e4e4] bg-white px-1 py-2 text-center shadow-[0_1px_4px_rgba(0,0,0,0.04)] active:scale-[0.98] max-[390px]:w-[5rem]"
               >
                 <CategoryIconPreview
                   name={category.title}
