@@ -107,11 +107,24 @@ export const saveStorefrontSession = (auth: AuthResponse) => {
 export const clearStorefrontSession = () => {
   localStorage.removeItem(STOREFRONT_TOKEN_KEY);
   localStorage.removeItem(STOREFRONT_USER_KEY);
+  sessionStorage.removeItem(STOREFRONT_TOKEN_KEY);
+  sessionStorage.removeItem(STOREFRONT_USER_KEY);
+};
+
+export const loadStoredStorefrontToken = (): string | null => {
+  const token =
+    localStorage.getItem(STOREFRONT_TOKEN_KEY) ||
+    sessionStorage.getItem(STOREFRONT_TOKEN_KEY);
+  const normalized = String(token || '').trim();
+  return normalized || null;
 };
 
 export const loadStoredStorefrontUser = (): StorefrontUser | null => {
   try {
-    const raw = localStorage.getItem(STOREFRONT_USER_KEY);
+    if (!loadStoredStorefrontToken()) return null;
+    const raw =
+      localStorage.getItem(STOREFRONT_USER_KEY) ||
+      sessionStorage.getItem(STOREFRONT_USER_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object') return null;

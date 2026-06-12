@@ -5,6 +5,7 @@ import {
   getStorefrontMe,
   loginStorefrontFacebook,
   loginStorefrontGoogle,
+  loadStoredStorefrontToken,
   loadStoredStorefrontUser,
   loginStorefrontAccount,
   registerStorefrontAccount,
@@ -46,31 +47,14 @@ const StorefrontAuthContext = createContext<StorefrontAuthContextValue | undefin
 
 export const StorefrontAuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<StorefrontUser | null>(() => loadStoredStorefrontUser());
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const isAuthenticated = Boolean(user);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const hydrate = async () => {
-      try {
-        const me = await getStorefrontMe();
-        if (cancelled) return;
-        setUser(me);
-      } catch {
-        if (cancelled) return;
-        clearStorefrontSession();
-        setUser(null);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    hydrate();
-    return () => {
-      cancelled = true;
-    };
+    if (loadStoredStorefrontToken()) return;
+    clearStorefrontSession();
+    setUser(null);
   }, []);
 
   const login = async (payload: LoginPayload) => {
@@ -102,6 +86,13 @@ export const StorefrontAuthProvider = ({ children }: { children: React.ReactNode
   };
 
   const refreshUser = async () => {
+    if (!loadStoredStorefrontToken()) {
+      clearStorefrontSession();
+      setUser(null);
+      return null;
+    }
+
+    setLoading(true);
     try {
       const me = await getStorefrontMe();
       setUser(me);
@@ -111,6 +102,8 @@ export const StorefrontAuthProvider = ({ children }: { children: React.ReactNode
       clearStorefrontSession();
       setUser(null);
       return null;
+    } finally {
+      setLoading(false);
     }
   };
 
