@@ -10,6 +10,34 @@ import App from './App'
 import './assets/styles.css'
 
 const CHUNK_RELOAD_GUARD_KEY = 'locsang_chunk_reload_guard_v1'
+const BUILD_VERSION_KEY = 'locsang_build_version_v1'
+const BUILD_RELOAD_GUARD_KEY = 'locsang_build_reload_guard_v1'
+const APP_BUILD_VERSION =
+  typeof __APP_BUILD_VERSION__ !== 'undefined' ? String(__APP_BUILD_VERSION__) : 'dev'
+
+const syncAppBuildVersion = () => {
+  try {
+    const previousVersion = localStorage.getItem(BUILD_VERSION_KEY)
+    if (previousVersion && previousVersion !== APP_BUILD_VERSION) {
+      const guard = sessionStorage.getItem(BUILD_RELOAD_GUARD_KEY)
+      localStorage.setItem(BUILD_VERSION_KEY, APP_BUILD_VERSION)
+      if (guard !== APP_BUILD_VERSION) {
+        sessionStorage.setItem(BUILD_RELOAD_GUARD_KEY, APP_BUILD_VERSION)
+        window.location.reload()
+        return false
+      }
+    }
+
+    localStorage.setItem(BUILD_VERSION_KEY, APP_BUILD_VERSION)
+    sessionStorage.removeItem(BUILD_RELOAD_GUARD_KEY)
+  } catch {
+    // ignore storage errors; app can continue normally
+  }
+
+  return true
+}
+
+const canBootApp = syncAppBuildVersion()
 
 const isChunkLoadError = (reason) => {
   const message = String(reason?.message || reason || '').toLowerCase()
@@ -70,14 +98,16 @@ const appTree = (
   </BrowserRouter>
 )
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  googleClientId
-    ? (
-      <GoogleOAuthProvider clientId={googleClientId}>
-        {appTree}
-      </GoogleOAuthProvider>
-      )
-    : appTree
-)
+if (canBootApp) {
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    googleClientId
+      ? (
+        <GoogleOAuthProvider clientId={googleClientId}>
+          {appTree}
+        </GoogleOAuthProvider>
+        )
+      : appTree
+  )
+}
 
 registerLocSangServiceWorker()
