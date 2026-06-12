@@ -1,13 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
-  BadgePercent,
   ChevronRight,
-  Droplet,
   Flame,
-  Package,
   Search,
-  Settings,
   Tag,
 } from 'lucide-react';
 
@@ -27,6 +23,7 @@ import {
   getStockLabel,
   toCartPayload,
 } from '../../data/yanmarStorefront';
+import { CategoryIconPreview, getCategoryIconValue } from '../../utils/categoryIcons';
 
 type HomeProduct = {
   id: string;
@@ -44,15 +41,15 @@ type HomeProduct = {
 
 type CategoryLink = {
   title: string;
-  icon: typeof Settings;
   categoryId?: number;
+  image?: string | null;
   saleOnly?: boolean;
 };
 
 const FALLBACK_CATEGORY_LINKS: CategoryLink[] = [
-  { title: 'Phụ tùng', icon: Settings },
-  { title: 'Nhớt động cơ', icon: Droplet },
-  { title: 'Lọc gió & lọc nhớt', icon: Package },
+  { title: 'Phụ tùng', image: getCategoryIconValue('parts') },
+  { title: 'Nhớt động cơ', image: getCategoryIconValue('oil') },
+  { title: 'Lọc gió & lọc nhớt', image: getCategoryIconValue('filter') },
 ];
 
 const formatVnd = (value: number) =>
@@ -86,18 +83,6 @@ const toHomeProduct = (product: Product): HomeProduct => {
     image,
     raw: product,
   };
-};
-
-const iconForCategory = (name: string) => {
-  const normalized = name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
-  if (normalized.includes('nhot') || normalized.includes('oil')) return Droplet;
-  if (normalized.includes('loc') || normalized.includes('filter')) return Package;
-  if (normalized.includes('khuyen') || normalized.includes('sale')) return BadgePercent;
-  return Settings;
 };
 
 const Home = () => {
@@ -188,13 +173,13 @@ const Home = () => {
       .slice(0, saleProducts.length > 0 ? 3 : 4)
       .map((category) => ({
         title: category.name,
-        icon: iconForCategory(category.name),
         categoryId: category.id,
+        image: category.image,
       }));
 
     const baseLinks = liveLinks.length > 0 ? liveLinks : FALLBACK_CATEGORY_LINKS.slice(0, saleProducts.length > 0 ? 3 : 4);
     return saleProducts.length > 0
-      ? [{ title: 'Khuyến mãi', icon: BadgePercent, saleOnly: true }, ...baseLinks]
+      ? [{ title: 'Khuyến mãi', image: getCategoryIconValue('sale'), saleOnly: true }, ...baseLinks]
       : baseLinks;
   }, [categories, saleProducts.length]);
 
@@ -247,7 +232,6 @@ const Home = () => {
 
           <div className="mt-4 grid grid-cols-4 gap-3 max-[390px]:gap-2">
             {categoryLinks.map((category) => {
-              const Icon = category.icon;
               return (
                 <button
                   key={category.title}
@@ -255,7 +239,13 @@ const Home = () => {
                   onClick={() => navigate(category.saleOnly ? '/products?sale=1' : category.categoryId ? `/products?categoryId=${category.categoryId}` : '/products')}
                   className="flex min-h-[5.6rem] flex-col items-center justify-center rounded-xl border border-[#e4e4e4] bg-white px-1.5 py-2 text-center shadow-[0_1px_4px_rgba(0,0,0,0.04)]"
                 >
-                  <Icon size={38} strokeWidth={2.8} className="text-[#e30613]" />
+                  <CategoryIconPreview
+                    name={category.title}
+                    value={category.image}
+                    size={38}
+                    iconClassName="text-[#e30613]"
+                    imageClassName="h-[38px] w-[38px] rounded-lg object-contain"
+                  />
                   <span className="mt-2 text-[0.92rem] font-black leading-[1.06] text-[#111] max-[390px]:text-[0.78rem]">
                     {category.title}
                   </span>
