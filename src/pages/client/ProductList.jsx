@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowDownUp, ChevronDown, Filter } from 'lucide-react';
+import { ArrowDownUp, ChevronDown } from 'lucide-react';
 
 import { useCart } from '../../contexts/CartContext';
 import { getPublicCategories } from '../../services/categoryService';
@@ -220,8 +220,8 @@ const ProductList = () => {
           })}
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <label className="relative flex h-[3.55rem] items-center justify-between rounded-xl border border-[#d9d9d9] bg-white px-4 text-[#111]">
+        <div className="mt-4">
+          <label className="relative flex h-[3.55rem] w-full items-center justify-between rounded-xl border border-[#d9d9d9] bg-white px-4 text-[#111] sm:max-w-[18rem]">
             <span className="flex items-center gap-2 text-[1.08rem] font-black max-[390px]:text-[0.92rem]">
               <ArrowDownUp size={27} className="text-[#e30613]" />
               {SORT_OPTIONS.find((item) => item.value === sortBy)?.label || 'Sắp xếp'}
@@ -240,28 +240,6 @@ const ProductList = () => {
               ))}
             </select>
           </label>
-
-          <button
-            type="button"
-            onClick={() => {
-              const next = new URLSearchParams(searchParams);
-              if (selectedSaleOnly) {
-                next.delete('sale');
-              } else {
-                next.set('sale', '1');
-              }
-              setSearchParams(next);
-            }}
-            className={`flex h-[3.55rem] items-center justify-between rounded-xl border px-4 transition ${
-              selectedSaleOnly ? 'border-[#e30613] bg-[#fff1f2] text-[#e30613]' : 'border-[#d9d9d9] bg-white text-[#111]'
-            }`}
-          >
-            <span className="flex items-center gap-2 text-[1.08rem] font-black max-[390px]:text-[0.92rem]">
-              <Filter size={27} className="text-[#e30613]" />
-              Bộ lọc
-            </span>
-            <ChevronDown size={22} />
-          </button>
         </div>
 
         <section className="mt-4 grid grid-cols-2 gap-3">
