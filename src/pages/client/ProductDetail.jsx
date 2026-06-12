@@ -39,7 +39,6 @@ const getGalleryImages = (product, variant) => {
   if (Array.isArray(product?.images)) product.images.forEach(push);
   push(getProductImage(product));
 
-  while (images.length > 0 && images.length < 4) images.push(images[images.length - 1]);
   return images.slice(0, 5);
 };
 
@@ -112,6 +111,13 @@ const ProductDetail = () => {
   const isBackorder = stock <= 0 && Boolean(selectedVariant?.allow_backorder ?? product?.allow_backorder);
   const canIncreaseQuantity = inStock && (isBackorder || stock <= 0 || quantity < stock);
   const discountLabel = getDiscountLabel(selectedVariant || product) || (pricing.hasDiscount ? '-15%' : '');
+
+  useEffect(() => {
+    if (selectedImageIndex >= galleryImages.length) {
+      setSelectedImageIndex(0);
+    }
+  }, [galleryImages.length, selectedImageIndex]);
+
   const specifications = useMemo(() => {
     const rawSpecs = Array.isArray(product?.specifications) ? product.specifications : [];
     const specs = rawSpecs
@@ -187,22 +193,24 @@ const ProductDetail = () => {
           </div>
         </section>
 
-        <section className="border-b border-[#eeeeee] px-4 py-3">
-          <div className="grid grid-cols-4 gap-3">
-            {galleryImages.slice(0, 4).map((image, index) => (
-              <button
-                key={`${image}-${index}`}
-                type="button"
-                onClick={() => setSelectedImageIndex(index)}
-                className={`flex aspect-[1.35/1] items-center justify-center rounded-lg border bg-white p-1.5 ${
-                  index === selectedImageIndex ? 'border-2 border-[#e30613]' : 'border-[#e1e1e1]'
-                }`}
-              >
-                <img src={image} alt={`${product.name} ${index + 1}`} className="max-h-full max-w-full object-contain" />
-              </button>
-            ))}
-          </div>
-        </section>
+        {galleryImages.length > 1 && (
+          <section className="border-b border-[#eeeeee] px-4 py-3">
+            <div className="grid grid-cols-4 gap-3">
+              {galleryImages.slice(0, 4).map((image, index) => (
+                <button
+                  key={`${image}-${index}`}
+                  type="button"
+                  onClick={() => setSelectedImageIndex(index)}
+                  className={`flex aspect-[1.35/1] items-center justify-center rounded-lg border bg-white p-1.5 ${
+                    index === selectedImageIndex ? 'border-2 border-[#e30613]' : 'border-[#e1e1e1]'
+                  }`}
+                >
+                  <img src={image} alt={`${product.name} ${index + 1}`} className="max-h-full max-w-full object-contain" />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="px-4 py-4">
           <h1 className="font-sans text-[2rem] font-black leading-tight text-[#333] max-[390px]:text-[1.55rem]">
