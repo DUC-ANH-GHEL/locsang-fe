@@ -32,8 +32,6 @@ const Products = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [selectedIds, setSelectedIds] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [bulkStatus, setBulkStatus] = useState('active');
-  const [bulkCategory, setBulkCategory] = useState('');
 
   const totalPages = useMemo(() => {
     const total = Number(pagination.total || 0);
@@ -178,12 +176,12 @@ const Products = () => {
   const bulkUpdate = async (action, data) => {
     try {
       await productService.bulkUpdateProducts({ ids: selectedIds, action, data });
-      showToast('Cập nhật hàng loạt thành công', 'success');
+      showToast('Đã xóa các sản phẩm đã chọn', 'success');
       setSelectedIds([]);
       fetchAdminProducts();
     } catch (error) {
       const parsed = parseApiError(error);
-      showToast(parsed?.message || 'Bulk update thất bại', 'error', 7000);
+      showToast(parsed?.message || 'Không xóa được sản phẩm đã chọn', 'error', 7000);
     }
   };
 
@@ -329,31 +327,10 @@ const Products = () => {
           <div className="mx-auto flex max-w-7xl flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
             <div className="text-sm font-black text-slate-950 dark:text-white">Đã chọn {selectedIds.length} sản phẩm</div>
             <div className="flex flex-wrap gap-2">
-              <select value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold dark:border-slate-700 dark:bg-slate-950">
-                <option value="active">Đang bán</option>
-                <option value="draft">Nháp</option>
-                <option value="discontinued">Ngừng bán</option>
-              </select>
-              <button type="button" onClick={() => bulkUpdate('status', { status: bulkStatus })} className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-black dark:border-slate-700">
-                Đổi trạng thái
-              </button>
-
-              <select value={bulkCategory} onChange={(event) => setBulkCategory(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold dark:border-slate-700 dark:bg-slate-950">
-                <option value="">Gán danh mục...</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={String(category.id)}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-              <button type="button" disabled={!bulkCategory} onClick={() => bulkUpdate('category', { category_id: Number(bulkCategory) })} className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-black disabled:opacity-50 dark:border-slate-700">
-                Gán danh mục
-              </button>
-
               <button
                 type="button"
                 onClick={() => {
-                  if (!window.confirm(`Chuyển ${selectedIds.length} sản phẩm sang Ngừng bán?`)) return;
+                  if (!window.confirm(`Xóa ${selectedIds.length} sản phẩm đã chọn?`)) return;
                   bulkUpdate('delete', { soft: true });
                 }}
                 className="h-10 rounded-xl bg-red-600 px-4 text-sm font-black text-white hover:bg-red-700"
