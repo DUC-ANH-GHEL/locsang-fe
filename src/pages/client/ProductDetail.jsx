@@ -417,59 +417,61 @@ const ProductDetail = () => {
           )}
         </section>
 
-        <section className="px-4 pb-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-sans text-[1.2rem] font-black uppercase text-[#111]">Sản phẩm liên quan</h2>
-            <button type="button" onClick={() => navigate('/products')} className="flex items-center gap-1 text-sm font-bold text-[#e30613]">
-              Xem thêm <ChevronRight size={18} />
-            </button>
-          </div>
+        {relatedProducts.length > 0 && (
+          <section className="px-4 pb-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-sans text-[1.2rem] font-black uppercase text-[#111]">Sản phẩm liên quan</h2>
+              <button type="button" onClick={() => navigate('/products')} className="flex items-center gap-1 text-sm font-bold text-[#e30613]">
+                Xem thêm <ChevronRight size={18} />
+              </button>
+            </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {relatedProducts.map((item) => {
-              const itemPricing = getProductPricing(item);
-              const itemDiscount = getDiscountLabel(item);
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => navigate(toProductDetailPath(item))}
-                  className="relative overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-1.5 text-left shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-[0.99]"
-                >
-                  {itemDiscount && (
-                    <span className="absolute left-2 top-2 z-10 rounded-md bg-[#e30613] px-2 py-1 text-[0.85rem] font-black leading-none text-white">
-                      {itemDiscount}
-                    </span>
-                  )}
-                  <div className="aspect-square w-full overflow-hidden rounded-lg bg-[#f7f7f7]">
-                    <img
-                      src={getProductCardImageUrl(getProductImage(item))}
-                      alt={item.name}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div className="px-0.5 pb-1.5 pt-2">
-                    <div className="line-clamp-2 min-h-[2.15rem] text-[1rem] font-black leading-[1.08] text-[#111] max-[390px]:text-[0.9rem]">
-                      {item.name}
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-end gap-1.5">
-                      <span className="text-[1.2rem] font-black leading-none text-[#e30613] max-[390px]:text-[1.05rem]">
-                        {formatVnd(itemPricing.currentPrice)}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+              {relatedProducts.map((item) => {
+                const itemPricing = getProductPricing(item);
+                const itemDiscount = getDiscountLabel(item);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => navigate(toProductDetailPath(item))}
+                    className="relative overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-1.5 text-left shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-[0.99]"
+                  >
+                    {itemDiscount && (
+                      <span className="absolute left-2 top-2 z-10 rounded-md bg-[#e30613] px-2 py-1 text-[0.85rem] font-black leading-none text-white">
+                        {itemDiscount}
                       </span>
-                      {itemPricing.originalPrice && (
-                        <span className="text-[0.82rem] font-bold leading-none text-[#888] line-through">
-                          {formatVnd(itemPricing.originalPrice)}
-                        </span>
-                      )}
+                    )}
+                    <div className="aspect-square w-full overflow-hidden rounded-lg bg-[#f7f7f7]">
+                      <img
+                        src={getProductCardImageUrl(getProductImage(item))}
+                        alt={item.name}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-cover"
+                      />
                     </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
+                    <div className="px-0.5 pb-1.5 pt-2">
+                      <div className="line-clamp-2 min-h-[2.15rem] text-[1rem] font-black leading-[1.08] text-[#111] max-[390px]:text-[0.9rem]">
+                        {item.name}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-end gap-1.5">
+                        <span className="text-[1.2rem] font-black leading-none text-[#e30613] max-[390px]:text-[1.05rem]">
+                          {formatVnd(itemPricing.currentPrice)}
+                        </span>
+                        {itemPricing.originalPrice && (
+                          <span className="text-[0.82rem] font-bold leading-none text-[#888] line-through">
+                            {formatVnd(itemPricing.originalPrice)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </main>
 
       <div className="fixed inset-x-0 bottom-[5.35rem] z-40 border-t border-[#eeeeee] bg-white px-3.5 py-2 shadow-[0_-8px_20px_rgba(0,0,0,0.08)] md:hidden">
