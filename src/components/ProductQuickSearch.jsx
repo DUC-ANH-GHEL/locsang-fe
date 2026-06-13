@@ -5,6 +5,7 @@ import { Search, X } from 'lucide-react';
 import { productService } from '../services/productService';
 import { getProductPricing } from '../utils/productPricing';
 import { toProductDetailPath } from '../utils/productUrl';
+import { getProductCardImageUrl } from '../utils/cloudinaryImage';
 import {
   canPurchaseProduct,
   formatVnd,
@@ -92,9 +93,13 @@ const ProductQuickSearch = ({ open, onClose }) => {
           setLoadFailed(false);
           const data = await productService.getStorefrontProducts({
             status: 'active',
-            limit: 100,
+            limit: hasQuery ? 12 : 8,
             page: 1,
             search: hasQuery ? cleanQuery : undefined,
+            includeTotal: false,
+            card: true,
+            cacheKey: hasQuery ? `quick-search:${normalizeCode(cleanQuery)}` : 'quick-search:empty',
+            cacheTtlMs: 60_000,
           });
 
           if (!cancelled) {
@@ -225,8 +230,10 @@ const ProductQuickSearch = ({ open, onClose }) => {
                     className="flex w-full gap-3 rounded-2xl border border-gray-100 bg-white p-2 text-left shadow-[0_1px_5px_rgba(0,0,0,0.04)] active:scale-[0.99]"
                   >
                     <img
-                      src={getProductImage(product)}
+                      src={getProductCardImageUrl(getProductImage(product))}
                       alt={product.name}
+                      loading="lazy"
+                      decoding="async"
                       className="h-20 w-20 shrink-0 rounded-xl border border-gray-100 bg-gray-50 object-contain"
                     />
                     <span className="min-w-0 flex-1 py-1">

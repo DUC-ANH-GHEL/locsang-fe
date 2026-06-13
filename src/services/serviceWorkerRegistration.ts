@@ -4,6 +4,8 @@ export const registerLocSangServiceWorker = async () => {
 
   try {
     const reloadGuardKey = 'locsang_sw_controller_reload_v1';
+    const updateCheckKey = 'locsang_sw_update_checked_at_v1';
+    const minUpdateIntervalMs = 30 * 60 * 1000;
     let reloading = false;
 
     navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -36,9 +38,17 @@ export const registerLocSangServiceWorker = async () => {
       registration.waiting.postMessage({ type: 'SKIP_WAITING' });
     }
 
-    registration.update().catch(() => {
-      // Ignore update check errors; the current app can keep running.
-    });
+    try {
+      const lastCheckedAt = Number(localStorage.getItem(updateCheckKey) || 0);
+      if (!lastCheckedAt || Date.now() - lastCheckedAt > minUpdateIntervalMs) {
+        localStorage.setItem(updateCheckKey, String(Date.now()));
+        registration.update().catch(() => {
+          // Ignore update check errors; the current app can keep running.
+        });
+      }
+    } catch {
+      // Storage errors should not block service worker registration.
+    }
 
     return registration;
   } catch (error) {

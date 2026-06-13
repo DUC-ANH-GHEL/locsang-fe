@@ -2,6 +2,9 @@ import { apiClient } from './apiClient';
 import { API_BASE_URL } from '../config/api';
 import axios from 'axios';
 import { optimizeImageForUpload } from '../utils/imageUploadOptimization';
+import type { Product } from '../types/product';
+import { normalizePublicProduct } from './productService';
+import { fetchCachedPublicData } from './publicCache';
 
 const PUBLIC_API_BASE_URL = API_BASE_URL.replace(/\/api\/v1\/?$/, '/api');
 
@@ -101,6 +104,22 @@ export type HomeContentPublicResponse = {
   published_at?: string | null;
 };
 
+export type HomeCategoryWithProducts = {
+  id: number;
+  name: string;
+  slug?: string | null;
+  description?: string | null;
+  image?: string | null;
+  products: Product[];
+};
+
+export type PublicHomeDataResponse = {
+  home_content: HomeContentPublicResponse;
+  categories_with_products: HomeCategoryWithProducts[];
+  best_sellers: Product[];
+  sale_products: Product[];
+};
+
 export type HomeContentImageUploadResponse = {
   url: string;
 };
@@ -140,14 +159,47 @@ export const homeContentService = {
   },
 
   getPublicHomeContent: async (): Promise<HomeContentPublicResponse> => {
-    const res = await axios.get(`${PUBLIC_API_BASE_URL}/home-content`, {
-      params: { _t: Date.now() },
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        Pragma: 'no-cache',
+    return fetchCachedPublicData<HomeContentPublicResponse>(
+      'home-content',
+      async () => {
+        const res = await axios.get(`${PUBLIC_API_BASE_URL}/home-content`, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        return res.data;
       },
-    });
-    return res.data;
+      { ttlMs: 60_000 },
+    );
+  },
+
+  getPublicHomeData: async (): Promise<PublicHomeDataResponse> => {
+    return fetchCachedPublicData<PublicHomeDataResponse>(
+      'home-aggregate',
+      async () => {
+        const res = await axios.get(`${PUBLIC_API_BASE_URL}/home`, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = res.data || {};
+        const categories = Array.isArray(data.categories_with_products)
+          ? data.categories_with_products.map((category: any) => ({
+              id: Number(category?.id ?? 0),
+              name: String(category?.name ?? '').trim(),
+              slug: category?.slug ?? null,
+              description: category?.description ?? null,
+              image: category?.image ?? null,
+              products: Array.isArray(category?.products)
+                ? category.products.map(normalizePublicProduct)
+                : [],
+            }))
+          : [];
+
+        return {
+          home_content: data.home_content || { content: null, published_at: null },
+          categories_with_products: categories.filter((category: HomeCategoryWithProducts) => category.id > 0 && category.name),
+          best_sellers: Array.isArray(data.best_sellers) ? data.best_sellers.map(normalizePublicProduct) : [],
+          sale_products: Array.isArray(data.sale_products) ? data.sale_products.map(normalizePublicProduct) : [],
+        };
+      },
+      { ttlMs: 60_000 },
+    );
   },
 };

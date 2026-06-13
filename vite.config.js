@@ -8,6 +8,24 @@ export default defineConfig({
   define: {
     __APP_BUILD_VERSION__: JSON.stringify(appBuildVersion),
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+            return 'vendor-react';
+          }
+          if (id.includes('lucide-react')) return 'vendor-icons';
+          if (id.includes('@react-oauth')) return 'vendor-google-auth';
+          if (id.includes('browser-image-compression')) return 'vendor-image-tools';
+          if (id.includes('framer-motion')) return 'vendor-motion';
+          if (id.includes('axios')) return 'vendor-http';
+          return 'vendor';
+        },
+      },
+    },
+  },
   server: {
     open: true
   }

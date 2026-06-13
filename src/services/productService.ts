@@ -2,6 +2,7 @@ import axios from 'axios';
 import { Product } from '../types/product';
 import { API_BASE_URL } from '../config/api';
 import { apiClient } from './apiClient';
+import { fetchCachedPublicData } from './publicCache';
 import { optimizeImageForUpload } from '../utils/imageUploadOptimization';
 import { parseApiDateTime } from '../utils/dateTime';
 
@@ -120,6 +121,10 @@ type StorefrontProductsParams = {
   status?: 'active' | 'inactive';
   sortBy?: 'createdAt' | 'price' | 'name' | 'bestSelling';
   order?: 'asc' | 'desc';
+  includeTotal?: boolean;
+  card?: boolean;
+  cacheKey?: string;
+  cacheTtlMs?: number;
 };
 
 const STORE_DEFAULT_IMAGE_URL = '/favicon.svg';
@@ -244,7 +249,7 @@ const collectStorefrontImageCandidates = (raw: any): string[] => {
   return images.length > 0 ? images : [STORE_DEFAULT_IMAGE_URL];
 };
 
-const normalizePublicProduct = (raw: any): Product => {
+export const normalizePublicProduct = (raw: any): Product => {
   const variants = Array.isArray(raw?.variants) ? raw.variants : [];
   const images = collectStorefrontImageCandidates(raw);
   const categoryId = Number(raw?.category?.id ?? raw?.category_id ?? 0);
@@ -486,22 +491,36 @@ export const getStorefrontProducts = async (params: StorefrontProductsParams = {
   const requestedLimit = Number(params.limit ?? 100);
   const safeLimit = Number.isFinite(requestedLimit) ? Math.max(1, Math.min(100, requestedLimit)) : 100;
 
-  const response = await axios.get(`${getPublicApiBaseUrl()}/products`, {
-    params: {
-      page: params.page ?? 1,
-      limit: safeLimit,
-      search: params.search,
-      categoryId: params.categoryId,
-      minPrice: params.minPrice,
-      maxPrice: params.maxPrice,
-      status: params.status ?? 'active',
-      sortBy: params.sortBy,
-      order: params.order,
-    },
-  });
+  const requestParams = {
+    page: params.page ?? 1,
+    limit: safeLimit,
+    search: params.search,
+    categoryId: params.categoryId,
+    minPrice: params.minPrice,
+    maxPrice: params.maxPrice,
+    status: params.status ?? 'active',
+    sortBy: params.sortBy,
+    order: params.order,
+    includeTotal: params.includeTotal === false ? 'false' : undefined,
+    card: params.card ? 'true' : undefined,
+  };
 
-  const items = Array.isArray(response?.data?.data) ? response.data.data : [];
-  return items.map(normalizePublicProduct);
+  const fetcher = async () => {
+    const response = await axios.get(`${getPublicApiBaseUrl()}/products`, {
+      params: requestParams,
+    });
+
+    const items = Array.isArray(response?.data?.data) ? response.data.data : [];
+    return items.map(normalizePublicProduct);
+  };
+
+  if (!params.cacheKey) return fetcher();
+
+  return fetchCachedPublicData<Product[]>(
+    `products:${params.cacheKey}:${JSON.stringify(requestParams)}`,
+    fetcher,
+    { ttlMs: params.cacheTtlMs ?? 60_000 },
+  );
 };
 
 export const getProducts = async (params: GetProductsParams = {}) => {
@@ -515,10 +534,16 @@ export const getProducts = async (params: GetProductsParams = {}) => {
 };
 
 export const getStorefrontProductById = async (id: number | string) => {
-  const response = await axios.get(`${getPublicApiBaseUrl()}/products/${id}`);
-  const raw = response?.data?.data;
-  if (!raw) return null;
-  return normalizePublicProduct(raw);
+  return fetchCachedPublicData<Product | null>(
+    `product-detail:${id}`,
+    async () => {
+      const response = await axios.get(`${getPublicApiBaseUrl()}/products/${id}`);
+      const raw = response?.data?.data;
+      if (!raw) return null;
+      return normalizePublicProduct(raw);
+    },
+    { ttlMs: 60_000 },
+  );
 };
 
 export const productService = {

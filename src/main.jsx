@@ -1,10 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import { GoogleOAuthProvider } from '@react-oauth/google'
 import { ToastProvider } from './components/Toast'
 import { LoadingProvider } from './contexts/LoadingContext'
-import { StorefrontAuthProvider } from './contexts/StorefrontAuthContext'
 import { registerLocSangServiceWorker } from './services/serviceWorkerRegistration'
 import App from './App'
 import './assets/styles.css'
@@ -84,30 +82,18 @@ window.addEventListener('load', () => {
   }
 })
 
-const googleClientId = String(import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim()
-
 const appTree = (
   <BrowserRouter>
     <ToastProvider>
       <LoadingProvider>
-        <StorefrontAuthProvider>
-          <App />
-        </StorefrontAuthProvider>
+        <App />
       </LoadingProvider>
     </ToastProvider>
   </BrowserRouter>
 )
 
 if (canBootApp) {
-  ReactDOM.createRoot(document.getElementById('root')).render(
-    googleClientId
-      ? (
-        <GoogleOAuthProvider clientId={googleClientId}>
-          {appTree}
-        </GoogleOAuthProvider>
-        )
-      : appTree
-  )
+  ReactDOM.createRoot(document.getElementById('root')).render(appTree)
 }
 
 registerLocSangServiceWorker()

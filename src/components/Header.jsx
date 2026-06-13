@@ -1,6 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaShoppingCart, FaTrash } from 'react-icons/fa';
-import { ChevronLeft, Search } from 'lucide-react';
+import { ChevronLeft, Search, ShoppingCart, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useCart } from '../contexts/CartContext';
 import BrandLockup from './BrandLockup';
@@ -65,7 +64,7 @@ const CartDropdown = ({
                 </div>
               </div>
               <button className="p-1 text-red-500 hover:text-red-700" onClick={() => removeFromCart(item.item_key)} title="Xóa">
-                <FaTrash />
+                <Trash2 size={16} strokeWidth={2.4} />
               </button>
             </li>
           ))}
@@ -153,7 +152,7 @@ const Header = ({ onOpenSearch }) => {
                 onClick={() => setCartOpen((v) => !v)}
                 aria-label="Giỏ hàng"
               >
-                <FaShoppingCart size={32} className="cart-fly-target" />
+                <ShoppingCart size={34} strokeWidth={2.6} className="cart-fly-target" />
                 {cartCount > 0 && (
                   <span className="absolute right-0 top-0 inline-flex min-h-[20px] min-w-[20px] items-center justify-center rounded-full bg-[#e30613] px-1 text-[11px] font-bold leading-none text-white">
                     {cartCount}

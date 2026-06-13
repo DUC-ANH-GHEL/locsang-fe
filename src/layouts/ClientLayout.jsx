@@ -1,9 +1,10 @@
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import MobileBottomNav from '../components/MobileBottomNav'
-import ProductQuickSearch from '../components/ProductQuickSearch'
 import { Outlet, useLocation } from 'react-router-dom'
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
+
+const ProductQuickSearch = lazy(() => import('../components/ProductQuickSearch'))
 
 const ClientLayout = () => {
   const location = useLocation()
@@ -19,7 +20,11 @@ const ClientLayout = () => {
       </main>
       {!shouldHideHeaderFooter && <Footer />}
       <MobileBottomNav onOpenSearch={() => setSearchOpen(true)} searchOpen={searchOpen} />
-      <ProductQuickSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+      {searchOpen && (
+        <Suspense fallback={null}>
+          <ProductQuickSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+        </Suspense>
+      )}
     </div>
   )
 }

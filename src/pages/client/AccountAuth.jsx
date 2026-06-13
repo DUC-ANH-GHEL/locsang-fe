@@ -1,11 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStorefrontAuth } from '../../contexts/StorefrontAuthContext';
 import { useSEO } from '../../hooks/useSEO';
 import { forgotStorefrontPassword, resetStorefrontPassword } from '../../services/customerAccountService';
 
 const AUTH_MODES = ['login', 'register', 'forgot', 'reset'];
+
+const GoogleLoginButton = lazy(() =>
+  import('@react-oauth/google').then((module) => ({
+    default: ({ clientId, ...props }) => (
+      <module.GoogleOAuthProvider clientId={clientId}>
+        <module.GoogleLogin {...props} />
+      </module.GoogleOAuthProvider>
+    ),
+  })),
+);
 
 const getModeFromSearch = (search) => {
   const params = new URLSearchParams(search);
@@ -433,14 +442,17 @@ const AccountAuth = () => {
               <div className="space-y-2">
                 {googleClientId && (
                   <div className="flex justify-center rounded-lg border border-gray-200 bg-white py-2">
-                    <GoogleLogin
+                    <Suspense fallback={<div className="h-10 text-sm font-semibold text-gray-500">Đang tải Google...</div>}>
+                      <GoogleLoginButton
+                        clientId={googleClientId}
                       onSuccess={handleGoogleSuccess}
                       onError={() => setError('Không thể khởi tạo đăng nhập Google. Vui lòng thử lại.')}
                       theme="outline"
                       text="signin_with"
                       shape="pill"
                       size="large"
-                    />
+                      />
+                    </Suspense>
                   </div>
                 )}
 

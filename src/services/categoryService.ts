@@ -1,8 +1,10 @@
 import { apiClient } from './apiClient';
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
+import { fetchCachedPublicData } from './publicCache';
 
 const CATEGORY_PUBLIC_URL = `${String(API_BASE_URL || '').replace(/\/+$/, '')}/categories/`;
+const PUBLIC_CATEGORY_URL = CATEGORY_PUBLIC_URL.replace(/\/api\/v1\/categories\/?$/i, '/api/categories');
 
 export type Category = {
   id: number;
@@ -46,18 +48,24 @@ export const getCategories = async () => {
 };
 
 export const getPublicCategories = async (): Promise<Category[]> => {
-  const response = await axios.get(CATEGORY_PUBLIC_URL);
-  const data = Array.isArray(response.data) ? response.data : [];
-  return data
-    .map((item: any) => ({
-      id: Number(item?.id ?? 0),
-      name: String(item?.name ?? '').trim(),
-      slug: item?.slug ?? null,
-      description: item?.description ?? null,
-      image: item?.image ?? null,
-      is_active: item?.is_active ?? true,
-    }))
-    .filter((item: Category) => item.id > 0 && item.name);
+  return fetchCachedPublicData<Category[]>(
+    'categories',
+    async () => {
+      const response = await axios.get(PUBLIC_CATEGORY_URL);
+      const data = Array.isArray(response.data) ? response.data : [];
+      return data
+        .map((item: any) => ({
+          id: Number(item?.id ?? 0),
+          name: String(item?.name ?? '').trim(),
+          slug: item?.slug ?? null,
+          description: item?.description ?? null,
+          image: item?.image ?? null,
+          is_active: item?.is_active ?? true,
+        }))
+        .filter((item: Category) => item.id > 0 && item.name);
+    },
+    { ttlMs: 60_000 },
+  );
 };
 
 export const getCategoryById = async (categoryId: number) => {

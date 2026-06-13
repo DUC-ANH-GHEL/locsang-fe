@@ -8,6 +8,7 @@ import { productService } from '../../services/productService';
 import { toProductDetailPath } from '../../utils/productUrl';
 import { getProductPricing } from '../../utils/productPricing';
 import { flyProductImageToCartFromEvent } from '../../utils/cartFlyAnimation';
+import { getProductCardImageUrl } from '../../utils/cloudinaryImage';
 import { useSEO } from '../../hooks/useSEO';
 import {
   formatVnd,
@@ -66,9 +67,12 @@ const ProductList = () => {
         setLoading(true);
         const data = await productService.getStorefrontProducts({
           status: 'active',
-          limit: 100,
+          limit: 60,
           page: 1,
           categoryId: selectedCategoryId || undefined,
+          includeTotal: false,
+          card: true,
+          cacheKey: `product-list:${selectedCategoryId || 'all'}`,
         });
         if (!cancelled) {
           setProducts(Array.isArray(data) ? data : []);
@@ -300,7 +304,14 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
 
       <button type="button" onClick={onOpen} className="block w-full text-left">
         <div className="aspect-square w-full overflow-hidden rounded-lg bg-[#f7f7f7]">
-          <img data-cart-fly-image src={getProductImage(product)} alt={product.name} className="h-full w-full object-cover" />
+          <img
+            data-cart-fly-image
+            src={getProductCardImageUrl(getProductImage(product))}
+            alt={product.name}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
         </div>
 
         <div className="px-0.5 pt-2">

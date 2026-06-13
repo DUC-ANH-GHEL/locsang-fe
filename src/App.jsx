@@ -8,6 +8,7 @@ import AdminLayout from './layouts/AdminLayout'
 
 import PrivateRoute from './components/PrivateRoute';
 import { CartProvider } from './contexts/CartContext';
+import { StorefrontAuthProvider } from './contexts/StorefrontAuthContext';
 import ScrollToTop from './components/common/ScrollToTop';
 
 const Home = lazy(() => import('./pages/client/Home'));
@@ -59,7 +60,7 @@ function PwaManifestRouteSync() {
 
 function App() {
   return (
-    <CartProvider>
+    <>
       <PwaManifestRouteSync />
       <ScrollToTop />
       <Suspense
@@ -73,7 +74,16 @@ function App() {
         )}
       >
         <Routes>
-          <Route path="/" element={<ClientLayout />}>
+          <Route
+            path="/"
+            element={(
+              <StorefrontAuthProvider>
+                <CartProvider>
+                  <ClientLayout />
+                </CartProvider>
+              </StorefrontAuthProvider>
+            )}
+          >
             <Route index element={<Home />} />
             <Route path="products" element={<ProductList />} />
             <Route path="products/:id/:slug" element={<ProductDetail />} />
@@ -114,7 +124,7 @@ function App() {
           </Route>
         </Routes>
       </Suspense>
-    </CartProvider>
+    </>
   )
 }
 

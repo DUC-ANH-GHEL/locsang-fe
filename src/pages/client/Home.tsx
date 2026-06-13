@@ -5,11 +5,12 @@ import { ChevronRight, Flame, Search, Tag } from 'lucide-react';
 import { Product } from '../../types/product';
 import { productService } from '../../services/productService';
 import { Category, getPublicCategories } from '../../services/categoryService';
-import { HomeContentPayload, homeContentService } from '../../services/homeContentService';
+import { HomeCategoryWithProducts, HomeContentPayload, homeContentService } from '../../services/homeContentService';
 import { getProductPricing } from '../../utils/productPricing';
 import { toProductDetailPath } from '../../utils/productUrl';
 import { flyProductImageToCartFromEvent } from '../../utils/cartFlyAnimation';
 import { useSEO } from '../../hooks/useSEO';
+import { getBannerImageUrl, getProductCardImageUrl } from '../../utils/cloudinaryImage';
 import { useCart } from '../../contexts/CartContext';
 import {
   HERO_IMAGE,
@@ -105,9 +106,11 @@ const Home = () => {
   const openProductSearch = outletContext?.openProductSearch;
   const { addToCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
+  const [bestSellerProducts, setBestSellerProducts] = useState<Product[]>([]);
+  const [saleProductRows, setSaleProductRows] = useState<Product[]>([]);
   const [homeContent, setHomeContent] = useState<HomeContentPayload | null>(() => loadCachedHomeContent());
   const [homeContentLoaded, setHomeContentLoaded] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Array<Category | HomeCategoryWithProducts>>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -120,58 +123,71 @@ const Home = () => {
   useEffect(() => {
     let cancelled = false;
 
-    const loadProducts = async () => {
+    const loadFallbackData = async () => {
       try {
-        setLoading(true);
-        const data = await productService.getStorefrontProducts({
-          status: 'active',
-          limit: 100,
-          page: 1,
-          sortBy: 'bestSelling',
-          order: 'desc',
-        });
-        if (!cancelled) {
-          setProducts(Array.isArray(data) ? data : []);
-          setLoadFailed(false);
-        }
+        const [productData, contentResponse, categoryData] = await Promise.all([
+          productService.getStorefrontProducts({
+            status: 'active',
+            limit: 24,
+            page: 1,
+            sortBy: 'bestSelling',
+            order: 'desc',
+            includeTotal: false,
+            card: true,
+            cacheKey: 'home-fallback',
+          }),
+          homeContentService.getPublicHomeContent(),
+          getPublicCategories(),
+        ]);
+        if (cancelled) return;
+        setProducts(Array.isArray(productData) ? productData : []);
+        setBestSellerProducts(Array.isArray(productData) ? productData : []);
+        setSaleProductRows([]);
+        const content = contentResponse.content || null;
+        setHomeContent(content);
+        cacheHomeContent(content);
+        setHomeContentLoaded(true);
+        setCategories(categoryData.filter((category) => category.is_active !== false));
+        setLoadFailed(false);
       } catch {
         if (!cancelled) {
           setProducts([]);
+          setBestSellerProducts([]);
+          setSaleProductRows([]);
           setLoadFailed(true);
         }
+      }
+    };
+
+    const loadHome = async () => {
+      try {
+        setLoading(true);
+        const data = await homeContentService.getPublicHomeData();
+        if (cancelled) return;
+
+        const content = data.home_content?.content || null;
+        const categoryProducts = data.categories_with_products.flatMap((category) => category.products || []);
+        const unique = new Map<number, Product>();
+        [...data.best_sellers, ...data.sale_products, ...categoryProducts].forEach((product) => {
+          if (product?.id) unique.set(Number(product.id), product);
+        });
+
+        setHomeContent(content);
+        cacheHomeContent(content);
+        setHomeContentLoaded(true);
+        setProducts(Array.from(unique.values()));
+        setBestSellerProducts(data.best_sellers || []);
+        setSaleProductRows(data.sale_products || []);
+        setCategories(data.categories_with_products || []);
+        setLoadFailed(false);
+      } catch {
+        await loadFallbackData();
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
 
-    const loadHomeContent = async () => {
-      try {
-        const response = await homeContentService.getPublicHomeContent();
-        if (!cancelled) {
-          const content = response.content || null;
-          setHomeContent(content);
-          cacheHomeContent(content);
-          setHomeContentLoaded(true);
-        }
-      } catch {
-        if (!cancelled) setHomeContentLoaded(true);
-      }
-    };
-
-    const loadCategories = async () => {
-      try {
-        const data = await getPublicCategories();
-        if (!cancelled) {
-          setCategories(data.filter((category) => category.is_active !== false));
-        }
-      } catch {
-        if (!cancelled) setCategories([]);
-      }
-    };
-
-    loadProducts();
-    loadHomeContent();
-    loadCategories();
+    loadHome();
     return () => {
       cancelled = true;
     };
@@ -188,18 +204,27 @@ const Home = () => {
   }, [apiProducts]);
 
   const bestProducts = useMemo(
-    () =>
-      [...apiProducts]
+    () => {
+      const source = bestSellerProducts.length > 0 ? bestSellerProducts.map(toHomeProduct).filter((product) => product.canPurchase) : apiProducts;
+      return [...source]
         .sort((a, b) => b.soldCount - a.soldCount || a.name.localeCompare(b.name, 'vi'))
-        .slice(0, 4),
-    [apiProducts],
+        .slice(0, 4);
+    },
+    [apiProducts, bestSellerProducts],
   );
 
-  const saleProducts = useMemo(() => apiProducts.filter((product) => product.discountLabel).slice(0, 4), [apiProducts]);
+  const saleProducts = useMemo(() => {
+    const source = saleProductRows.length > 0 ? saleProductRows.map(toHomeProduct).filter((product) => product.canPurchase) : apiProducts;
+    return source.filter((product) => product.discountLabel).slice(0, 4);
+  }, [apiProducts, saleProductRows]);
 
   const categoryLinks = useMemo<CategoryLink[]>(() => {
     const liveLinks = categories
-      .filter((category) => category.name && activeCategoryIds.has(Number(category.id)))
+      .filter((category) => {
+        if (!category.name) return false;
+        if ('products' in category) return Array.isArray(category.products) && category.products.some(canPurchaseProduct);
+        return activeCategoryIds.has(Number(category.id));
+      })
       .map((category) => ({
         title: category.name,
         categoryId: category.id,
@@ -212,7 +237,7 @@ const Home = () => {
       : baseLinks;
   }, [activeCategoryIds, categories, saleProducts.length]);
 
-  const heroImage = homeContent?.hero_image_url?.trim() || (homeContentLoaded ? HERO_IMAGE : '');
+  const heroImage = getBannerImageUrl(homeContent?.hero_image_url?.trim() || (homeContentLoaded ? HERO_IMAGE : ''));
   const heroAlt =
     [homeContent?.hero_headline_line1, homeContent?.hero_headline_line2]
       .filter(Boolean)
@@ -241,7 +266,7 @@ const Home = () => {
       <div className="mx-auto w-full max-w-[944px] bg-white font-sans md:shadow-2xl md:shadow-black/10">
         <section className="overflow-hidden border-b border-[#e4e4e4] bg-white">
           {heroImage ? (
-            <img src={heroImage} alt={heroAlt} className="block aspect-[944/317] w-full object-contain" />
+            <img src={heroImage} alt={heroAlt} fetchPriority="high" decoding="async" className="block aspect-[944/317] w-full object-contain" />
           ) : (
             <div className="aspect-[944/317] w-full animate-pulse bg-[#f6f7f9]" aria-label="Đang tải banner" />
           )}
@@ -375,7 +400,14 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }: ProductCardProps) => (
 
     <button type="button" onClick={() => onOpen(product)} className="block min-w-0 text-left">
       <div className="aspect-square w-full overflow-hidden rounded-lg bg-[#f7f7f7]">
-        <img data-cart-fly-image src={product.image} alt={product.name} className="h-full w-full object-cover" />
+        <img
+          data-cart-fly-image
+          src={getProductCardImageUrl(product.image)}
+          alt={product.name}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
       </div>
 
       <div className="px-0.5 pt-2">

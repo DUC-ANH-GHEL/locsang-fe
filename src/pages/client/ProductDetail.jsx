@@ -7,6 +7,7 @@ import { productService } from '../../services/productService';
 import { toProductDetailPath } from '../../utils/productUrl';
 import { getProductPricing } from '../../utils/productPricing';
 import { flyProductImageToCart } from '../../utils/cartFlyAnimation';
+import { getProductCardImageUrl, getProductDetailImageUrl } from '../../utils/cloudinaryImage';
 import { useSEO } from '../../hooks/useSEO';
 import {
   formatVnd,
@@ -72,7 +73,14 @@ const ProductDetail = () => {
         setLoading(true);
         const [detailResult, listResult] = await Promise.allSettled([
           Number.isFinite(productId) && productId > 0 ? productService.getStorefrontProductById(productId) : Promise.resolve(null),
-          productService.getStorefrontProducts({ status: 'active', limit: 12, page: 1 }),
+          productService.getStorefrontProducts({
+            status: 'active',
+            limit: 12,
+            page: 1,
+            includeTotal: false,
+            card: true,
+            cacheKey: 'product-detail-related',
+          }),
         ]);
         if (cancelled) return;
 
@@ -193,8 +201,10 @@ const ProductDetail = () => {
             <img
               ref={mainImageRef}
               data-cart-fly-image
-              src={galleryImages[selectedImageIndex] || getProductImage(product)}
+              src={getProductDetailImageUrl(galleryImages[selectedImageIndex] || getProductImage(product))}
               alt={product.name}
+              fetchPriority="high"
+              decoding="async"
               className="max-h-[23rem] max-w-full object-contain max-[430px]:max-h-[18.5rem] max-[390px]:max-h-[15.5rem]"
             />
           </div>
@@ -212,7 +222,13 @@ const ProductDetail = () => {
                     index === selectedImageIndex ? 'border-2 border-[#e30613]' : 'border-[#e1e1e1]'
                   }`}
                 >
-                  <img src={image} alt={`${product.name} ${index + 1}`} className="max-h-full max-w-full object-contain" />
+                  <img
+                    src={getProductCardImageUrl(image)}
+                    alt={`${product.name} ${index + 1}`}
+                    loading="lazy"
+                    decoding="async"
+                    className="max-h-full max-w-full object-contain"
+                  />
                 </button>
               ))}
             </div>
@@ -349,7 +365,13 @@ const ProductDetail = () => {
                     </span>
                   )}
                   <div className="aspect-square w-full overflow-hidden rounded-lg bg-[#f7f7f7]">
-                    <img src={getProductImage(item)} alt={item.name} className="h-full w-full object-cover" />
+                    <img
+                      src={getProductCardImageUrl(getProductImage(item))}
+                      alt={item.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                    />
                   </div>
                   <div className="px-0.5 pb-1.5 pt-2">
                     <div className="line-clamp-2 min-h-[2.15rem] text-[1rem] font-black leading-[1.08] text-[#111] max-[390px]:text-[0.9rem]">

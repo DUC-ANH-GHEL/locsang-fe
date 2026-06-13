@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import styled, { keyframes } from 'styled-components';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -10,83 +9,12 @@ interface ToastProps {
   onClose: () => void;
 }
 
-const slideIn = keyframes`
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-`;
-
-const slideOut = keyframes`
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
-  to {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-`;
-
-const ToastContainer = styled.div<{ type: ToastType }>`
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 16px 24px;
-  border-radius: 8px;
-  background-color: ${({ type }) => {
-    switch (type) {
-      case 'success':
-        return '#4caf50';
-      case 'error':
-        return '#f44336';
-      case 'warning':
-        return '#ff9800';
-      case 'info':
-        return '#2196f3';
-      default:
-        return '#2196f3';
-    }
-  }};
-  color: white;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  animation: ${slideIn} 0.3s ease-in-out;
-  min-width: 300px;
-  max-width: 400px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  &.closing {
-    animation: ${slideOut} 0.3s ease-in-out forwards;
-  }
-`;
-
-const Message = styled.span`
-  font-size: 14px;
-  font-weight: 500;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  color: white;
-  cursor: pointer;
-  padding: 0;
-  margin-left: 16px;
-  font-size: 20px;
-  opacity: 0.7;
-  transition: opacity 0.2s;
-
-  &:hover {
-    opacity: 1;
-  }
-`;
+const typeClassMap: Record<ToastType, string> = {
+  success: 'bg-[#4caf50]',
+  error: 'bg-[#f44336]',
+  warning: 'bg-[#ff9800]',
+  info: 'bg-[#2196f3]',
+};
 
 const Toast: React.FC<ToastProps> = ({
   message,
@@ -107,10 +35,19 @@ const Toast: React.FC<ToastProps> = ({
   }, [duration, onClose]);
 
   return (
-    <ToastContainer className="toast-container" type={type}>
-      <Message>{message}</Message>
-      <CloseButton onClick={onClose}>&times;</CloseButton>
-    </ToastContainer>
+    <div
+      className={`toast-container fixed right-5 top-5 z-[1000] flex min-w-[18rem] max-w-[25rem] items-center justify-between rounded-lg px-6 py-4 text-white shadow-md ${typeClassMap[type] || typeClassMap.info}`}
+    >
+      <span className="text-sm font-medium">{message}</span>
+      <button
+        type="button"
+        onClick={onClose}
+        className="ml-4 border-0 bg-transparent p-0 text-xl leading-none text-white/70 transition hover:text-white"
+        aria-label="Đóng thông báo"
+      >
+        &times;
+      </button>
+    </div>
   );
 };
 
