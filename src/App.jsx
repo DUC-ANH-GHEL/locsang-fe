@@ -86,6 +86,7 @@ function App() {
           >
             <Route index element={<Home />} />
             <Route path="products" element={<ProductList />} />
+            <Route path="san-pham/:slug" element={<ProductDetail />} />
             <Route path="products/:id/:slug" element={<ProductDetail />} />
             <Route path="products/:id" element={<ProductDetail />} />
             <Route path="checkout" element={<Checkout />} />

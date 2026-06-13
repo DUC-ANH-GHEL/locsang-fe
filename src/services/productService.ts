@@ -561,6 +561,22 @@ export const getStorefrontProductById = async (id: number | string) => {
   );
 };
 
+export const getStorefrontProductBySlug = async (slug: string) => {
+  const safeSlug = String(slug || '').trim();
+  if (!safeSlug) return null;
+
+  return fetchCachedPublicData<Product | null>(
+    `product-detail-slug:${safeSlug}`,
+    async () => {
+      const response = await axios.get(`${getPublicApiBaseUrl()}/products/slug/${encodeURIComponent(safeSlug)}`);
+      const raw = response?.data?.data;
+      if (!raw) return null;
+      return normalizePublicProduct(raw);
+    },
+    { ttlMs: 60_000 },
+  );
+};
+
 export const productService = {
   getProducts,
   getAdminProducts,
@@ -571,6 +587,7 @@ export const productService = {
   getProductById,
   getStorefrontProducts,
   getStorefrontProductById,
+  getStorefrontProductBySlug,
   deleteProduct: async (id: number | string) => {
     const productId = Number(id);
     if (!Number.isFinite(productId)) throw new Error('ID sản phẩm không hợp lệ');

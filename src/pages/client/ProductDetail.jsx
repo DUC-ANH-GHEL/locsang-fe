@@ -160,7 +160,7 @@ const sanitizeDescriptionHtml = (value) => {
 };
 
 const ProductDetail = () => {
-  const { id } = useParams();
+  const { id, slug } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const [product, setProduct] = useState(null);
@@ -178,12 +178,18 @@ const ProductDetail = () => {
   useEffect(() => {
     let cancelled = false;
     const productId = Number(id);
+    const productSlug = String(slug || '').trim();
+    const hasNumericId = Number.isFinite(productId) && productId > 0;
 
     const loadDetail = async () => {
       try {
         setLoading(true);
         const [detailResult, listResult] = await Promise.allSettled([
-          Number.isFinite(productId) && productId > 0 ? productService.getStorefrontProductById(productId) : Promise.resolve(null),
+          hasNumericId
+            ? productService.getStorefrontProductById(productId)
+            : productSlug
+              ? productService.getStorefrontProductBySlug(productSlug)
+              : Promise.resolve(null),
           productService.getStorefrontProducts({
             status: 'active',
             limit: 12,
@@ -199,7 +205,9 @@ const ProductDetail = () => {
         const detail =
           detailResult.status === 'fulfilled' && detailResult.value
             ? detailResult.value
-            : list.find((item) => Number(item?.id) === Number(productId)) || null;
+            : hasNumericId
+              ? list.find((item) => Number(item?.id) === Number(productId)) || null
+              : list.find((item) => String(item?.slug || '').trim() === productSlug) || null;
 
         setProduct(detail);
         setLoadFailed(false);
@@ -228,7 +236,7 @@ const ProductDetail = () => {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, slug]);
 
   const variants = useMemo(() => getActiveVariants(product), [product]);
   const variantAttributes = useMemo(() => getProductVariantAttributes(product), [product]);
@@ -277,7 +285,7 @@ const ProductDetail = () => {
   useSEO({
     title: product?.name || 'Chi tiết sản phẩm Yanmar',
     description: getDisplayDescription(product),
-    canonicalPath: product ? toProductDetailPath(product) : `/products/${id}`,
+    canonicalPath: product ? toProductDetailPath(product) : slug ? `/san-pham/${slug}` : `/products/${id}`,
   });
 
   const addProduct = ({ animate = true } = {}) => {

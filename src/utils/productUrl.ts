@@ -13,8 +13,6 @@ const slugify = (value: string): string =>
     .replace(/^-|-$/g, '');
 
 export const toProductDetailPath = (product: Pick<Product, 'id' | 'name' | 'slug'>): string => {
-  const id = Number(product?.id || 0);
-  const safeId = Number.isFinite(id) && id > 0 ? id : 0;
   const slug = slugify(String(product?.slug || product?.name || 'san-pham')) || 'san-pham';
-  return `/products/${safeId}/${slug}`;
+  return `/san-pham/${slug}`;
 };

@@ -111,8 +111,8 @@ const Header = ({ onOpenSearch }) => {
   const cartCount = cart.reduce((sum, p) => sum + p.quantity, 0);
 
   const isHomeActive = location.pathname === '/';
-  const isProductsActive = location.pathname.startsWith('/products');
-  const isProductDetailMobileHeader = /^\/products\/\d+/.test(location.pathname);
+  const isProductsActive = location.pathname.startsWith('/products') || location.pathname.startsWith('/san-pham');
+  const isProductDetailMobileHeader = /^\/products\/\d+/.test(location.pathname) || location.pathname.startsWith('/san-pham/');
 
   const handleCheckout = () => {
     setCartOpen(false);
