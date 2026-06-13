@@ -28,7 +28,11 @@ const BrandLockup = ({ compact = false, className = '' }) => (
         className={`mt-[0.08rem] font-black italic uppercase leading-[0.9] tracking-[-0.02em] ${
           compact ? 'text-[1.42rem] max-[390px]:text-[1.26rem]' : 'text-[2rem]'
         }`}
-        style={{ fontFamily: 'Arial Black, Arial, sans-serif' }}
+        style={{
+          fontFamily: 'Arial Black, Arial, sans-serif',
+          WebkitTextStroke: compact ? '0.18px currentColor' : '0.24px currentColor',
+          textShadow: '0 0 0 currentColor',
+        }}
       >
         LỘC SANG
       </span>
