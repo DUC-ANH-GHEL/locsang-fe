@@ -41,6 +41,29 @@ const isStrongPassword = (value: string) => value.length >= 8 && /[A-Za-zÀ-ỹ]
 const formatDate = (value?: string | null) =>
   formatViDate(value, { day: '2-digit', month: '2-digit', year: 'numeric' }) || '-';
 
+const normalizePhone = (value: string) => {
+  let compact = value.trim().replace(/[\s\-().]/g, '');
+  if (compact.startsWith('+84')) compact = `0${compact.slice(3)}`;
+  else if (compact.startsWith('84') && [11, 12].includes(compact.length)) compact = `0${compact.slice(2)}`;
+  return /^\d{9,11}$/.test(compact) ? compact : '';
+};
+
+const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
+const normalizeLoginIdentifier = (value: string) => {
+  const raw = value.trim();
+  const phone = normalizePhone(raw);
+  return phone || raw.toLowerCase();
+};
+
+const isValidLoginIdentifier = (value: string) => {
+  const raw = value.trim();
+  return isValidEmail(raw.toLowerCase()) || Boolean(normalizePhone(raw));
+};
+
+const getLoginIdentifier = (account: AdminAccount) =>
+  account.login_identifier || account.phone || account.email || '';
+
 const Accounts = () => {
   const { showToast } = useToast();
   const [accounts, setAccounts] = useState<AdminAccount[]>([]);
@@ -72,13 +95,14 @@ const Accounts = () => {
     const keyword = query.trim().toLowerCase();
     if (!keyword) return accounts;
     return accounts.filter((account) =>
-      [account.full_name, account.email, account.role_name]
+      [account.full_name, account.email, account.phone, account.login_identifier, account.role_name]
         .map((value) => String(value || '').toLowerCase())
         .some((value) => value.includes(keyword)),
     );
   }, [accounts, query]);
 
   const activeCount = accounts.filter((account) => account.is_active).length;
+  const isEditingLastActiveAccount = Boolean(editingAccount?.is_active && activeCount <= 1);
 
   const openCreate = () => {
     setEditingAccount(null);
@@ -91,7 +115,7 @@ const Accounts = () => {
     setEditingAccount(account);
     setForm({
       full_name: account.full_name || '',
-      email: account.email || '',
+      email: getLoginIdentifier(account),
       password: '',
       confirm_password: '',
       is_active: Boolean(account.is_active),
@@ -109,12 +133,12 @@ const Accounts = () => {
 
   const validateForm = () => {
     const fullName = form.full_name.trim();
-    const email = form.email.trim().toLowerCase();
+    const loginIdentifier = form.email.trim();
     const password = form.password.trim();
     const confirmPassword = form.confirm_password.trim();
 
     if (fullName.length < 2) return 'Vui lòng nhập tên admin.';
-    if (!email || !email.includes('@')) return 'Email admin chưa hợp lệ.';
+    if (!isValidLoginIdentifier(loginIdentifier)) return 'Nhập email hoặc số điện thoại đăng nhập hợp lệ.';
     if (!editingAccount || password) {
       if (!isStrongPassword(password)) return 'Mật khẩu cần có ít nhất 8 ký tự, gồm chữ và số.';
       if (password !== confirmPassword) return 'Xác nhận mật khẩu chưa khớp.';
@@ -132,7 +156,7 @@ const Accounts = () => {
 
     const payload = {
       full_name: form.full_name.trim(),
-      email: form.email.trim().toLowerCase(),
+      email: normalizeLoginIdentifier(form.email),
       is_active: form.is_active,
       ...(form.password.trim() ? { password: form.password.trim() } : {}),
     };
@@ -163,7 +187,7 @@ const Accounts = () => {
   };
 
   const deleteAccount = async (account: AdminAccount) => {
-    const ok = window.confirm(`Xóa tài khoản admin "${account.full_name || account.email}"?`);
+    const ok = window.confirm(`Xóa tài khoản admin "${account.full_name || getLoginIdentifier(account)}"?`);
     if (!ok) return;
 
     setDeletingId(account.id);
@@ -179,6 +203,10 @@ const Accounts = () => {
   };
 
   const toggleActive = async (account: AdminAccount) => {
+    if (account.is_active && activeCount <= 1) {
+      showToast('Phải luôn có ít nhất 1 tài khoản admin đang hoạt động.', 'warning');
+      return;
+    }
     try {
       const updated = await adminAccountService.update(account.id, { is_active: !account.is_active });
       setAccounts((current) => current.map((item) => (item.id === account.id ? updated : item)));
@@ -240,7 +268,7 @@ const Accounts = () => {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Tìm theo tên hoặc email..."
+              placeholder="Tìm theo tên, email hoặc số điện thoại..."
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-sm font-semibold outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100 dark:border-slate-700 dark:bg-slate-950 dark:focus:ring-rose-500/10"
             />
           </div>
@@ -258,12 +286,15 @@ const Accounts = () => {
               </div>
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filteredAccounts.map((account) => (
+                {filteredAccounts.map((account) => {
+                  const loginIdentifier = getLoginIdentifier(account);
+                  const isLastActiveAccount = account.is_active && activeCount <= 1;
+                  return (
                   <div key={account.id} className="grid gap-3 p-4 lg:grid-cols-[1fr_auto] lg:items-center">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="truncate text-base font-black text-slate-950 dark:text-white">
-                          {account.full_name || account.email}
+                          {account.full_name || loginIdentifier}
                         </div>
                         <span
                           className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${
@@ -279,15 +310,17 @@ const Accounts = () => {
                           Admin
                         </span>
                       </div>
-                      <div className="mt-1 truncate text-sm font-semibold text-slate-500">{account.email}</div>
+                      <div className="mt-1 truncate text-sm font-semibold text-slate-500">{loginIdentifier}</div>
                       <div className="mt-1 text-xs font-bold text-slate-400">Tạo ngày {formatDate(account.created_at)}</div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center">
                       <button
                         type="button"
+                        disabled={isLastActiveAccount}
                         onClick={() => toggleActive(account)}
-                        className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 px-3 text-xs font-black text-slate-700 hover:border-rose-200 hover:text-rose-700 dark:border-slate-700 dark:text-slate-200"
+                        title={isLastActiveAccount ? 'Phải luôn có ít nhất 1 tài khoản admin đang hoạt động.' : undefined}
+                        className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 px-3 text-xs font-black text-slate-700 hover:border-rose-200 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-700 dark:text-slate-200"
                       >
                         {account.is_active ? 'Tắt' : 'Bật'}
                       </button>
@@ -301,8 +334,9 @@ const Accounts = () => {
                       </button>
                       <button
                         type="button"
-                        disabled={deletingId === account.id}
+                        disabled={deletingId === account.id || isLastActiveAccount}
                         onClick={() => deleteAccount(account)}
+                        title={isLastActiveAccount ? 'Không thể xóa tài khoản admin hoạt động cuối cùng.' : undefined}
                         className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-rose-50 px-3 text-xs font-black text-rose-700 hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-500/10 dark:text-rose-200"
                       >
                         {deletingId === account.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
@@ -310,7 +344,8 @@ const Accounts = () => {
                       </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -353,13 +388,14 @@ const Accounts = () => {
                   />
                 </label>
                 <label className="grid gap-1.5 text-sm font-black text-slate-800 dark:text-slate-100">
-                  Email đăng nhập
+                  Email hoặc số điện thoại đăng nhập
                   <input
-                    type="email"
+                    type="text"
                     value={form.email}
                     onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
                     className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100 dark:border-slate-700 dark:bg-slate-950 dark:focus:ring-rose-500/10"
-                    placeholder="admin@locsang.vn"
+                    placeholder="admin@locsang.vn hoặc 0985763838"
+                    autoComplete="username"
                   />
                 </label>
               </div>
@@ -403,11 +439,17 @@ const Accounts = () => {
                 <input
                   type="checkbox"
                   checked={form.is_active}
+                  disabled={isEditingLastActiveAccount}
                   onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))}
-                  className="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                  className="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
                 />
                 Cho phép đăng nhập admin
               </label>
+              {isEditingLastActiveAccount && (
+                <p className="-mt-2 rounded-2xl bg-amber-50 px-4 py-3 text-xs font-bold text-amber-700">
+                  Đây là tài khoản admin hoạt động cuối cùng nên không thể tắt đăng nhập.
+                </p>
+              )}
 
               <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:justify-end">
                 <button

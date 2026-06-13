@@ -3,6 +3,8 @@ import { apiClient } from './apiClient';
 export interface AdminAccount {
   id: number;
   email: string;
+  phone?: string | null;
+  login_identifier?: string | null;
   full_name: string;
   is_active: boolean;
   role_id: number;
