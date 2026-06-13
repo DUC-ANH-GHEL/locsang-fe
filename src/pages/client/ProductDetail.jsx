@@ -81,12 +81,48 @@ const sanitizeDescriptionHtml = (value) => {
     return match ? `text-align: ${match[1].toLowerCase()};` : '';
   };
 
+  const replaceElement = (element, nextTagName) => {
+    const next = document.createElement(nextTagName);
+    next.innerHTML = element.innerHTML;
+    const textAlign = normalizeTextAlign(element.getAttribute('style'));
+    if (textAlign) next.setAttribute('style', textAlign);
+    element.replaceWith(next);
+    return next;
+  };
+
+  const convertStyledSpan = (element) => {
+    const style = String(element.getAttribute('style') || '');
+    const wrappers = [];
+    if (/font-weight\s*:\s*(bold|[6-9]00)/i.test(style)) wrappers.push(document.createElement('strong'));
+    if (/font-style\s*:\s*italic/i.test(style)) wrappers.push(document.createElement('em'));
+    if (/text-decoration[^;]*underline/i.test(style)) wrappers.push(document.createElement('u'));
+    if (wrappers.length === 0) return null;
+
+    wrappers[wrappers.length - 1].innerHTML = element.innerHTML;
+    for (let index = wrappers.length - 2; index >= 0; index -= 1) {
+      wrappers[index].appendChild(wrappers[index + 1]);
+    }
+    element.replaceWith(wrappers[0]);
+    return wrappers[0];
+  };
+
   const walk = (node) => {
     Array.from(node.childNodes).forEach((child) => {
       if (child.nodeType === Node.ELEMENT_NODE) {
         if (child.tagName === 'SCRIPT' || child.tagName === 'STYLE') {
           child.remove();
           return;
+        }
+        if (child.tagName === 'DIV') {
+          walk(replaceElement(child, 'p'));
+          return;
+        }
+        if (child.tagName === 'SPAN') {
+          const converted = convertStyledSpan(child);
+          if (converted) {
+            walk(converted);
+            return;
+          }
         }
         if (!allowedTags.has(child.tagName)) {
           const children = Array.from(child.childNodes);

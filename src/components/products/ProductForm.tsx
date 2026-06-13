@@ -233,6 +233,31 @@ const sanitizeRichText = (html: string) => {
     return match ? `text-align: ${match[1].toLowerCase()};` : '';
   };
 
+  const replaceElement = (element: HTMLElement, nextTagName: string) => {
+    const next = document.createElement(nextTagName);
+    next.innerHTML = element.innerHTML;
+    const textAlign = normalizeTextAlign(element.getAttribute('style'));
+    if (textAlign) next.setAttribute('style', textAlign);
+    element.replaceWith(next);
+    return next;
+  };
+
+  const convertStyledSpan = (element: HTMLElement) => {
+    const style = String(element.getAttribute('style') || '');
+    const wrappers: HTMLElement[] = [];
+    if (/font-weight\s*:\s*(bold|[6-9]00)/i.test(style)) wrappers.push(document.createElement('strong'));
+    if (/font-style\s*:\s*italic/i.test(style)) wrappers.push(document.createElement('em'));
+    if (/text-decoration[^;]*underline/i.test(style)) wrappers.push(document.createElement('u'));
+    if (wrappers.length === 0) return null;
+
+    wrappers[wrappers.length - 1].innerHTML = element.innerHTML;
+    for (let index = wrappers.length - 2; index >= 0; index -= 1) {
+      wrappers[index].appendChild(wrappers[index + 1]);
+    }
+    element.replaceWith(wrappers[0]);
+    return wrappers[0];
+  };
+
   const walk = (node: Node) => {
     Array.from(node.childNodes).forEach((child) => {
       if (child.nodeType === Node.ELEMENT_NODE) {
@@ -240,6 +265,17 @@ const sanitizeRichText = (html: string) => {
         if (element.tagName === 'SCRIPT' || element.tagName === 'STYLE') {
           element.remove();
           return;
+        }
+        if (element.tagName === 'DIV') {
+          walk(replaceElement(element, 'p'));
+          return;
+        }
+        if (element.tagName === 'SPAN') {
+          const converted = convertStyledSpan(element);
+          if (converted) {
+            walk(converted);
+            return;
+          }
         }
         if (!allowedTags.has(element.tagName)) {
           const children = Array.from(element.childNodes);
@@ -1010,6 +1046,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
   }, [id, loadCategories, showToast]);
 
   const setField = <K extends keyof ProductDraft>(field: K, value: ProductDraft[K]) => {
+    draftRef.current = { ...draftRef.current, [field]: value };
     setDraft((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => {
       if (!prev[field as string]) return prev;
@@ -1187,14 +1224,15 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
 
   const buildPayload = async (): Promise<ProductPayloadBuildResult> => {
     const { orderedImages, uploadedPublicIds } = await uploadOrderedImages();
-    const baseSku = draft.sku.trim();
-    const baseStatus = draft.status === 'active' ? 'active' : 'inactive';
-    const specs = draft.specifications
+    const currentDraft = draftRef.current;
+    const baseSku = currentDraft.sku.trim();
+    const baseStatus = currentDraft.status === 'active' ? 'active' : 'inactive';
+    const specs = currentDraft.specifications
       .map((item) => ({ label: item.label.trim(), value: item.value.trim() }))
       .filter((item) => item.label && item.value);
 
-    const variants = draft.hasVariants
-      ? draft.variants.map((variant) => ({
+    const variants = currentDraft.hasVariants
+      ? currentDraft.variants.map((variant) => ({
           id: variant.id,
           sku: variant.sku.trim(),
           price: toNumber(variant.price),
@@ -1210,11 +1248,11 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           {
             id: existingVariantIds[0] ?? defaultVariantId,
             sku: baseSku,
-            price: toNumber(draft.price),
-            sale_price: toOptionalNumber(draft.salePrice),
-            stock: toNumber(draft.stock),
+            price: toNumber(currentDraft.price),
+            sale_price: toOptionalNumber(currentDraft.salePrice),
+            stock: toNumber(currentDraft.stock),
             manage_stock: true,
-            allow_backorder: draft.allowBackorder,
+            allow_backorder: currentDraft.allowBackorder,
             status: baseStatus,
             attribute_values: {},
             image_url: null,
@@ -1223,7 +1261,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
 
     const variantNames = Array.from(
       new Set(
-        draft.variants
+        currentDraft.variants
           .map((variant) => variant.name.trim())
           .filter(Boolean),
       ),
@@ -1233,23 +1271,23 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     const deletedVariantIds = id ? existingVariantIds.filter((variantId) => !activeVariantIds.includes(variantId)) : [];
 
     const payload: AdminProductPayload = {
-      name: draft.name.trim(),
-      slug: draft.slug.trim(),
-      short_description: draft.shortDescription.trim() || null,
-      description: draft.description.trim() || null,
-      status: draft.status,
-      category_id: Number(draft.categoryId),
-      brand: draft.brand.trim() || 'Yanmar',
+      name: currentDraft.name.trim(),
+      slug: currentDraft.slug.trim(),
+      short_description: currentDraft.shortDescription.trim() || null,
+      description: currentDraft.description.trim() || null,
+      status: currentDraft.status,
+      category_id: Number(currentDraft.categoryId),
+      brand: currentDraft.brand.trim() || 'Yanmar',
       tags: [],
       specifications: specs,
-      has_variants: draft.hasVariants,
+      has_variants: currentDraft.hasVariants,
       media: orderedImages.map((image, index) => ({
         url: image.url,
         type: 'image',
         sort_order: index + 1,
         public_id: image.publicId ?? null,
       })),
-      attributes: draft.hasVariants && variantNames.length > 0 ? [{ name: 'Quy cách', values: variantNames }] : [],
+      attributes: currentDraft.hasVariants && variantNames.length > 0 ? [{ name: 'Quy cách', values: variantNames }] : [],
       variants,
       deleted_variant_ids: deletedVariantIds,
       deleted_attribute_ids: id ? existingAttributeIds : [],
