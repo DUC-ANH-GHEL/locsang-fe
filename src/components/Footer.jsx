@@ -7,9 +7,9 @@ import { logo_url } from '../config/api';
 const FOOTER_HOTLINE = '0985763838';
 
 const DEFAULT_FOOTER_CONTENT = {
-  footer_brand_name: 'Lộc Sang',
+  footer_brand_name: 'Yanmar Lộc Sang',
   footer_mobile_description: 'Phụ tùng và nhớt Yanmar chính hãng.',
-  footer_desktop_caption: 'Phụ tùng và nhớt Yanmar chính hãng, tư vấn trực tiếp bởi Lộc Sang.',
+  footer_desktop_caption: 'Phụ tùng và nhớt Yanmar chính hãng, đại lý trực tiếp bởi Lộc Sang.',
 };
 
 function Footer() {
