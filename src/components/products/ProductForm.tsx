@@ -175,6 +175,44 @@ const formatMoneyInput = (value: string) => {
   return currencyFormatter.format(Number(digits));
 };
 
+const uniqueStrings = (values: string[]) => Array.from(new Set(values.map((item) => item.trim()).filter(Boolean)));
+
+const getCloudinaryPublicIdFromUrl = (url: string) => {
+  const cleanUrl = String(url || '').split('?')[0].trim();
+  if (!cleanUrl || !cleanUrl.includes('/upload/')) return null;
+
+  const afterUpload = cleanUrl.split('/upload/')[1] || '';
+  const segments = afterUpload.split('/').filter(Boolean);
+  const versionIndex = segments.findIndex((segment) => /^v\d+$/i.test(segment));
+  const publicPathSegments = versionIndex >= 0 ? segments.slice(versionIndex + 1) : segments;
+  const productIndex = publicPathSegments.findIndex((segment) => segment === 'products');
+  const normalizedSegments = productIndex >= 0 ? publicPathSegments.slice(productIndex) : publicPathSegments;
+  if (normalizedSegments[0] !== 'products' || normalizedSegments.length < 2) return null;
+
+  const last = normalizedSegments[normalizedSegments.length - 1] || '';
+  const withoutExtension = last.replace(/\.[a-z0-9]+$/i, '');
+  const publicId = [...normalizedSegments.slice(0, -1), withoutExtension].join('/');
+  return publicId.startsWith('products/') ? decodeURIComponent(publicId) : null;
+};
+
+const extractRichTextImagePublicIds = (html: string) => {
+  if (typeof window === 'undefined') return [];
+  const template = document.createElement('template');
+  template.innerHTML = String(html || '');
+  const ids = Array.from(template.content.querySelectorAll('img'))
+    .map((image) => getCloudinaryPublicIdFromUrl(image.getAttribute('src') || ''))
+    .filter((value): value is string => Boolean(value));
+  return uniqueStrings(ids);
+};
+
+const extractImageItemPublicIds = (items: ProductImageDraft[]) =>
+  uniqueStrings(
+    items
+      .filter((item): item is string => typeof item === 'string')
+      .map((url) => getCloudinaryPublicIdFromUrl(url))
+      .filter((value): value is string => Boolean(value)),
+  );
+
 const escapeRichTextText = (value: string) =>
   String(value || '')
     .replace(/&/g, '&amp;')
@@ -739,6 +777,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
   const draftRef = useRef<ProductDraft>(draft);
   const imageItemsRef = useRef<ProductImageDraft[]>(imageItems);
   const autosaveWarnedRef = useRef(false);
+  const initialRichTextImagePublicIdsRef = useRef<string[]>([]);
   const richTextUploadedPublicIdsRef = useRef<string[]>([]);
 
   const disabled = readOnly || saving;
@@ -788,6 +827,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         if (cancelled) return;
         if (saved?.draft) {
           const restoredImages = deserializeDraftImages(saved.images);
+          initialRichTextImagePublicIdsRef.current = extractRichTextImagePublicIds(String(saved.draft.description || ''));
           setDraft({
             ...emptyDraft,
             ...saved.draft,
@@ -803,6 +843,8 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           if (hasDraftContent(saved.draft, restoredImages)) {
             showToast('Đã khôi phục nháp sản phẩm đang nhập dở.', 'info');
           }
+        } else {
+          initialRichTextImagePublicIdsRef.current = [];
         }
       } catch (error) {
         console.warn('Cannot restore product draft', error);
@@ -902,7 +944,10 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       try {
         setLoading(Boolean(id));
         await loadCategories();
-        if (!id) return;
+        if (!id) {
+          initialRichTextImagePublicIdsRef.current = [];
+          return;
+        }
 
         const raw = await getProductById(id);
         if (cancelled) return;
@@ -910,6 +955,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         const variants = Array.isArray(product?.variants) ? product.variants.map(normalizeVariant) : [];
         const firstVariant = variants[0];
         const hasVariants = Boolean(product?.has_variants && variants.length > 1);
+        const initialDescription = String(product?.description || '').trim();
 
         setDraft({
           name: String(product?.name || '').trim(),
@@ -919,7 +965,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           status: (product?.status || (product?.is_active ? 'active' : 'draft')) as AdminProductStatus,
           brand: String(product?.brand || 'Yanmar').trim(),
           shortDescription: String(product?.short_description || product?.shortDescription || '').trim(),
-          description: String(product?.description || '').trim(),
+          description: initialDescription,
           price:
             firstVariant?.price ||
             (product?.price !== undefined && product?.price !== null ? formatMoneyInput(String(product.price)) : ''),
@@ -940,6 +986,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         });
 
         const productImages = extractImageUrls(product);
+        initialRichTextImagePublicIdsRef.current = extractRichTextImagePublicIds(initialDescription);
         setImageItems(productImages);
         const variantIds = variants.map((variant) => variant.id).filter((value): value is number => Number.isFinite(Number(value)));
         setExistingVariantIds(variantIds);
@@ -1017,6 +1064,17 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       richTextUploadedPublicIdsRef.current = [...richTextUploadedPublicIdsRef.current, result.public_id];
     }
     return result.url;
+  };
+
+  const getRichTextOrphanPublicIds = (html = draftRef.current.description, includeExisting = false) => {
+    const currentRichTextIds = extractRichTextImagePublicIds(html);
+    const galleryIds = extractImageItemPublicIds(imageItemsRef.current);
+    const protectedIds = new Set([...currentRichTextIds, ...galleryIds]);
+    const candidates = includeExisting
+      ? [...initialRichTextImagePublicIdsRef.current, ...richTextUploadedPublicIdsRef.current]
+      : [...richTextUploadedPublicIdsRef.current];
+
+    return uniqueStrings(candidates).filter((publicId) => !protectedIds.has(publicId));
   };
 
   const validate = () => {
@@ -1196,7 +1254,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       deleted_variant_ids: deletedVariantIds,
       deleted_attribute_ids: id ? existingAttributeIds : [],
     };
-    return { payload, uploadedPublicIds: [...uploadedPublicIds, ...richTextUploadedPublicIdsRef.current] };
+    return { payload, uploadedPublicIds };
   };
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -1224,6 +1282,13 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         await deleteProductDraft(PRODUCT_CREATE_DRAFT_KEY).catch(() => undefined);
         setDraftSavedAt(null);
       }
+      const richTextOrphans = getRichTextOrphanPublicIds(payload.description || '', true);
+      if (richTextOrphans.length > 0) {
+        cleanupAdminProductUploads(richTextOrphans).catch((cleanupError) => {
+          console.warn('Cannot cleanup removed rich text images after save', cleanupError);
+        });
+      }
+      initialRichTextImagePublicIdsRef.current = extractRichTextImagePublicIds(payload.description || '');
       richTextUploadedPublicIdsRef.current = [];
       showToast(id ? 'Đã cập nhật sản phẩm.' : 'Đã tạo sản phẩm.', 'success');
       onSuccess?.();
@@ -1242,10 +1307,17 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       if (serverErrorKey) {
         focusErrorField(serverErrorKey);
       }
-      if (uploadedPublicIds.length > 0) {
-        cleanupAdminProductUploads(uploadedPublicIds).catch((cleanupError) => {
-          console.warn('Cannot cleanup uploaded product images after failed save', cleanupError);
-        });
+      const orphanRichTextUploads = getRichTextOrphanPublicIds(draftRef.current.description, false);
+      const cleanupIds = uniqueStrings([...uploadedPublicIds, ...orphanRichTextUploads]);
+      if (cleanupIds.length > 0) {
+        cleanupAdminProductUploads(cleanupIds)
+          .then(() => {
+            const cleaned = new Set(cleanupIds);
+            richTextUploadedPublicIdsRef.current = richTextUploadedPublicIdsRef.current.filter((publicId) => !cleaned.has(publicId));
+          })
+          .catch((cleanupError) => {
+            console.warn('Cannot cleanup uploaded product images after failed save', cleanupError);
+          });
       }
       showToast(message, 'error');
     } finally {
