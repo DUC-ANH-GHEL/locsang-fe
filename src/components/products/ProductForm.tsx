@@ -4,12 +4,24 @@ import {
   AlertCircle,
   ArrowLeft,
   BadgeCheck,
+  Bold,
+  Heading2,
+  Heading3,
   Image as ImageIcon,
+  ImagePlus,
+  Italic,
+  Link as LinkIcon,
+  List,
+  ListOrdered,
   Package,
   Plus,
+  Quote,
+  Redo2,
   Save,
   Settings2,
   Trash2,
+  Underline,
+  Undo2,
 } from 'lucide-react';
 
 import ImageUploader from './ImageUploader';
@@ -163,11 +175,25 @@ const formatMoneyInput = (value: string) => {
   return currencyFormatter.format(Number(digits));
 };
 
+const escapeRichTextText = (value: string) =>
+  String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 const sanitizeRichText = (html: string) => {
   if (typeof window === 'undefined') return String(html || '');
   const template = document.createElement('template');
   template.innerHTML = String(html || '');
-  const allowedTags = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'UL', 'OL', 'LI']);
+  const allowedTags = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'UL', 'OL', 'LI', 'H2', 'H3', 'BLOCKQUOTE', 'A', 'IMG']);
+  const blockTags = new Set(['P', 'H2', 'H3', 'BLOCKQUOTE', 'LI']);
+
+  const normalizeTextAlign = (value: string | null) => {
+    const match = String(value || '').match(/text-align\s*:\s*(left|center|right)/i);
+    return match ? `text-align: ${match[1].toLowerCase()};` : '';
+  };
 
   const walk = (node: Node) => {
     Array.from(node.childNodes).forEach((child) => {
@@ -183,7 +209,30 @@ const sanitizeRichText = (html: string) => {
           children.forEach(walk);
           return;
         }
+        const textAlign = blockTags.has(element.tagName) ? normalizeTextAlign(element.getAttribute('style')) : '';
+        const linkHref = element.tagName === 'A' ? String((child as HTMLAnchorElement).href || element.getAttribute('href') || '').trim() : '';
+        const imageSrc = element.tagName === 'IMG' ? String((child as HTMLImageElement).src || element.getAttribute('src') || '').trim() : '';
+        const imageAlt = element.tagName === 'IMG' ? String((child as HTMLImageElement).alt || element.getAttribute('alt') || 'Ảnh mô tả sản phẩm').slice(0, 160) : '';
         Array.from(element.attributes).forEach((attribute) => element.removeAttribute(attribute.name));
+        if (textAlign) element.setAttribute('style', textAlign);
+        if (element.tagName === 'A') {
+          if (!/^https?:\/\//i.test(linkHref) && !/^tel:/i.test(linkHref)) {
+            element.replaceWith(...Array.from(element.childNodes));
+            return;
+          }
+          element.setAttribute('href', linkHref);
+          element.setAttribute('target', '_blank');
+          element.setAttribute('rel', 'noopener noreferrer');
+        }
+        if (element.tagName === 'IMG') {
+          if (!/^https?:\/\//i.test(imageSrc)) {
+            element.remove();
+            return;
+          }
+          element.setAttribute('src', imageSrc);
+          element.setAttribute('alt', imageAlt);
+          element.setAttribute('loading', 'lazy');
+        }
         if (element.tagName === 'B') {
           const strong = document.createElement('strong');
           strong.innerHTML = element.innerHTML;
@@ -303,12 +352,31 @@ type RichTextEditorProps = {
   value: string;
   disabled?: boolean;
   placeholder?: string;
+  onImageUpload?: (file: File) => Promise<string>;
   onChange: (value: string) => void;
 };
 
-const RichTextEditor = ({ value, disabled, placeholder, onChange }: RichTextEditorProps) => {
+type RichTextCommand =
+  | 'bold'
+  | 'italic'
+  | 'underline'
+  | 'insertUnorderedList'
+  | 'insertOrderedList'
+  | 'formatBlock'
+  | 'justifyLeft'
+  | 'justifyCenter'
+  | 'justifyRight'
+  | 'undo'
+  | 'redo'
+  | 'createLink'
+  | 'insertHTML';
+
+const RichTextEditor = ({ value, disabled, placeholder, onImageUpload, onChange }: RichTextEditorProps) => {
   const editorRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const lastHtmlRef = useRef('');
+  const selectionRef = useRef<Range | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     const safeValue = sanitizeRichText(value);
@@ -325,59 +393,195 @@ const RichTextEditor = ({ value, disabled, placeholder, onChange }: RichTextEdit
     onChange(nextValue);
   };
 
-  const applyCommand = (command: 'bold' | 'italic' | 'insertUnorderedList' | 'insertOrderedList') => {
+  const saveSelection = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    if (editorRef.current?.contains(range.commonAncestorContainer)) {
+      selectionRef.current = range.cloneRange();
+    }
+  };
+
+  const restoreSelection = () => {
+    const selection = window.getSelection();
+    if (!selection || !selectionRef.current) return;
+    selection.removeAllRanges();
+    selection.addRange(selectionRef.current);
+  };
+
+  const applyCommand = (command: RichTextCommand, valueArg?: string) => {
     if (disabled) return;
     editorRef.current?.focus();
-    document.execCommand(command);
+    restoreSelection();
+    document.execCommand(command, false, valueArg);
     emitChange();
+  };
+
+  const insertHtml = (html: string) => {
+    applyCommand('insertHTML', sanitizeRichText(html));
+  };
+
+  const setBlock = (tagName: 'p' | 'h2' | 'h3' | 'blockquote') => {
+    applyCommand('formatBlock', tagName);
+  };
+
+  const insertLink = () => {
+    if (disabled) return;
+    saveSelection();
+    const href = window.prompt('Nhập link cần gắn vào nội dung');
+    if (!href) return;
+    const normalized = href.trim();
+    if (!/^https?:\/\//i.test(normalized) && !/^tel:/i.test(normalized)) {
+      window.alert('Link cần bắt đầu bằng https://, http:// hoặc tel:');
+      return;
+    }
+    applyCommand('createLink', normalized);
+  };
+
+  const insertImageUrl = () => {
+    if (disabled) return;
+    saveSelection();
+    const src = window.prompt('Dán URL ảnh cần chèn vào mô tả');
+    if (!src) return;
+    const normalized = src.trim();
+    if (!/^https?:\/\//i.test(normalized)) {
+      window.alert('URL ảnh cần bắt đầu bằng https:// hoặc http://');
+      return;
+    }
+    insertHtml(`<p><img src="${escapeRichTextText(normalized)}" alt="Ảnh mô tả sản phẩm"></p>`);
+  };
+
+  const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || disabled || !onImageUpload) return;
+
+    try {
+      setUploadingImage(true);
+      restoreSelection();
+      const url = await onImageUpload(file);
+      if (!url) throw new Error('Không nhận được URL ảnh.');
+      insertHtml(`<p><img src="${escapeRichTextText(url)}" alt="${escapeRichTextText(file.name || 'Ảnh mô tả sản phẩm')}"></p>`);
+    } catch (error) {
+      console.error('Cannot upload rich text image', error);
+      window.alert('Không upload được ảnh mô tả. Vui lòng thử lại.');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const onPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
     event.preventDefault();
+    const html = event.clipboardData.getData('text/html');
     const text = event.clipboardData.getData('text/plain');
-    document.execCommand('insertText', false, text);
+    if (html) {
+      insertHtml(html);
+      return;
+    }
+    document.execCommand('insertHTML', false, text
+      .split(/\n{2,}/)
+      .map((paragraph) => `<p>${escapeRichTextText(paragraph).replace(/\n/g, '<br>')}</p>`)
+      .join(''));
     emitChange();
   };
+
+  const toolbarButtonClass =
+    'inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-lg px-2 text-xs font-black text-slate-800 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-100 dark:hover:bg-slate-800';
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-300 bg-white transition focus-within:border-rose-500 focus-within:ring-4 focus-within:ring-rose-100 dark:border-slate-700 dark:bg-slate-950 dark:focus-within:ring-rose-500/15">
       <div className="flex flex-wrap gap-1 border-b border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900">
+        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => setBlock('p')} className={toolbarButtonClass}>
+          Đoạn
+        </button>
+        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => setBlock('h2')} className={toolbarButtonClass} title="Tiêu đề lớn">
+          <Heading2 size={16} />
+        </button>
+        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => setBlock('h3')} className={toolbarButtonClass} title="Tiêu đề nhỏ">
+          <Heading3 size={16} />
+        </button>
         <button
           type="button"
           disabled={disabled}
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => applyCommand('bold')}
-          className="h-8 rounded-lg px-3 text-sm font-black text-slate-800 hover:bg-white disabled:opacity-50 dark:text-slate-100 dark:hover:bg-slate-800"
+          className={toolbarButtonClass}
+          title="In đậm"
         >
-          B
+          <Bold size={16} />
         </button>
         <button
           type="button"
           disabled={disabled}
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => applyCommand('italic')}
-          className="h-8 rounded-lg px-3 text-sm font-black italic text-slate-800 hover:bg-white disabled:opacity-50 dark:text-slate-100 dark:hover:bg-slate-800"
+          className={toolbarButtonClass}
+          title="In nghiêng"
         >
-          I
+          <Italic size={16} />
+        </button>
+        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('underline')} className={toolbarButtonClass} title="Gạch chân">
+          <Underline size={16} />
         </button>
         <button
           type="button"
           disabled={disabled}
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => applyCommand('insertUnorderedList')}
-          className="h-8 rounded-lg px-3 text-sm font-black text-slate-800 hover:bg-white disabled:opacity-50 dark:text-slate-100 dark:hover:bg-slate-800"
+          className={toolbarButtonClass}
+          title="Danh sách chấm"
         >
-          • List
+          <List size={16} />
         </button>
         <button
           type="button"
           disabled={disabled}
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => applyCommand('insertOrderedList')}
-          className="h-8 rounded-lg px-3 text-sm font-black text-slate-800 hover:bg-white disabled:opacity-50 dark:text-slate-100 dark:hover:bg-slate-800"
+          className={toolbarButtonClass}
+          title="Danh sách số"
         >
-          1. List
+          <ListOrdered size={16} />
         </button>
+        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => setBlock('blockquote')} className={toolbarButtonClass} title="Trích dẫn">
+          <Quote size={16} />
+        </button>
+        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('justifyLeft')} className={toolbarButtonClass} title="Căn trái">
+          Trái
+        </button>
+        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('justifyCenter')} className={toolbarButtonClass} title="Căn giữa">
+          Giữa
+        </button>
+        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('justifyRight')} className={toolbarButtonClass} title="Căn phải">
+          Phải
+        </button>
+        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={insertLink} className={toolbarButtonClass} title="Gắn link">
+          <LinkIcon size={16} />
+        </button>
+        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={insertImageUrl} className={toolbarButtonClass} title="Chèn ảnh bằng URL">
+          URL ảnh
+        </button>
+        <button
+          type="button"
+          disabled={disabled || uploadingImage || !onImageUpload}
+          onMouseDown={(event) => {
+            event.preventDefault();
+            saveSelection();
+          }}
+          onClick={() => imageInputRef.current?.click()}
+          className={toolbarButtonClass}
+          title="Upload ảnh"
+        >
+          <ImagePlus size={16} />
+          {uploadingImage ? 'Đang up' : ''}
+        </button>
+        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('undo')} className={toolbarButtonClass} title="Hoàn tác">
+          <Undo2 size={16} />
+        </button>
+        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('redo')} className={toolbarButtonClass} title="Làm lại">
+          <Redo2 size={16} />
+        </button>
+        <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={uploadImage} />
       </div>
       <div className="relative">
         {!value && placeholder && (
@@ -391,9 +595,12 @@ const RichTextEditor = ({ value, disabled, placeholder, onChange }: RichTextEdit
           suppressContentEditableWarning
           role="textbox"
           aria-multiline="true"
-          className="prose prose-sm min-h-[150px] max-w-none px-3 py-3 text-sm font-semibold leading-7 text-slate-900 outline-none dark:prose-invert dark:text-slate-100 [&_li]:ml-5 [&_ol]:list-decimal [&_p]:mb-2 [&_ul]:list-disc"
+          className="min-h-[180px] max-w-none px-3 py-3 text-sm font-semibold leading-7 text-slate-900 outline-none dark:text-slate-100 [&_a]:font-bold [&_a]:text-rose-600 [&_blockquote]:border-l-4 [&_blockquote]:border-rose-200 [&_blockquote]:bg-rose-50/60 [&_blockquote]:px-3 [&_blockquote]:py-2 [&_blockquote]:text-slate-700 [&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-xl [&_h2]:font-black [&_h3]:mb-2 [&_h3]:mt-3 [&_h3]:text-lg [&_h3]:font-black [&_img]:my-3 [&_img]:max-h-[24rem] [&_img]:max-w-full [&_img]:rounded-xl [&_img]:border [&_img]:border-slate-200 [&_li]:ml-5 [&_ol]:list-decimal [&_p]:mb-2 [&_ul]:list-disc"
           onInput={emitChange}
           onBlur={emitChange}
+          onKeyUp={saveSelection}
+          onMouseUp={saveSelection}
+          onFocus={saveSelection}
           onPaste={onPaste}
         />
       </div>
@@ -532,6 +739,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
   const draftRef = useRef<ProductDraft>(draft);
   const imageItemsRef = useRef<ProductImageDraft[]>(imageItems);
   const autosaveWarnedRef = useRef(false);
+  const richTextUploadedPublicIdsRef = useRef<string[]>([]);
 
   const disabled = readOnly || saving;
   const initialImages = useMemo(() => imageItems, [imageItems]);
@@ -802,6 +1010,15 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     }));
   };
 
+  const uploadRichTextImage = async (file: File) => {
+    const result = await uploadAdminProductImage(file);
+    if (!result.url) throw new Error('Upload ảnh mô tả thất bại, không nhận được URL.');
+    if (result.public_id) {
+      richTextUploadedPublicIdsRef.current = [...richTextUploadedPublicIdsRef.current, result.public_id];
+    }
+    return result.url;
+  };
+
   const validate = () => {
     const next: FormErrors = {};
     const name = draft.name.trim();
@@ -979,7 +1196,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       deleted_variant_ids: deletedVariantIds,
       deleted_attribute_ids: id ? existingAttributeIds : [],
     };
-    return { payload, uploadedPublicIds };
+    return { payload, uploadedPublicIds: [...uploadedPublicIds, ...richTextUploadedPublicIdsRef.current] };
   };
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -1007,6 +1224,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         await deleteProductDraft(PRODUCT_CREATE_DRAFT_KEY).catch(() => undefined);
         setDraftSavedAt(null);
       }
+      richTextUploadedPublicIdsRef.current = [];
       showToast(id ? 'Đã cập nhật sản phẩm.' : 'Đã tạo sản phẩm.', 'success');
       onSuccess?.();
     } catch (error: any) {
@@ -1024,9 +1242,9 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       if (serverErrorKey) {
         focusErrorField(serverErrorKey);
       }
-      if (!id && uploadedPublicIds.length > 0) {
+      if (uploadedPublicIds.length > 0) {
         cleanupAdminProductUploads(uploadedPublicIds).catch((cleanupError) => {
-          console.warn('Cannot cleanup uploaded product images after failed create', cleanupError);
+          console.warn('Cannot cleanup uploaded product images after failed save', cleanupError);
         });
       }
       showToast(message, 'error');
@@ -1356,6 +1574,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
               value={draft.description}
               disabled={disabled}
               placeholder="Nhập mô tả chi tiết, hướng dẫn sử dụng, lưu ý lắp đặt hoặc bảo quản."
+              onImageUpload={uploadRichTextImage}
               onChange={(value) => setField('description', value)}
             />
           </div>

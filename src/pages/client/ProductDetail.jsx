@@ -74,7 +74,12 @@ const sanitizeDescriptionHtml = (value) => {
 
   const template = document.createElement('template');
   template.innerHTML = html;
-  const allowedTags = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'UL', 'OL', 'LI']);
+  const allowedTags = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'UL', 'OL', 'LI', 'H2', 'H3', 'BLOCKQUOTE', 'A', 'IMG']);
+  const blockTags = new Set(['P', 'H2', 'H3', 'BLOCKQUOTE', 'LI']);
+  const normalizeTextAlign = (value) => {
+    const match = String(value || '').match(/text-align\s*:\s*(left|center|right)/i);
+    return match ? `text-align: ${match[1].toLowerCase()};` : '';
+  };
 
   const walk = (node) => {
     Array.from(node.childNodes).forEach((child) => {
@@ -89,7 +94,30 @@ const sanitizeDescriptionHtml = (value) => {
           children.forEach(walk);
           return;
         }
+        const textAlign = blockTags.has(child.tagName) ? normalizeTextAlign(child.getAttribute('style')) : '';
+        const linkHref = child.tagName === 'A' ? String(child.href || child.getAttribute('href') || '').trim() : '';
+        const imageSrc = child.tagName === 'IMG' ? String(child.src || child.getAttribute('src') || '').trim() : '';
+        const imageAlt = child.tagName === 'IMG' ? String(child.alt || child.getAttribute('alt') || 'Ảnh mô tả sản phẩm').slice(0, 160) : '';
         Array.from(child.attributes).forEach((attribute) => child.removeAttribute(attribute.name));
+        if (textAlign) child.setAttribute('style', textAlign);
+        if (child.tagName === 'A') {
+          if (!/^https?:\/\//i.test(linkHref) && !/^tel:/i.test(linkHref)) {
+            child.replaceWith(...Array.from(child.childNodes));
+            return;
+          }
+          child.setAttribute('href', linkHref);
+          child.setAttribute('target', '_blank');
+          child.setAttribute('rel', 'noopener noreferrer');
+        }
+        if (child.tagName === 'IMG') {
+          if (!/^https?:\/\//i.test(imageSrc)) {
+            child.remove();
+            return;
+          }
+          child.setAttribute('src', imageSrc);
+          child.setAttribute('alt', imageAlt);
+          child.setAttribute('loading', 'lazy');
+        }
       }
       walk(child);
     });
@@ -369,7 +397,7 @@ const ProductDetail = () => {
             <div className="mt-4 rounded-xl border border-[#e1e1e1] bg-white p-4">
               <h2 className="text-[1.05rem] font-black uppercase text-[#111]">Mô tả sản phẩm</h2>
               <div
-                className="mt-2 text-[1rem] font-medium leading-7 text-[#444] [&_li]:ml-5 [&_ol]:list-decimal [&_p]:mb-2 [&_strong]:font-black [&_ul]:list-disc"
+                className="mt-2 text-[1rem] font-medium leading-7 text-[#444] [&_a]:font-bold [&_a]:text-[#e30613] [&_blockquote]:border-l-4 [&_blockquote]:border-[#f3a5ac] [&_blockquote]:bg-[#fff1f2] [&_blockquote]:px-3 [&_blockquote]:py-2 [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-black [&_h3]:mb-2 [&_h3]:mt-3 [&_h3]:text-lg [&_h3]:font-black [&_img]:my-3 [&_img]:max-h-[26rem] [&_img]:max-w-full [&_img]:rounded-xl [&_img]:border [&_img]:border-[#eeeeee] [&_li]:ml-5 [&_ol]:list-decimal [&_p]:mb-2 [&_strong]:font-black [&_ul]:list-disc"
                 dangerouslySetInnerHTML={{ __html: longDescription }}
               />
             </div>
