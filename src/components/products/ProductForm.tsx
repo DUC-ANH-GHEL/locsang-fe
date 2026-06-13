@@ -1423,7 +1423,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
               className={inputClass}
               value={draft.sku}
               disabled={disabled}
-              placeholder="VD: 119305-35153"
+              placeholder="VD: NHOT-DONG-CO-4T-10W30"
               onChange={(event) => setField('sku', event.target.value.toUpperCase().trim())}
             />
             <FieldError message={errors.sku} />
