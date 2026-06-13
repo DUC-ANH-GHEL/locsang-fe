@@ -6,18 +6,23 @@ type CloudinaryOptions = {
 
 const CLOUDINARY_UPLOAD_SEGMENT = '/image/upload/';
 
+const toCloudinaryCropMode = (fit?: CloudinaryOptions['fit']) => {
+  if (fit === 'fill') return 'fill';
+  return 'limit';
+};
+
 export const getOptimizedCloudinaryUrl = (url?: string | null, options: CloudinaryOptions = {}) => {
   const src = String(url || '').trim();
   if (!src || !src.includes('res.cloudinary.com') || !src.includes(CLOUDINARY_UPLOAD_SEGMENT)) return src;
 
   const width = Number(options.width || 0);
   const quality = options.quality ?? 'auto';
-  const fit = options.fit || 'limit';
+  const cropMode = toCloudinaryCropMode(options.fit);
   const transforms = [
     'f_auto',
     `q_${quality}`,
     width > 0 ? `w_${Math.round(width)}` : '',
-    fit ? `c_${fit}` : '',
+    `c_${cropMode}`,
   ].filter(Boolean);
 
   const [prefix, suffix] = src.split(CLOUDINARY_UPLOAD_SEGMENT);
