@@ -146,7 +146,7 @@ const slugify = (value: string) =>
     .replace(/^-|-$/g, '');
 
 const toNumber = (value: string, fallback = 0) => {
-  const cleaned = String(value || '').replace(/[^\d.-]/g, '');
+  const cleaned = String(value || '').replace(/[^\d-]/g, '');
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
@@ -155,6 +155,61 @@ const toOptionalNumber = (value: string) => {
   const cleaned = String(value || '').trim();
   if (!cleaned) return null;
   return toNumber(cleaned);
+};
+
+const formatMoneyInput = (value: string) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return '';
+  return currencyFormatter.format(Number(digits));
+};
+
+const sanitizeRichText = (html: string) => {
+  if (typeof window === 'undefined') return String(html || '');
+  const template = document.createElement('template');
+  template.innerHTML = String(html || '');
+  const allowedTags = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'UL', 'OL', 'LI']);
+
+  const walk = (node: Node) => {
+    Array.from(node.childNodes).forEach((child) => {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        const element = child as HTMLElement;
+        if (element.tagName === 'SCRIPT' || element.tagName === 'STYLE') {
+          element.remove();
+          return;
+        }
+        if (!allowedTags.has(element.tagName)) {
+          const children = Array.from(element.childNodes);
+          element.replaceWith(...children);
+          children.forEach(walk);
+          return;
+        }
+        Array.from(element.attributes).forEach((attribute) => element.removeAttribute(attribute.name));
+        if (element.tagName === 'B') {
+          const strong = document.createElement('strong');
+          strong.innerHTML = element.innerHTML;
+          element.replaceWith(strong);
+          walk(strong);
+          return;
+        }
+        if (element.tagName === 'I') {
+          const em = document.createElement('em');
+          em.innerHTML = element.innerHTML;
+          element.replaceWith(em);
+          walk(em);
+          return;
+        }
+      }
+      walk(child);
+    });
+  };
+
+  walk(template.content);
+  return template.innerHTML
+    .replace(/<div>/gi, '<p>')
+    .replace(/<\/div>/gi, '</p>')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/^(<br\s*\/?>|\s)+$/gi, '')
+    .trim();
 };
 
 const getErrorMessage = (error: any) => {
@@ -227,12 +282,12 @@ const normalizeVariant = (variant: any, index: number): VariantDraft => {
     id: Number.isFinite(Number(variant?.id)) ? Number(variant.id) : undefined,
     name: String(variant?.variant_name || variant?.variantName || attrName || '').trim(),
     sku: String(variant?.sku || '').trim(),
-    price: variant?.price !== undefined && variant?.price !== null ? String(variant.price) : '',
+    price: variant?.price !== undefined && variant?.price !== null ? formatMoneyInput(String(variant.price)) : '',
     salePrice:
       variant?.sale_price !== undefined && variant?.sale_price !== null
-        ? String(variant.sale_price)
+        ? formatMoneyInput(String(variant.sale_price))
         : variant?.salePrice !== undefined && variant?.salePrice !== null
-          ? String(variant.salePrice)
+          ? formatMoneyInput(String(variant.salePrice))
           : '',
     stock: variant?.stock !== undefined && variant?.stock !== null ? String(variant.stock) : '0',
     allowBackorder: Boolean(variant?.allow_backorder ?? variant?.allowBackorder ?? false),
@@ -243,6 +298,108 @@ const normalizeVariant = (variant: any, index: number): VariantDraft => {
 
 const FieldError = ({ message }: { message?: string }) =>
   message ? <div className="mt-1 text-sm font-semibold text-red-600">{message}</div> : null;
+
+type RichTextEditorProps = {
+  value: string;
+  disabled?: boolean;
+  placeholder?: string;
+  onChange: (value: string) => void;
+};
+
+const RichTextEditor = ({ value, disabled, placeholder, onChange }: RichTextEditorProps) => {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const lastHtmlRef = useRef('');
+
+  useEffect(() => {
+    const safeValue = sanitizeRichText(value);
+    if (editorRef.current && safeValue !== lastHtmlRef.current) {
+      editorRef.current.innerHTML = safeValue;
+      lastHtmlRef.current = safeValue;
+    }
+  }, [value]);
+
+  const emitChange = () => {
+    if (!editorRef.current) return;
+    const nextValue = sanitizeRichText(editorRef.current.innerHTML);
+    lastHtmlRef.current = nextValue;
+    onChange(nextValue);
+  };
+
+  const applyCommand = (command: 'bold' | 'italic' | 'insertUnorderedList' | 'insertOrderedList') => {
+    if (disabled) return;
+    editorRef.current?.focus();
+    document.execCommand(command);
+    emitChange();
+  };
+
+  const onPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const text = event.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+    emitChange();
+  };
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-300 bg-white transition focus-within:border-rose-500 focus-within:ring-4 focus-within:ring-rose-100 dark:border-slate-700 dark:bg-slate-950 dark:focus-within:ring-rose-500/15">
+      <div className="flex flex-wrap gap-1 border-b border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900">
+        <button
+          type="button"
+          disabled={disabled}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyCommand('bold')}
+          className="h-8 rounded-lg px-3 text-sm font-black text-slate-800 hover:bg-white disabled:opacity-50 dark:text-slate-100 dark:hover:bg-slate-800"
+        >
+          B
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyCommand('italic')}
+          className="h-8 rounded-lg px-3 text-sm font-black italic text-slate-800 hover:bg-white disabled:opacity-50 dark:text-slate-100 dark:hover:bg-slate-800"
+        >
+          I
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyCommand('insertUnorderedList')}
+          className="h-8 rounded-lg px-3 text-sm font-black text-slate-800 hover:bg-white disabled:opacity-50 dark:text-slate-100 dark:hover:bg-slate-800"
+        >
+          • List
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyCommand('insertOrderedList')}
+          className="h-8 rounded-lg px-3 text-sm font-black text-slate-800 hover:bg-white disabled:opacity-50 dark:text-slate-100 dark:hover:bg-slate-800"
+        >
+          1. List
+        </button>
+      </div>
+      <div className="relative">
+        {!value && placeholder && (
+          <div className="pointer-events-none absolute left-3 top-3 text-sm font-semibold text-slate-400">
+            {placeholder}
+          </div>
+        )}
+        <div
+          ref={editorRef}
+          contentEditable={!disabled}
+          suppressContentEditableWarning
+          role="textbox"
+          aria-multiline="true"
+          className="prose prose-sm min-h-[150px] max-w-none px-3 py-3 text-sm font-semibold leading-7 text-slate-900 outline-none dark:prose-invert dark:text-slate-100 [&_li]:ml-5 [&_ol]:list-decimal [&_p]:mb-2 [&_ul]:list-disc"
+          onInput={emitChange}
+          onBlur={emitChange}
+          onPaste={onPaste}
+        />
+      </div>
+    </div>
+  );
+};
 
 const sectionClass =
   'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none sm:p-5';
@@ -557,13 +714,13 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           description: String(product?.description || '').trim(),
           price:
             firstVariant?.price ||
-            (product?.price !== undefined && product?.price !== null ? String(product.price) : ''),
+            (product?.price !== undefined && product?.price !== null ? formatMoneyInput(String(product.price)) : ''),
           salePrice:
             firstVariant?.salePrice ||
             (product?.sale_price !== undefined && product?.sale_price !== null
-              ? String(product.sale_price)
+              ? formatMoneyInput(String(product.sale_price))
               : product?.salePrice !== undefined && product?.salePrice !== null
-                ? String(product.salePrice)
+                ? formatMoneyInput(String(product.salePrice))
                 : ''),
           stock:
             firstVariant?.stock ||
@@ -1116,12 +1273,28 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         <div className="grid gap-4 md:grid-cols-3">
           <div>
             <label className={labelClass}>Giá bán *</label>
-            <input data-error-key="price" className={inputClass} value={draft.price} disabled={disabled} inputMode="numeric" placeholder="180000" onChange={(event) => setField('price', event.target.value)} />
+            <input
+              data-error-key="price"
+              className={inputClass}
+              value={draft.price}
+              disabled={disabled}
+              inputMode="numeric"
+              placeholder="180.000"
+              onChange={(event) => setField('price', formatMoneyInput(event.target.value))}
+            />
             <FieldError message={errors.price} />
           </div>
           <div>
             <label className={labelClass}>Giá sale</label>
-            <input data-error-key="salePrice" className={inputClass} value={draft.salePrice} disabled={disabled} inputMode="numeric" placeholder="160000" onChange={(event) => setField('salePrice', event.target.value)} />
+            <input
+              data-error-key="salePrice"
+              className={inputClass}
+              value={draft.salePrice}
+              disabled={disabled}
+              inputMode="numeric"
+              placeholder="160.000"
+              onChange={(event) => setField('salePrice', formatMoneyInput(event.target.value))}
+            />
             <FieldError message={errors.salePrice} />
           </div>
           <div>
@@ -1179,12 +1352,11 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           </div>
           <div>
             <label className={labelClass}>Mô tả chi tiết</label>
-            <textarea
-              className={`${inputClass} min-h-[140px] resize-y`}
+            <RichTextEditor
               value={draft.description}
               disabled={disabled}
               placeholder="Nhập mô tả chi tiết, hướng dẫn sử dụng, lưu ý lắp đặt hoặc bảo quản."
-              onChange={(event) => setField('description', event.target.value)}
+              onChange={(value) => setField('description', value)}
             />
           </div>
         </div>
@@ -1291,12 +1463,12 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
                     </div>
                     <div>
                       <label className={labelClass}>Giá *</label>
-                      <input data-error-key={`${prefix}-price`} className={inputClass} value={variant.price} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { price: event.target.value })} />
+                      <input data-error-key={`${prefix}-price`} className={inputClass} value={variant.price} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { price: formatMoneyInput(event.target.value) })} />
                       <FieldError message={errors[`${prefix}-price`]} />
                     </div>
                     <div>
                       <label className={labelClass}>Giá sale</label>
-                      <input data-error-key={`${prefix}-sale`} className={inputClass} value={variant.salePrice} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { salePrice: event.target.value })} />
+                      <input data-error-key={`${prefix}-sale`} className={inputClass} value={variant.salePrice} disabled={disabled} inputMode="numeric" onChange={(event) => updateVariant(variant.localId, { salePrice: formatMoneyInput(event.target.value) })} />
                       <FieldError message={errors[`${prefix}-sale`]} />
                     </div>
                     <div>

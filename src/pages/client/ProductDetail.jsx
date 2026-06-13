@@ -51,6 +51,54 @@ const cleanText = (value) =>
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
+const escapeHtml = (value) =>
+  String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const sanitizeDescriptionHtml = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (typeof window === 'undefined') return escapeHtml(raw);
+
+  const hasHtml = /<\/?[a-z][\s\S]*>/i.test(raw);
+  const html = hasHtml
+    ? raw
+    : raw
+        .split(/\n{2,}/)
+        .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
+        .join('');
+
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  const allowedTags = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'UL', 'OL', 'LI']);
+
+  const walk = (node) => {
+    Array.from(node.childNodes).forEach((child) => {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        if (child.tagName === 'SCRIPT' || child.tagName === 'STYLE') {
+          child.remove();
+          return;
+        }
+        if (!allowedTags.has(child.tagName)) {
+          const children = Array.from(child.childNodes);
+          child.replaceWith(...children);
+          children.forEach(walk);
+          return;
+        }
+        Array.from(child.attributes).forEach((attribute) => child.removeAttribute(attribute.name));
+      }
+      walk(child);
+    });
+  };
+
+  walk(template.content);
+  return template.innerHTML.trim();
+};
+
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -129,7 +177,7 @@ const ProductDetail = () => {
   const canIncreaseQuantity = inStock && (isBackorder || stock <= 0 || quantity < stock);
   const discountLabel = getDiscountLabel(selectedVariant || product) || (pricing.hasDiscount ? '-15%' : '');
   const shortDescription = useMemo(() => cleanText(product?.short_description), [product?.short_description]);
-  const longDescription = useMemo(() => cleanText(product?.description), [product?.description]);
+  const longDescription = useMemo(() => sanitizeDescriptionHtml(product?.description), [product?.description]);
 
   useEffect(() => {
     if (selectedImageIndex >= galleryImages.length) {
@@ -320,9 +368,10 @@ const ProductDetail = () => {
           {longDescription && (
             <div className="mt-4 rounded-xl border border-[#e1e1e1] bg-white p-4">
               <h2 className="text-[1.05rem] font-black uppercase text-[#111]">Mô tả sản phẩm</h2>
-              <p className="mt-2 whitespace-pre-line text-[1rem] font-medium leading-7 text-[#444]">
-                {longDescription}
-              </p>
+              <div
+                className="mt-2 text-[1rem] font-medium leading-7 text-[#444] [&_li]:ml-5 [&_ol]:list-decimal [&_p]:mb-2 [&_strong]:font-black [&_ul]:list-disc"
+                dangerouslySetInnerHTML={{ __html: longDescription }}
+              />
             </div>
           )}
 
