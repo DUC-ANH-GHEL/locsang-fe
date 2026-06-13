@@ -17,6 +17,7 @@ import {
   PRODUCT_PLACEHOLDER,
   canPurchaseProduct,
   getDefaultCartVariant,
+  hasSelectableVariants,
   toCartPayload,
 } from '../../data/yanmarStorefront';
 import { CategoryIconPreview, getCategoryIconValue } from '../../utils/categoryIcons';
@@ -246,12 +247,20 @@ const Home = () => {
 
   const addProductToCart = (product: HomeProduct, event?: React.MouseEvent<HTMLElement>) => {
     if (!product.raw || !product.canPurchase) return;
+    if (hasSelectableVariants(product.raw)) {
+      navigate(toProductDetailPath(product.raw));
+      return;
+    }
     flyProductImageToCartFromEvent(event);
     addToCart(toCartPayload(product.raw, 1, getDefaultCartVariant(product.raw)));
   };
 
   const buyNow = (product: HomeProduct) => {
     if (!product.canPurchase) return;
+    if (product.raw && hasSelectableVariants(product.raw)) {
+      navigate(toProductDetailPath(product.raw));
+      return;
+    }
     addProductToCart(product);
     navigate('/checkout');
   };

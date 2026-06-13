@@ -31,6 +31,52 @@ export const getActiveVariants = (product) =>
     (variant) => variant?.is_active !== false && String(variant?.status || 'active') === 'active',
   );
 
+export const getVariantAttributeValues = (variant) => {
+  const attrs = variant?.attribute_values || variant?.attributeValues;
+  if (!attrs || typeof attrs !== 'object' || Array.isArray(attrs)) return {};
+  return Object.entries(attrs).reduce((acc, [name, value]) => {
+    const cleanName = String(name || '').trim();
+    const cleanValue = String(value || '').trim();
+    if (cleanName && cleanValue) acc[cleanName] = cleanValue;
+    return acc;
+  }, {});
+};
+
+export const getVariantLabel = (variant) => {
+  if (!variant) return '';
+  const values = Object.values(getVariantAttributeValues(variant)).filter(Boolean);
+  if (values.length > 0) return values.join(' / ');
+  return String(variant?.variant_name || variant?.variantName || variant?.sku || '').trim();
+};
+
+export const getProductVariantAttributes = (product) => {
+  const raw = product?.variant_attributes || product?.variantAttributes;
+  if (Array.isArray(raw) && raw.length > 0) {
+    return raw
+      .map((attribute) => ({
+        name: String(attribute?.name || '').trim(),
+        values: Array.isArray(attribute?.values)
+          ? attribute.values.map((value) => String(value || '').trim()).filter(Boolean)
+          : [],
+      }))
+      .filter((attribute) => attribute.name && attribute.values.length > 0);
+  }
+
+  const ordered = [];
+  const byName = new Map();
+  getActiveVariants(product).forEach((variant) => {
+    Object.entries(getVariantAttributeValues(variant)).forEach(([name, value]) => {
+      if (!byName.has(name)) {
+        byName.set(name, new Set());
+        ordered.push(name);
+      }
+      byName.get(name).add(value);
+    });
+  });
+
+  return ordered.map((name) => ({ name, values: Array.from(byName.get(name) || []) })).filter((attribute) => attribute.values.length > 0);
+};
+
 export const canPurchaseVariant = (variant) => {
   if (!variant) return false;
   const manageStock = variant?.manage_stock !== false;
@@ -42,6 +88,9 @@ export const getDefaultCartVariant = (product) => {
   if (variants.length === 0) return null;
   return variants.find(canPurchaseVariant) || variants[0];
 };
+
+export const hasSelectableVariants = (product) =>
+  getActiveVariants(product).length > 1 && getProductVariantAttributes(product).length > 0;
 
 export const canPurchaseProduct = (product, variant = null) => {
   if (!product || product?.is_active === false || String(product?.status || 'active') !== 'active') return false;
@@ -72,6 +121,6 @@ export const toCartPayload = (product, quantity = 1, variant = null) => {
     image: resolvedVariant?.image || getProductImage(product),
     price: Number(pricing.currentPrice || product?.price || 0),
     quantity: Math.max(1, Number(quantity || 1)),
-    variant_label: resolvedVariant?.variant_name || resolvedVariant?.sku || product?.sku || undefined,
+    variant_label: getVariantLabel(resolvedVariant) || undefined,
   };
 };

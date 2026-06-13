@@ -15,6 +15,7 @@ import {
   canPurchaseProduct,
   getDiscountLabel,
   getProductImage,
+  hasSelectableVariants,
   toCartPayload,
 } from '../../data/yanmarStorefront';
 
@@ -189,12 +190,20 @@ const ProductList = () => {
 
   const addProduct = (product, event) => {
     if (!canPurchaseProduct(product)) return;
+    if (hasSelectableVariants(product)) {
+      navigate(toProductDetailPath(product));
+      return;
+    }
     flyProductImageToCartFromEvent(event);
     addToCart(toCartPayload(product, 1));
   };
 
   const buyNow = (product) => {
     if (!canPurchaseProduct(product)) return;
+    if (hasSelectableVariants(product)) {
+      navigate(toProductDetailPath(product));
+      return;
+    }
     addProduct(product);
     navigate('/checkout');
   };

@@ -11,21 +11,17 @@ import { getProductCardImageUrl, getProductDetailImageUrl } from '../../utils/cl
 import { useSEO } from '../../hooks/useSEO';
 import {
   formatVnd,
+  canPurchaseVariant,
   canPurchaseProduct,
   getActiveVariants,
   getDiscountLabel,
   getDisplayDescription,
   getProductImage,
+  getProductVariantAttributes,
+  getVariantAttributeValues,
+  getVariantLabel,
   toCartPayload,
 } from '../../data/yanmarStorefront';
-
-const getVariantLabel = (variant) => {
-  if (!variant) return '';
-  const attrValues = variant?.attribute_values && typeof variant.attribute_values === 'object'
-    ? Object.values(variant.attribute_values).filter(Boolean)
-    : [];
-  return variant.variant_name || attrValues.join(' / ') || variant.sku || '';
-};
 
 const getGalleryImages = (product, variant) => {
   const images = [];
@@ -170,11 +166,14 @@ const ProductDetail = () => {
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [selectedVariantId, setSelectedVariantId] = useState(null);
+  const [selectedAttributes, setSelectedAttributes] = useState({});
+  const [variantError, setVariantError] = useState('');
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const mainImageRef = useRef(null);
+  const variantSelectorRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -206,14 +205,17 @@ const ProductDetail = () => {
         setLoadFailed(false);
         setRelatedProducts(detail ? list.filter((item) => Number(item?.id) !== Number(detail?.id)).slice(0, 4) : []);
 
-        const firstVariant = detail ? getActiveVariants(detail)[0] : null;
-        setSelectedVariantId(firstVariant?.id ?? null);
+        setSelectedVariantId(null);
+        setSelectedAttributes({});
+        setVariantError('');
         setSelectedImageIndex(0);
       } catch {
         if (!cancelled) {
           setProduct(null);
           setRelatedProducts([]);
           setSelectedVariantId(null);
+          setSelectedAttributes({});
+          setVariantError('');
           setSelectedImageIndex(0);
           setLoadFailed(true);
         }
@@ -229,16 +231,29 @@ const ProductDetail = () => {
   }, [id]);
 
   const variants = useMemo(() => getActiveVariants(product), [product]);
-  const selectedVariant = useMemo(
-    () => variants.find((variant) => Number(variant?.id) === Number(selectedVariantId)) || variants[0] || null,
-    [selectedVariantId, variants],
-  );
+  const variantAttributes = useMemo(() => getProductVariantAttributes(product), [product]);
+  const requiresVariantSelection = variants.length > 1 && variantAttributes.length > 0;
+  const selectedAttributeCount = Object.values(selectedAttributes).filter(Boolean).length;
+  const hasCompleteVariantSelection = !requiresVariantSelection || selectedAttributeCount >= variantAttributes.length;
+  const variantMatchesSelection = (variant, selection, { requireComplete = false } = {}) => {
+    const attrs = getVariantAttributeValues(variant);
+    if (requireComplete && variantAttributes.some((attribute) => !selection?.[attribute.name])) return false;
+    return Object.entries(selection || {}).every(([name, value]) => !value || attrs[name] === value);
+  };
+  const selectedVariant = useMemo(() => {
+    if (!requiresVariantSelection) {
+      return variants.find((variant) => Number(variant?.id) === Number(selectedVariantId)) || variants[0] || null;
+    }
+    if (!hasCompleteVariantSelection) return null;
+    return variants.find((variant) => variantMatchesSelection(variant, selectedAttributes, { requireComplete: true })) || null;
+  }, [hasCompleteVariantSelection, requiresVariantSelection, selectedAttributes, selectedVariantId, variantAttributes, variants]);
   const pricing = getProductPricing(selectedVariant || product);
   const galleryImages = useMemo(() => getGalleryImages(product, selectedVariant), [product, selectedVariant]);
   const stock = Number(selectedVariant?.stock ?? product?.stock ?? 0);
-  const inStock = canPurchaseProduct(product, selectedVariant);
+  const inStock = requiresVariantSelection ? Boolean(selectedVariant && canPurchaseProduct(product, selectedVariant)) : canPurchaseProduct(product, selectedVariant);
   const isBackorder = stock <= 0 && Boolean(selectedVariant?.allow_backorder ?? product?.allow_backorder);
   const canIncreaseQuantity = inStock && (isBackorder || stock <= 0 || quantity < stock);
+  const actionDisabled = requiresVariantSelection ? Boolean(selectedVariant && !inStock) : !inStock;
   const discountLabel = getDiscountLabel(selectedVariant || product) || (pricing.hasDiscount ? '-15%' : '');
   const shortDescription = useMemo(() => cleanText(product?.short_description), [product?.short_description]);
   const longDescription = useMemo(() => sanitizeDescriptionHtml(product?.description), [product?.description]);
@@ -267,12 +282,23 @@ const ProductDetail = () => {
 
   const addProduct = ({ animate = true } = {}) => {
     if (!product) return;
+    if (requiresVariantSelection && !selectedVariant) {
+      setVariantError('Chọn đủ phân loại sản phẩm.');
+      variantSelectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     if (!inStock) return;
     if (animate) flyProductImageToCart(mainImageRef.current);
     addToCart(toCartPayload(product, quantity, selectedVariant));
   };
 
   const buyNow = () => {
+    if (requiresVariantSelection && !selectedVariant) {
+      setVariantError('Chọn đủ phân loại sản phẩm.');
+      variantSelectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (!inStock) return;
     addProduct({ animate: false });
     navigate('/checkout');
   };
@@ -369,26 +395,62 @@ const ProductDetail = () => {
             </p>
           )}
 
-          {variants.length > 1 && (
-            <div className="mt-4">
-              <div className="text-sm font-bold text-[#333]">Phân loại</div>
-              <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-                {variants.map((variant) => {
-                  const active = Number(variant.id) === Number(selectedVariant?.id);
-                  return (
-                    <button
-                      key={variant.id || variant.sku}
-                      type="button"
-                      onClick={() => setSelectedVariantId(variant.id)}
-                      className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-bold ${
-                        active ? 'border-[#e30613] bg-[#fff1f2] text-[#e30613]' : 'border-[#dddddd] bg-white text-[#333]'
-                      }`}
-                    >
-                      {getVariantLabel(variant)}
-                    </button>
-                  );
-                })}
+          {requiresVariantSelection && (
+            <div ref={variantSelectorRef} className="mt-4 rounded-xl border border-[#eeeeee] bg-[#fafafa] p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[1rem] font-black text-[#111]">Chọn phân loại</div>
+                {selectedVariant && (
+                  <div className="rounded-full bg-white px-3 py-1 text-xs font-black text-[#e30613]">
+                    {getVariantLabel(selectedVariant)}
+                  </div>
+                )}
               </div>
+
+              <div className="mt-3 space-y-3">
+                {variantAttributes.map((attribute) => (
+                  <div key={attribute.name}>
+                    <div className="mb-2 text-sm font-bold text-[#555]">{attribute.name}</div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {attribute.values.map((value) => {
+                        const nextSelection = { ...selectedAttributes, [attribute.name]: value };
+                        const selectable = variants.some(
+                          (variant) => variantMatchesSelection(variant, nextSelection) && canPurchaseVariant(variant),
+                        );
+                        const active = selectedAttributes[attribute.name] === value;
+                        return (
+                          <button
+                            key={`${attribute.name}-${value}`}
+                            type="button"
+                            disabled={!selectable}
+                            onClick={() => {
+                              const next = { ...selectedAttributes, [attribute.name]: value };
+                              setSelectedAttributes(next);
+                              const complete = variantAttributes.every((item) => next[item.name]);
+                              const matchedVariant = complete
+                                ? variants.find((variant) => variantMatchesSelection(variant, next, { requireComplete: true }))
+                                : null;
+                              setSelectedVariantId(matchedVariant?.id ?? null);
+                              setVariantError('');
+                              setSelectedImageIndex(0);
+                            }}
+                            className={`min-h-11 rounded-lg border px-3 py-2 text-sm font-black transition ${
+                              active
+                                ? 'border-[#e30613] bg-[#fff1f2] text-[#e30613]'
+                                : selectable
+                                  ? 'border-[#dddddd] bg-white text-[#222]'
+                                  : 'cursor-not-allowed border-[#eeeeee] bg-[#f1f1f1] text-[#aaaaaa]'
+                            }`}
+                          >
+                            {value}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {variantError && <div className="mt-3 text-sm font-black text-[#e30613]">{variantError}</div>}
             </div>
           )}
 
@@ -412,7 +474,7 @@ const ProductDetail = () => {
             <button
               type="button"
               onClick={buyNow}
-              disabled={!inStock}
+              disabled={actionDisabled}
               className="h-12 rounded-lg bg-[#e30613] text-[1.05rem] font-black uppercase text-white shadow-[0_10px_24px_rgba(227,6,19,0.18)] transition hover:bg-[#c90512] disabled:cursor-not-allowed disabled:bg-[#bbbbbb] disabled:shadow-none"
             >
               Mua ngay
@@ -420,7 +482,7 @@ const ProductDetail = () => {
             <button
               type="button"
               onClick={() => addProduct()}
-              disabled={!inStock}
+              disabled={actionDisabled}
               className="flex h-12 items-center justify-center gap-3 rounded-lg border border-[#e30613] bg-white text-[1rem] font-black uppercase text-[#e30613] transition hover:bg-[#fff1f2] disabled:cursor-not-allowed disabled:border-[#bbbbbb] disabled:text-[#999]"
             >
               <ShoppingCart size={24} />
@@ -515,7 +577,7 @@ const ProductDetail = () => {
           <button
             type="button"
             onClick={buyNow}
-            disabled={!inStock}
+            disabled={actionDisabled}
             className="h-12 w-full rounded-lg bg-[#e30613] text-[1.25rem] font-black uppercase text-white disabled:bg-[#bbbbbb]"
           >
             Mua ngay
@@ -523,7 +585,7 @@ const ProductDetail = () => {
           <button
             type="button"
             onClick={() => addProduct()}
-            disabled={!inStock}
+            disabled={actionDisabled}
             className="flex h-10 w-full items-center justify-center gap-3 rounded-lg border border-[#e30613] bg-white text-[1rem] font-black uppercase text-[#e30613] disabled:border-[#bbbbbb] disabled:text-[#999]"
           >
             <ShoppingCart size={24} />

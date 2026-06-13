@@ -390,7 +390,7 @@ const CartLine = ({ item, onRemove, onQuantity }) => {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h3 className="line-clamp-2 font-sans text-[1.02rem] font-black leading-tight text-[#111]">{item.title}</h3>
-            <p className="mt-1 text-sm text-[#666]">Mã: {item.sku || item.variant_label || 'Yanmar'}</p>
+            {item.variant_label && <p className="mt-1 text-sm text-[#666]">Phân loại: {item.variant_label}</p>}
             <p className="mt-1 text-sm text-[#666]">Đơn giá: {formatVnd(price)}</p>
           </div>
           <button type="button" onClick={onRemove} className="shrink-0 p-1 text-[#555]" aria-label="Xóa sản phẩm">

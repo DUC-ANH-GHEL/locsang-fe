@@ -11,6 +11,11 @@ export type VariantAttribute = {
   value: string;
 };
 
+export type ProductVariantAttributeGroup = {
+  name: string;
+  values: string[];
+};
+
 export type ProductVariant = {
   id?: number;
   sku: string;
@@ -66,6 +71,8 @@ export interface Product {
   stock_status?: 'in_stock' | 'backorder' | 'out' | string;
   options?: ProductOption[];
   variants?: ProductVariant[];
+  variant_attributes?: ProductVariantAttributeGroup[];
+  variantAttributes?: ProductVariantAttributeGroup[];
   raw_data?: Record<string, any>;
 }
 

@@ -262,6 +262,19 @@ export const normalizePublicProduct = (raw: any): Product => {
       value: String(item?.value ?? '').trim(),
     }))
     .filter((item: { label: string; value: string }) => item.label && item.value);
+  const variantAttributesRaw = Array.isArray(raw?.variantAttributes)
+    ? raw.variantAttributes
+    : Array.isArray(raw?.variant_attributes)
+      ? raw.variant_attributes
+      : [];
+  const variantAttributes = variantAttributesRaw
+    .map((attribute: any) => ({
+      name: String(attribute?.name ?? '').trim(),
+      values: Array.isArray(attribute?.values)
+        ? attribute.values.map((value: any) => String(value ?? '').trim()).filter(Boolean)
+        : [],
+    }))
+    .filter((attribute: { name: string; values: string[] }) => attribute.name && attribute.values.length > 0);
 
   return {
     id: Number(raw?.id ?? 0),
@@ -290,6 +303,8 @@ export const normalizePublicProduct = (raw: any): Product => {
     tags: Array.isArray(raw?.tags) ? raw.tags : [],
     specifications,
     has_variants: Boolean(raw?.hasVariants ?? raw?.has_variants ?? false),
+    variant_attributes: variantAttributes,
+    variantAttributes,
     variants: variants.map((variant: any) => {
       const variantStock = Number(variant?.stock ?? 0);
       const variantAllowBackorder = Boolean(variant?.allowBackorder ?? variant?.allow_backorder ?? false);

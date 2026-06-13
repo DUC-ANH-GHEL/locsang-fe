@@ -71,6 +71,7 @@ type VariantDraft = {
   localId: string;
   id?: number;
   name: string;
+  attributeValues: Record<string, string>;
   sku: string;
   price: string;
   salePrice: string;
@@ -78,6 +79,14 @@ type VariantDraft = {
   allowBackorder: boolean;
   status: 'active' | 'inactive';
   imageUrl: string;
+};
+
+type VariantAttributeDraft = {
+  localId: string;
+  id?: number;
+  name: string;
+  valueInput: string;
+  values: string[];
 };
 
 type ProductDraft = {
@@ -94,6 +103,7 @@ type ProductDraft = {
   stock: string;
   allowBackorder: boolean;
   hasVariants: boolean;
+  variantAttributes: VariantAttributeDraft[];
   variants: VariantDraft[];
   specifications: SpecificationDraft[];
 };
@@ -119,6 +129,7 @@ const emptyDraft: ProductDraft = {
   stock: '0',
   allowBackorder: false,
   hasVariants: false,
+  variantAttributes: [],
   variants: [],
   specifications: [{ localId: makeId(), label: '', value: '' }],
 };
@@ -136,6 +147,7 @@ const newSpec = (): SpecificationDraft => ({ localId: makeId(), label: '', value
 const newVariant = (skuPrefix = ''): VariantDraft => ({
   localId: makeId(),
   name: '',
+  attributeValues: {},
   sku: skuPrefix ? `${skuPrefix}-` : '',
   price: '',
   salePrice: '',
@@ -143,6 +155,13 @@ const newVariant = (skuPrefix = ''): VariantDraft => ({
   allowBackorder: false,
   status: 'active',
   imageUrl: '',
+});
+
+const newVariantAttribute = (): VariantAttributeDraft => ({
+  localId: makeId(),
+  name: '',
+  valueInput: '',
+  values: [],
 });
 
 const slugify = (value: string) =>
@@ -161,6 +180,83 @@ const toNumber = (value: string, fallback = 0) => {
   const cleaned = String(value || '').replace(/[^\d-]/g, '');
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const normalizeVariantToken = (value: string) => String(value || '').trim().toLowerCase();
+
+const parseAttributeValues = (value: string) =>
+  Array.from(
+    new Set(
+      String(value || '')
+        .split(/[,;\n]/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
+
+const variantCombinationKey = (attributeValues: Record<string, string>, attributeNames?: string[]) => {
+  const names = attributeNames && attributeNames.length > 0 ? attributeNames : Object.keys(attributeValues);
+  return names
+    .map((name) => `${normalizeVariantToken(name)}=${normalizeVariantToken(attributeValues[name] || '')}`)
+    .join('|');
+};
+
+const buildAttributeCombinations = (attributes: VariantAttributeDraft[]) => {
+  const activeAttributes = attributes
+    .map((attribute) => ({
+      ...attribute,
+      name: attribute.name.trim(),
+      values: attribute.values.map((value) => value.trim()).filter(Boolean),
+    }))
+    .filter((attribute) => attribute.name && attribute.values.length > 0);
+
+  if (activeAttributes.length === 0) return [];
+
+  return activeAttributes.reduce<Array<Record<string, string>>>(
+    (combinations, attribute) =>
+      combinations.flatMap((combo) => attribute.values.map((value) => ({ ...combo, [attribute.name]: value }))),
+    [{}],
+  );
+};
+
+const buildVariantSku = (baseSku: string, attributeValues: Record<string, string>, index: number) => {
+  const suffix = Object.values(attributeValues)
+    .map((value) => slugify(value).replace(/-/g, '').toUpperCase())
+    .filter(Boolean)
+    .join('-');
+  const prefix = baseSku.trim().toUpperCase();
+  if (prefix && suffix) return `${prefix}-${suffix}`.slice(0, 80);
+  if (prefix) return `${prefix}-${index + 1}`.slice(0, 80);
+  return suffix || `VAR-${index + 1}`;
+};
+
+const syncVariantMatrix = (attributes: VariantAttributeDraft[], existingVariants: VariantDraft[], baseSku: string) => {
+  const combinations = buildAttributeCombinations(attributes);
+  const attributeNames = attributes.map((attribute) => attribute.name.trim()).filter(Boolean);
+  const byKey = new Map<string, VariantDraft>();
+  existingVariants.forEach((variant) => {
+    const key = variantCombinationKey(variant.attributeValues || {}, attributeNames);
+    if (key) byKey.set(key, variant);
+  });
+
+  return combinations.map((attributeValues, index) => {
+    const key = variantCombinationKey(attributeValues, attributeNames);
+    const existing = byKey.get(key);
+    const label = Object.values(attributeValues).join(' / ');
+    if (existing) {
+      return {
+        ...existing,
+        name: label,
+        attributeValues,
+      };
+    }
+    return {
+      ...newVariant(''),
+      name: label,
+      attributeValues,
+      sku: buildVariantSku(baseSku, attributeValues, index),
+    };
+  });
 };
 
 const toOptionalNumber = (value: string) => {
@@ -399,11 +495,25 @@ const normalizeSpecs = (product: any): SpecificationDraft[] => {
 
 const normalizeVariant = (variant: any, index: number): VariantDraft => {
   const attrs = variant?.attribute_values || variant?.attributeValues || {};
-  const attrName = Object.values(attrs).filter(Boolean).join(' / ');
+  const attributeValues =
+    attrs && typeof attrs === 'object' && !Array.isArray(attrs)
+      ? Object.entries(attrs).reduce<Record<string, string>>((acc, [name, value]) => {
+          const cleanName = String(name || '').trim();
+          const cleanValue = String(value || '').trim();
+          if (cleanName && cleanValue) acc[cleanName] = cleanValue;
+          return acc;
+        }, {})
+      : {};
+  const attrName = Object.values(attributeValues).filter(Boolean).join(' / ');
+  const fallbackName = String(variant?.variant_name || variant?.variantName || '').trim();
+  if (Object.keys(attributeValues).length === 0 && fallbackName && fallbackName !== String(variant?.sku || '').trim()) {
+    attributeValues['Quy cách'] = fallbackName;
+  }
   return {
     localId: makeId(),
     id: Number.isFinite(Number(variant?.id)) ? Number(variant.id) : undefined,
-    name: String(variant?.variant_name || variant?.variantName || attrName || '').trim(),
+    name: Object.values(attributeValues).join(' / ') || fallbackName || attrName || '',
+    attributeValues,
     sku: String(variant?.sku || '').trim(),
     price: variant?.price !== undefined && variant?.price !== null ? formatMoneyInput(String(variant.price)) : '',
     salePrice:
@@ -417,6 +527,58 @@ const normalizeVariant = (variant: any, index: number): VariantDraft => {
     status: variant?.status === 'inactive' || variant?.is_active === false ? 'inactive' : 'active',
     imageUrl: String(variant?.image_url || variant?.imageUrl || '').trim(),
   };
+};
+
+const normalizeVariantAttributes = (product: any, variants: VariantDraft[]): VariantAttributeDraft[] => {
+  const rawAttributes = Array.isArray(product?.attributes)
+    ? product.attributes
+    : Array.isArray(product?.variantAttributes)
+      ? product.variantAttributes
+      : Array.isArray(product?.variant_attributes)
+        ? product.variant_attributes
+        : [];
+
+  const fromProduct = rawAttributes
+    .map((attribute: any) => {
+      const values = Array.isArray(attribute?.values)
+        ? attribute.values.map((value: any) => String(value?.value ?? value ?? '').trim()).filter(Boolean)
+        : [];
+      return {
+        localId: makeId(),
+        id: Number.isFinite(Number(attribute?.id)) ? Number(attribute.id) : undefined,
+        name: String(attribute?.name || '').trim(),
+        valueInput: values.join(', '),
+        values,
+      };
+    })
+    .filter((attribute: VariantAttributeDraft) => attribute.name && attribute.values.length > 0);
+
+  if (fromProduct.length > 0) return fromProduct;
+
+  const order: string[] = [];
+  const valuesByName = new Map<string, Set<string>>();
+  variants.forEach((variant) => {
+    Object.entries(variant.attributeValues || {}).forEach(([name, value]) => {
+      const cleanName = String(name || '').trim();
+      const cleanValue = String(value || '').trim();
+      if (!cleanName || !cleanValue) return;
+      if (!valuesByName.has(cleanName)) {
+        valuesByName.set(cleanName, new Set());
+        order.push(cleanName);
+      }
+      valuesByName.get(cleanName)?.add(cleanValue);
+    });
+  });
+
+  return order.map((name) => {
+    const values = Array.from(valuesByName.get(name) || []);
+    return {
+      localId: makeId(),
+      name,
+      valueInput: values.join(', '),
+      values,
+    };
+  });
 };
 
 const FieldError = ({ message }: { message?: string }) =>
@@ -872,6 +1034,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
               Array.isArray(saved.draft.specifications)
                 ? saved.draft.specifications
                 : emptyDraft.specifications.map((item) => ({ ...item, localId: makeId() })),
+            variantAttributes: Array.isArray(saved.draft.variantAttributes) ? saved.draft.variantAttributes : [],
             variants: Array.isArray(saved.draft.variants) ? saved.draft.variants : [],
           });
           setImageItems(restoredImages);
@@ -990,7 +1153,8 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         const product = normalizeProduct(raw);
         const variants = Array.isArray(product?.variants) ? product.variants.map(normalizeVariant) : [];
         const firstVariant = variants[0];
-        const hasVariants = Boolean(product?.has_variants && variants.length > 1);
+        const variantAttributes = normalizeVariantAttributes(product, variants);
+        const hasVariants = Boolean(product?.has_variants && variantAttributes.length > 0 && variants.length > 0);
         const initialDescription = String(product?.description || '').trim();
 
         setDraft({
@@ -1017,6 +1181,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
             (product?.stock !== undefined && product?.stock !== null ? String(product.stock) : '0'),
           allowBackorder: Boolean(firstVariant?.allowBackorder ?? product?.allow_backorder ?? product?.allowBackorder ?? false),
           hasVariants,
+          variantAttributes: hasVariants ? variantAttributes : [],
           variants: hasVariants ? variants : [],
           specifications: normalizeSpecs(product),
         });
@@ -1087,11 +1252,74 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     }));
   };
 
+  const setVariantAttributes = (updater: (attributes: VariantAttributeDraft[]) => VariantAttributeDraft[]) => {
+    setDraft((prev) => {
+      const nextAttributes = updater(prev.variantAttributes);
+      const nextVariants = syncVariantMatrix(nextAttributes, prev.variants, prev.sku.trim());
+      const nextDraft = {
+        ...prev,
+        variantAttributes: nextAttributes,
+        variants: nextVariants,
+      };
+      draftRef.current = nextDraft;
+      return nextDraft;
+    });
+  };
+
+  const updateVariantAttribute = (localId: string, patch: Partial<Pick<VariantAttributeDraft, 'name' | 'valueInput'>>) => {
+    setDraft((prev) => {
+      const currentAttribute = prev.variantAttributes.find((attribute) => attribute.localId === localId);
+      const oldName = String(currentAttribute?.name || '').trim();
+      const newName = Object.prototype.hasOwnProperty.call(patch, 'name') ? String(patch.name || '').trim() : oldName;
+      const nextAttributes = prev.variantAttributes.map((attribute) => {
+        if (attribute.localId !== localId) return attribute;
+        const next = { ...attribute, ...patch };
+        if (Object.prototype.hasOwnProperty.call(patch, 'valueInput')) {
+          next.values = parseAttributeValues(String(patch.valueInput || ''));
+        }
+        return next;
+      });
+      const renamedVariants =
+        oldName && newName && oldName !== newName
+          ? prev.variants.map((variant) => {
+              const attributeValues = { ...(variant.attributeValues || {}) };
+              if (Object.prototype.hasOwnProperty.call(attributeValues, oldName)) {
+                attributeValues[newName] = attributeValues[oldName];
+                delete attributeValues[oldName];
+              }
+              return {
+                ...variant,
+                attributeValues,
+              };
+            })
+          : prev.variants;
+      const nextDraft = {
+        ...prev,
+        variantAttributes: nextAttributes,
+        variants: syncVariantMatrix(nextAttributes, renamedVariants, prev.sku.trim()),
+      };
+      draftRef.current = nextDraft;
+      return nextDraft;
+    });
+  };
+
+  const removeVariantAttribute = (localId: string) => {
+    setVariantAttributes((attributes) => attributes.filter((attribute) => attribute.localId !== localId));
+  };
+
+  const addVariantAttribute = () => {
+    setVariantAttributes((attributes) => [...attributes, newVariantAttribute()]);
+  };
+
   const updateVariant = (localId: string, patch: Partial<VariantDraft>) => {
-    setDraft((prev) => ({
-      ...prev,
-      variants: prev.variants.map((item) => (item.localId === localId ? { ...item, ...patch } : item)),
-    }));
+    setDraft((prev) => {
+      const nextDraft = {
+        ...prev,
+        variants: prev.variants.map((item) => (item.localId === localId ? { ...item, ...patch } : item)),
+      };
+      draftRef.current = nextDraft;
+      return nextDraft;
+    });
   };
 
   const uploadRichTextImage = async (file: File) => {
@@ -1146,8 +1374,28 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     });
 
     if (draft.hasVariants) {
-      if (draft.variants.length === 0) next.variants = 'Cần thêm ít nhất một biến thể hoặc tắt chế độ biến thể.';
-      const seen = new Set<string>();
+      if (draft.variantAttributes.length === 0) next.variantAttributes = 'Cần thêm ít nhất một thuộc tính biến thể.';
+      const attributeNameSeen = new Set<string>();
+      draft.variantAttributes.forEach((attribute, index) => {
+        const prefix = `variant-attribute-${attribute.localId}`;
+        const name = attribute.name.trim();
+        const nameKey = normalizeVariantToken(name);
+        if (!name) next[`${prefix}-name`] = `Thuộc tính #${index + 1} cần tên.`;
+        if (nameKey && attributeNameSeen.has(nameKey)) next[`${prefix}-name`] = `Tên thuộc tính bị trùng: ${name}.`;
+        attributeNameSeen.add(nameKey);
+        if (attribute.values.length === 0) next[`${prefix}-values`] = `Thuộc tính #${index + 1} cần ít nhất một giá trị.`;
+        const valueSeen = new Set<string>();
+        attribute.values.forEach((value) => {
+          const valueKey = normalizeVariantToken(value);
+          if (valueKey && valueSeen.has(valueKey)) next[`${prefix}-values`] = `Giá trị trong thuộc tính ${name || `#${index + 1}`} bị trùng.`;
+          valueSeen.add(valueKey);
+        });
+      });
+
+      if (draft.variants.length === 0) next.variants = 'Bảng biến thể chưa có tổ hợp nào.';
+      const seenSku = new Set<string>();
+      const seenCombo = new Set<string>();
+      const attributeNames = draft.variantAttributes.map((attribute) => attribute.name.trim()).filter(Boolean);
       draft.variants.forEach((variant, index) => {
         const prefix = `variant-${variant.localId}`;
         const variantSku = variant.sku.trim();
@@ -1156,8 +1404,14 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         const variantStock = toNumber(variant.stock);
         if (!variantSku) next[`${prefix}-sku`] = `Biến thể #${index + 1} thiếu SKU.`;
         const skuKey = variantSku.toLowerCase();
-        if (skuKey && seen.has(skuKey)) next[`${prefix}-sku`] = `SKU biến thể bị trùng: ${variantSku}.`;
-        seen.add(skuKey);
+        if (skuKey && seenSku.has(skuKey)) next[`${prefix}-sku`] = `SKU biến thể bị trùng: ${variantSku}.`;
+        seenSku.add(skuKey);
+        if (attributeNames.some((name) => !String(variant.attributeValues?.[name] || '').trim())) {
+          next[`${prefix}-attributes`] = `Biến thể #${index + 1} thiếu phân loại.`;
+        }
+        const comboKey = variantCombinationKey(variant.attributeValues || {}, attributeNames);
+        if (comboKey && seenCombo.has(comboKey)) next[`${prefix}-attributes`] = `Tổ hợp biến thể #${index + 1} bị trùng.`;
+        seenCombo.add(comboKey);
         if (!Number.isFinite(variantPrice) || variantPrice <= 0) next[`${prefix}-price`] = 'Giá biến thể phải lớn hơn 0.';
         if (variantSalePrice !== null && (variantSalePrice <= 0 || variantSalePrice > variantPrice)) next[`${prefix}-sale`] = 'Giá sale phải lớn hơn 0 và không vượt giá bán.';
         if (!Number.isInteger(variantStock)) next[`${prefix}-stock`] = 'Tồn kho phải là số nguyên.';
@@ -1174,11 +1428,15 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
   const getFirstErrorKey = (validation: FormErrors) => {
     const baseOrder = ['name', 'slug', 'sku', 'categoryId', 'images', 'price', 'salePrice', 'stock'];
     const specOrder = draft.specifications.map((spec) => `spec-${spec.localId}`);
+    const attributeOrder = draft.variantAttributes.flatMap((attribute) => {
+      const prefix = `variant-attribute-${attribute.localId}`;
+      return [`${prefix}-name`, `${prefix}-values`];
+    });
     const variantOrder = draft.variants.flatMap((variant) => {
       const prefix = `variant-${variant.localId}`;
-      return [`${prefix}-sku`, `${prefix}-price`, `${prefix}-sale`, `${prefix}-stock`];
+      return [`${prefix}-attributes`, `${prefix}-sku`, `${prefix}-price`, `${prefix}-sale`, `${prefix}-stock`];
     });
-    const order = [...baseOrder, ...specOrder, 'variants', ...variantOrder];
+    const order = [...baseOrder, ...specOrder, 'variantAttributes', ...attributeOrder, 'variants', ...variantOrder];
     return order.find((key) => validation[key]) || Object.keys(validation)[0] || null;
   };
 
@@ -1230,6 +1488,16 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
     const specs = currentDraft.specifications
       .map((item) => ({ label: item.label.trim(), value: item.value.trim() }))
       .filter((item) => item.label && item.value);
+    const cleanVariantAttributes = currentDraft.hasVariants
+      ? currentDraft.variantAttributes
+          .map((attribute) => ({
+            id: attribute.id,
+            name: attribute.name.trim(),
+            values: parseAttributeValues(attribute.valueInput),
+          }))
+          .filter((attribute) => attribute.name && attribute.values.length > 0)
+      : [];
+    const attributeNames = cleanVariantAttributes.map((attribute) => attribute.name);
 
     const variants = currentDraft.hasVariants
       ? currentDraft.variants.map((variant) => ({
@@ -1242,7 +1510,11 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           allow_backorder: variant.allowBackorder,
           status: variant.status,
           image_url: variant.imageUrl.trim() || null,
-          attribute_values: variant.name.trim() ? { 'Quy cách': variant.name.trim() } : {},
+          attribute_values: attributeNames.reduce<Record<string, string>>((acc, name) => {
+            const value = String(variant.attributeValues?.[name] || '').trim();
+            if (value) acc[name] = value;
+            return acc;
+          }, {}),
         }))
       : [
           {
@@ -1259,16 +1531,10 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
           },
         ];
 
-    const variantNames = Array.from(
-      new Set(
-        currentDraft.variants
-          .map((variant) => variant.name.trim())
-          .filter(Boolean),
-      ),
-    );
-
     const activeVariantIds = variants.map((variant) => Number(variant.id)).filter((value) => Number.isFinite(value));
     const deletedVariantIds = id ? existingVariantIds.filter((variantId) => !activeVariantIds.includes(variantId)) : [];
+    const activeAttributeIds = cleanVariantAttributes.map((attribute) => Number(attribute.id)).filter((value) => Number.isFinite(value));
+    const deletedAttributeIds = id ? existingAttributeIds.filter((attributeId) => !activeAttributeIds.includes(attributeId)) : [];
 
     const payload: AdminProductPayload = {
       name: currentDraft.name.trim(),
@@ -1287,10 +1553,10 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         sort_order: index + 1,
         public_id: image.publicId ?? null,
       })),
-      attributes: currentDraft.hasVariants && variantNames.length > 0 ? [{ name: 'Quy cách', values: variantNames }] : [],
+      attributes: cleanVariantAttributes,
       variants,
       deleted_variant_ids: deletedVariantIds,
-      deleted_attribute_ids: id ? existingAttributeIds : [],
+      deleted_attribute_ids: deletedAttributeIds,
     };
     return { payload, uploadedPublicIds };
   };
@@ -1744,11 +2010,17 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
               disabled={disabled}
               onChange={(event) => {
                 const checked = event.target.checked;
-                setDraft((prev) => ({
-                  ...prev,
-                  hasVariants: checked,
-                  variants: checked && prev.variants.length === 0 ? [newVariant(prev.sku.trim())] : prev.variants,
-                }));
+                setDraft((prev) => {
+                  const nextAttributes = checked && prev.variantAttributes.length === 0 ? [newVariantAttribute()] : prev.variantAttributes;
+                  const nextDraft = {
+                    ...prev,
+                    hasVariants: checked,
+                    variantAttributes: checked ? nextAttributes : prev.variantAttributes,
+                    variants: checked ? syncVariantMatrix(nextAttributes, prev.variants, prev.sku.trim()) : prev.variants,
+                  };
+                  draftRef.current = nextDraft;
+                  return nextDraft;
+                });
               }}
               className="h-4 w-4 rounded border-slate-300 text-rose-600"
             />
@@ -1763,28 +2035,98 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
         ) : (
           <div className="space-y-3" data-error-key="variants" tabIndex={-1}>
             <FieldError message={errors.variants} />
-            {draft.variants.map((variant, index) => {
+            <div data-error-key="variantAttributes" tabIndex={-1} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900">
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="font-black text-slate-900 dark:text-white">Thuộc tính biến thể</div>
+                  <p className="text-sm font-semibold text-slate-500">VD: Dung tích: 4L, 5L; Dòng máy: 4TNV88, 3TNV76.</p>
+                </div>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={addVariantAttribute}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-black text-slate-800 transition hover:border-rose-300 hover:text-rose-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                  >
+                    <Plus size={17} />
+                    Thêm thuộc tính
+                  </button>
+                )}
+              </div>
+              <FieldError message={errors.variantAttributes} />
+              <div className="space-y-3">
+                {draft.variantAttributes.map((attribute, index) => {
+                  const prefix = `variant-attribute-${attribute.localId}`;
+                  return (
+                    <div key={attribute.localId} className="grid gap-3 rounded-xl border border-slate-200 bg-white p-3 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.8fr)_auto] dark:border-slate-800 dark:bg-slate-950">
+                      <div>
+                        <label className={labelClass}>Tên thuộc tính #{index + 1}</label>
+                        <input
+                          data-error-key={`${prefix}-name`}
+                          className={inputClass}
+                          value={attribute.name}
+                          disabled={disabled}
+                          placeholder="VD: Dung tích"
+                          onChange={(event) => updateVariantAttribute(attribute.localId, { name: event.target.value })}
+                        />
+                        <FieldError message={errors[`${prefix}-name`]} />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Giá trị</label>
+                        <input
+                          data-error-key={`${prefix}-values`}
+                          className={inputClass}
+                          value={attribute.valueInput}
+                          disabled={disabled}
+                          placeholder="VD: 4L, 5L, 10W-30"
+                          onChange={(event) => updateVariantAttribute(attribute.localId, { valueInput: event.target.value })}
+                        />
+                        <div className="mt-1 text-xs font-semibold text-slate-500">Ngăn cách nhiều giá trị bằng dấu phẩy.</div>
+                        <FieldError message={errors[`${prefix}-values`]} />
+                      </div>
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          onClick={() => removeVariantAttribute(attribute.localId)}
+                          className="inline-flex h-11 items-center justify-center gap-1 self-end rounded-xl border border-red-200 px-3 text-sm font-black text-red-600 transition hover:bg-red-50"
+                        >
+                          <Trash2 size={16} />
+                          Xóa
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+              <div className="mb-3">
+                <div className="font-black text-slate-900 dark:text-white">Bảng biến thể</div>
+                <p className="text-sm font-semibold text-slate-500">Mỗi dòng là một tổ hợp phân loại. Nhập SKU, giá, kho và trạng thái cho từng dòng.</p>
+              </div>
+              {draft.variants.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm font-semibold text-slate-600">
+                  Nhập tên thuộc tính và giá trị để hệ thống tự tạo bảng biến thể.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {draft.variants.map((variant, index) => {
               const prefix = `variant-${variant.localId}`;
               return (
-                <div key={variant.localId} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div className="font-black text-slate-900 dark:text-white">Biến thể #{index + 1}</div>
-                    {!readOnly && (
-                      <button
-                        type="button"
-                        onClick={() => setField('variants', draft.variants.filter((item) => item.localId !== variant.localId))}
-                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-bold text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 size={16} />
-                        Xóa
-                      </button>
-                    )}
+                <div key={variant.localId} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-black text-slate-500">Tổ hợp #{index + 1}</div>
+                      <div data-error-key={`${prefix}-attributes`} tabIndex={-1} className="text-base font-black text-slate-900 dark:text-white">
+                        {Object.values(variant.attributeValues || {}).filter(Boolean).join(' / ') || 'Chưa đủ phân loại'}
+                      </div>
+                      <FieldError message={errors[`${prefix}-attributes`]} />
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                      {variant.status === 'inactive' ? 'Ẩn' : 'Đang bán'}
+                    </span>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
-                    <div className="lg:col-span-2">
-                      <label className={labelClass}>Quy cách</label>
-                      <input className={inputClass} value={variant.name} disabled={disabled} placeholder="VD: 4L hoặc 119305-35153" onChange={(event) => updateVariant(variant.localId, { name: event.target.value })} />
-                    </div>
                     <div className="lg:col-span-2">
                       <label className={labelClass}>SKU *</label>
                       <input data-error-key={`${prefix}-sku`} className={inputClass} value={variant.sku} disabled={disabled} onChange={(event) => updateVariant(variant.localId, { sku: event.target.value.toUpperCase().trim() })} />
@@ -1829,17 +2171,10 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
                   </div>
                 </div>
               );
-            })}
-            {!readOnly && (
-              <button
-                type="button"
-                onClick={() => setField('variants', [...draft.variants, newVariant(draft.sku.trim())])}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-rose-300 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
-              >
-                <Plus size={17} />
-                Thêm biến thể
-              </button>
-            )}
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </section>
