@@ -115,8 +115,8 @@ const Home = () => {
   const [loadFailed, setLoadFailed] = useState(false);
 
   useSEO({
-    title: 'Phụ tùng và nhớt Yanmar chính hãng',
-    description: 'Lộc Sang cung cấp phụ tùng, lọc nhớt, lọc gió và dầu nhớt Yanmar chính hãng.',
+    title: 'Phụ tùng và dầu nhớt Yanmar chính hãng',
+    description: 'Lộc Sang cung cấp phụ tùng, dầu nhớt Yanmar chính hãng.',
     canonicalPath: '/',
   });
 
