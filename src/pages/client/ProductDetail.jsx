@@ -532,15 +532,15 @@ const ProductDetail = () => {
         </section>
 
         {relatedProducts.length > 0 && (
-          <section className="px-4 pb-5">
-            <div className="mb-3 flex items-center justify-between">
+          <section className="mt-5 border-t border-[#eeeeee] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+10.5rem)] pt-5 md:pb-8">
+            <div className="mb-4 flex items-center justify-between">
               <h2 className="font-sans text-[1.2rem] font-black uppercase text-[#111]">Sản phẩm liên quan</h2>
               <button type="button" onClick={() => navigate('/products')} className="flex items-center gap-1 text-sm font-bold text-[#e30613]">
                 Xem thêm <ChevronRight size={18} />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
               {relatedProducts.map((item) => {
                 const itemPricing = getProductPricing(item);
                 const itemDiscount = getDiscountLabel(item);
