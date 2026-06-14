@@ -1,20 +1,10 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStorefrontAuth } from '../../contexts/StorefrontAuthContext';
 import { useSEO } from '../../hooks/useSEO';
 import { forgotStorefrontPassword, resetStorefrontPassword } from '../../services/customerAccountService';
 
 const AUTH_MODES = ['login', 'register', 'forgot', 'reset'];
-
-const GoogleLoginButton = lazy(() =>
-  import('@react-oauth/google').then((module) => ({
-    default: ({ clientId, ...props }) => (
-      <module.GoogleOAuthProvider clientId={clientId}>
-        <module.GoogleLogin {...props} />
-      </module.GoogleOAuthProvider>
-    ),
-  })),
-);
 
 const getModeFromSearch = (search) => {
   const params = new URLSearchParams(search);
@@ -59,7 +49,6 @@ const parseError = (error, fallbackMessage) => {
 const AccountAuth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const googleClientId = String(import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
   const facebookAppId = String(import.meta.env.VITE_FACEBOOK_APP_ID || '').trim();
   const facebookLoginEnabled = false;
   const redirectTo = useMemo(() => {
@@ -68,7 +57,7 @@ const AccountAuth = () => {
     return '/';
   }, [location.state]);
 
-  const { login, register, loginWithGoogle, loginWithFacebook } = useStorefrontAuth();
+  const { login, register, loginWithFacebook } = useStorefrontAuth();
   const [mode, setMode] = useState(() => getModeFromSearch(location.search));
   const [loading, setLoading] = useState(false);
   const [facebookReady, setFacebookReady] = useState(false);
@@ -272,28 +261,6 @@ const AccountAuth = () => {
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse) => {
-    const credential = String(credentialResponse?.credential || '').trim();
-    if (!credential) {
-      setError('Không nhận được thông tin xác thực từ Google.');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError('');
-      await loginWithGoogle({
-        id_token: credential,
-        client_id: googleClientId || undefined,
-      });
-      navigate(redirectTo, { replace: true });
-    } catch (err) {
-      setError(parseError(err, 'Không thể đăng nhập với Google.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleFacebookLogin = async () => {
     if (!facebookLoginEnabled) {
       setError('Đăng nhập Facebook đang tạm ẩn.');
@@ -427,56 +394,6 @@ const AccountAuth = () => {
           </fieldset>
         </form>
 
-        {mode === 'login' && (
-          <div className="mt-5 space-y-3">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase tracking-[0.08em] text-gray-500">
-                <span className="bg-white px-2">hoặc</span>
-              </div>
-            </div>
-
-            {(googleClientId || (facebookLoginEnabled && facebookAppId)) ? (
-              <div className="space-y-2">
-                {googleClientId && (
-                  <div className="flex justify-center rounded-lg border border-gray-200 bg-white py-2">
-                    <Suspense fallback={<div className="h-10 text-sm font-semibold text-gray-500">Đang tải Google...</div>}>
-                      <GoogleLoginButton
-                        clientId={googleClientId}
-                      onSuccess={handleGoogleSuccess}
-                      onError={() => setError('Không thể khởi tạo đăng nhập Google. Vui lòng thử lại.')}
-                      theme="outline"
-                      text="signin_with"
-                      shape="pill"
-                      size="large"
-                      />
-                    </Suspense>
-                  </div>
-                )}
-
-                {facebookLoginEnabled && facebookAppId && (
-                  <button
-                    type="button"
-                    onClick={handleFacebookLogin}
-                    disabled={loading || !facebookReady}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#1877f2]/30 bg-[#1877f2] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1667d9] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                      <path d="M13.5 22v-8h2.7l.4-3h-3.1V9.1c0-.9.3-1.5 1.6-1.5h1.7V5c-.3 0-1.4-.1-2.6-.1-2.6 0-4.3 1.5-4.3 4.4V11H7v3h2.9v8h3.6z" />
-                    </svg>
-                    {facebookReady ? 'Tiếp tục với Facebook' : 'Đang tải Facebook...'}
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                Chưa cấu hình Google OAuth client ID.
-              </div>
-            )}
-          </div>
-        )}
 
         <div className="mt-4 text-sm text-gray-600">
           {mode === 'login' && (
