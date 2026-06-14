@@ -237,7 +237,7 @@ const ProductQuickSearch = ({ open, onClose }) => {
                       className="h-20 w-20 shrink-0 rounded-xl border border-gray-100 bg-gray-50 object-contain"
                     />
                     <span className="min-w-0 flex-1 py-1">
-                      <span className="line-clamp-2 text-sm font-black leading-snug text-[#111]">{product.name}</span>
+                      <span className="text-sm font-black leading-snug text-[#111]">{product.name}</span>
                       <span className="mt-2 flex flex-wrap items-center gap-2">
                         <span className="text-base font-black text-[#e30613]">{formatVnd(pricing.currentPrice || product.price)}</span>
                       </span>

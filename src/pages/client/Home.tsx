@@ -420,7 +420,7 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }: ProductCardProps) => (
       </div>
 
       <div className="px-0.5 pt-2">
-        <h3 className="line-clamp-2 font-sans text-[1rem] font-black leading-[1.12] text-[#111] max-[390px]:text-[0.88rem]">
+        <h3 className="font-sans text-[1rem] font-black leading-[1.12] text-[#111] max-[390px]:text-[0.88rem]">
           {product.name}
         </h3>
         <div className="mt-2">

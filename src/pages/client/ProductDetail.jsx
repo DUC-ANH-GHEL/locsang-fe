@@ -567,7 +567,7 @@ const ProductDetail = () => {
                       />
                     </div>
                     <div className="px-0.5 pb-1.5 pt-2">
-                      <div className="line-clamp-2 min-h-[2.15rem] text-[1rem] font-black leading-[1.08] text-[#111] max-[390px]:text-[0.9rem]">
+                      <div className="text-[1rem] font-black leading-[1.08] text-[#111] max-[390px]:text-[0.9rem]">
                         {item.name}
                       </div>
                       <div className="mt-2 flex flex-wrap items-end gap-1.5">

@@ -324,7 +324,7 @@ const ProductCard = ({ product, onOpen, onAdd, onBuy }) => {
         </div>
 
         <div className="px-0.5 pt-2">
-          <h2 className="line-clamp-2 font-sans text-[1rem] font-black leading-[1.12] text-[#111] max-[390px]:text-[0.88rem]">
+          <h2 className="font-sans text-[1rem] font-black leading-[1.12] text-[#111] max-[390px]:text-[0.88rem]">
             {product.name}
           </h2>
           <div className="mt-2">
