@@ -17,7 +17,6 @@ export default defineConfig({
             return 'vendor-react';
           }
           if (id.includes('lucide-react')) return 'vendor-icons';
-          if (id.includes('@react-oauth')) return 'vendor-google-auth';
           if (id.includes('browser-image-compression')) return 'vendor-image-tools';
           if (id.includes('framer-motion')) return 'vendor-motion';
           if (id.includes('axios')) return 'vendor-http';

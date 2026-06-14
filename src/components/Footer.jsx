@@ -12,13 +12,16 @@ const FOOTER_CONTENT = {
 
 function Footer() {
   const location = useLocation();
-  const hasMobileProductActions = /^\/products\/\d+/.test(location.pathname);
+  const hasMobileProductActions = /^\/products\/\d+/.test(location.pathname) || /^\/san-pham\/[^/]+/.test(location.pathname);
+  const footerClass = hasMobileProductActions
+    ? 'hidden border-t border-[#eeeeee] bg-white text-[#1f1f1f] md:block'
+    : 'border-t border-[#eeeeee] bg-white text-[#1f1f1f]';
   const footerInnerClass = hasMobileProductActions
-    ? 'mx-auto flex w-full max-w-[944px] flex-col gap-5 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+13.75rem)] pt-6 sm:px-6 md:flex-row md:items-center md:justify-between md:gap-8 md:pb-8 md:pt-8'
+    ? 'mx-auto flex w-full max-w-[944px] flex-col gap-5 px-4 pb-8 pt-8 sm:px-6 md:flex-row md:items-center md:justify-between md:gap-8'
     : 'mx-auto flex w-full max-w-[944px] flex-col gap-5 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+6.4rem)] pt-6 sm:px-6 md:flex-row md:items-center md:justify-between md:gap-8 md:pb-8 md:pt-8';
 
   return (
-    <footer className="border-t border-[#eeeeee] bg-white text-[#1f1f1f]">
+    <footer className={footerClass}>
       <div className={footerInnerClass}>
         <div className="min-w-0">
           <div className="flex items-center gap-3">

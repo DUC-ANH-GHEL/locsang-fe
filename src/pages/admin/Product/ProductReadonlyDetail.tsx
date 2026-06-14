@@ -33,6 +33,92 @@ const getText = (value: unknown, fallback = '-') => {
   return text || fallback;
 };
 
+const escapeHtml = (value: unknown) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const decodeHtmlEntities = (value: unknown) => {
+  const raw = String(value ?? '');
+  if (typeof window === 'undefined' || !/[&][a-z#0-9]+;/i.test(raw)) return raw;
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = raw;
+  return textarea.value;
+};
+
+const sanitizeDescriptionHtml = (value: unknown) => {
+  const raw = decodeHtmlEntities(value).trim();
+  if (!raw) return '';
+  if (typeof window === 'undefined') return escapeHtml(raw);
+
+  const hasHtml = /<\/?[a-z][\s\S]*>/i.test(raw);
+  const html = hasHtml
+    ? raw
+    : raw
+        .split(/\n{2,}/)
+        .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
+        .join('');
+
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  const allowedTags = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'UL', 'OL', 'LI', 'H2', 'H3', 'BLOCKQUOTE', 'A', 'IMG']);
+  const blockTags = new Set(['P', 'H2', 'H3', 'BLOCKQUOTE', 'LI']);
+  const normalizeTextAlign = (style: string | null) => {
+    const match = String(style || '').match(/text-align\s*:\s*(left|center|right)/i);
+    return match ? `text-align: ${match[1].toLowerCase()};` : '';
+  };
+
+  const walk = (node: Node) => {
+    Array.from(node.childNodes).forEach((child) => {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        const element = child as HTMLElement;
+        if (element.tagName === 'SCRIPT' || element.tagName === 'STYLE') {
+          element.remove();
+          return;
+        }
+        if (!allowedTags.has(element.tagName)) {
+          const children = Array.from(element.childNodes);
+          element.replaceWith(...children);
+          children.forEach(walk);
+          return;
+        }
+
+        const textAlign = blockTags.has(element.tagName) ? normalizeTextAlign(element.getAttribute('style')) : '';
+        const linkHref = element.tagName === 'A' ? String((element as HTMLAnchorElement).href || element.getAttribute('href') || '').trim() : '';
+        const imageSrc = element.tagName === 'IMG' ? String((element as HTMLImageElement).src || element.getAttribute('src') || '').trim() : '';
+        const imageAlt = element.tagName === 'IMG' ? String((element as HTMLImageElement).alt || element.getAttribute('alt') || 'Ảnh mô tả sản phẩm').slice(0, 160) : '';
+        Array.from(element.attributes).forEach((attribute) => element.removeAttribute(attribute.name));
+        if (textAlign) element.setAttribute('style', textAlign);
+        if (element.tagName === 'A') {
+          if (!/^https?:\/\//i.test(linkHref) && !/^tel:/i.test(linkHref)) {
+            element.replaceWith(...Array.from(element.childNodes));
+            return;
+          }
+          element.setAttribute('href', linkHref);
+          element.setAttribute('target', '_blank');
+          element.setAttribute('rel', 'noopener noreferrer');
+        }
+        if (element.tagName === 'IMG') {
+          if (!/^https?:\/\//i.test(imageSrc)) {
+            element.remove();
+            return;
+          }
+          element.setAttribute('src', imageSrc);
+          element.setAttribute('alt', imageAlt);
+          element.setAttribute('loading', 'lazy');
+        }
+      }
+      walk(child);
+    });
+  };
+
+  walk(template.content);
+  return template.innerHTML.trim();
+};
+
 const toNumber = (value: unknown) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
@@ -180,6 +266,7 @@ const ProductReadonlyDetail = () => {
   const images = useMemo(() => getImageList(product), [product]);
   const variants = useMemo(() => (Array.isArray(product?.variants) ? product.variants : []), [product]);
   const specs = useMemo(() => getSpecs(product), [product]);
+  const descriptionHtml = useMemo(() => sanitizeDescriptionHtml(product?.description), [product?.description]);
 
   useEffect(() => {
     setActiveImage(images[0] || fallbackImage);
@@ -366,13 +453,16 @@ const ProductReadonlyDetail = () => {
             )}
           </section>
 
-          {product.description && (
+          {descriptionHtml && (
             <section className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
               <div className="mb-4 flex items-center gap-2">
                 <FileText size={19} className="text-rose-600" />
                 <h2 className="text-lg font-black text-slate-950 dark:text-white">Mô tả chi tiết</h2>
               </div>
-              <div className="whitespace-pre-wrap text-sm font-medium leading-7 text-slate-700 dark:text-slate-200">{product.description}</div>
+              <div
+                className="text-sm font-medium leading-7 text-slate-700 dark:text-slate-200 [&_a]:font-bold [&_a]:text-rose-600 [&_blockquote]:border-l-4 [&_blockquote]:border-rose-200 [&_blockquote]:bg-rose-50 [&_blockquote]:px-3 [&_blockquote]:py-2 dark:[&_blockquote]:bg-rose-500/10 [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-black [&_h3]:mb-2 [&_h3]:mt-3 [&_h3]:text-lg [&_h3]:font-black [&_img]:my-3 [&_img]:max-h-[28rem] [&_img]:max-w-full [&_img]:rounded-2xl [&_img]:border [&_img]:border-slate-200 [&_li]:ml-5 [&_ol]:list-decimal [&_p]:mb-2 [&_strong]:font-black [&_ul]:list-disc"
+                dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+              />
             </section>
           )}
         </div>

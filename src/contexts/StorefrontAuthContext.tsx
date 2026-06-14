@@ -4,7 +4,6 @@ import {
   clearStorefrontSession,
   getStorefrontMe,
   loginStorefrontFacebook,
-  loginStorefrontGoogle,
   loadStoredStorefrontToken,
   loadStoredStorefrontUser,
   loginStorefrontAccount,
@@ -35,7 +34,6 @@ type StorefrontAuthContextValue = {
   isAuthenticated: boolean;
   loading: boolean;
   login: (payload: LoginPayload) => Promise<StorefrontUser>;
-  loginWithGoogle: (payload: { id_token: string; client_id?: string }) => Promise<StorefrontUser>;
   loginWithFacebook: (payload: { access_token: string; user_id?: string }) => Promise<StorefrontUser>;
   register: (payload: RegisterPayload) => Promise<StorefrontUser>;
   refreshUser: () => Promise<StorefrontUser | null>;
@@ -59,13 +57,6 @@ export const StorefrontAuthProvider = ({ children }: { children: React.ReactNode
 
   const login = async (payload: LoginPayload) => {
     const auth = await loginStorefrontAccount(payload);
-    saveStorefrontSession(auth);
-    setUser(auth.user);
-    return auth.user;
-  };
-
-  const loginWithGoogle = async (payload: { id_token: string; client_id?: string }) => {
-    const auth = await loginStorefrontGoogle(payload);
     saveStorefrontSession(auth);
     setUser(auth.user);
     return auth.user;
@@ -125,7 +116,6 @@ export const StorefrontAuthProvider = ({ children }: { children: React.ReactNode
       isAuthenticated,
       loading,
       login,
-      loginWithGoogle,
       loginWithFacebook,
       register,
       refreshUser,

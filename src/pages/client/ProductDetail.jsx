@@ -55,8 +55,16 @@ const escapeHtml = (value) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+const decodeHtmlEntities = (value) => {
+  const raw = String(value || '');
+  if (typeof window === 'undefined' || !/[&][a-z#0-9]+;/i.test(raw)) return raw;
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = raw;
+  return textarea.value;
+};
+
 const sanitizeDescriptionHtml = (value) => {
-  const raw = String(value || '').trim();
+  const raw = decodeHtmlEntities(value).trim();
   if (!raw) return '';
   if (typeof window === 'undefined') return escapeHtml(raw);
 

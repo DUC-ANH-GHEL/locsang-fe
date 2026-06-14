@@ -319,8 +319,12 @@ const escapeRichTextText = (value: string) =>
 
 const sanitizeRichText = (html: string) => {
   if (typeof window === 'undefined') return String(html || '');
+  const decodeTextarea = document.createElement('textarea');
+  const inputHtml = String(html || '');
+  decodeTextarea.innerHTML = inputHtml;
+  const decodedHtml = /[&][a-z#0-9]+;/i.test(inputHtml) ? decodeTextarea.value : inputHtml;
   const template = document.createElement('template');
-  template.innerHTML = String(html || '');
+  template.innerHTML = decodedHtml;
   const allowedTags = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'UL', 'OL', 'LI', 'H2', 'H3', 'BLOCKQUOTE', 'A', 'IMG']);
   const blockTags = new Set(['P', 'H2', 'H3', 'BLOCKQUOTE', 'LI']);
 

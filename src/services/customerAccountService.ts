@@ -149,11 +149,6 @@ export const loginStorefrontAccount = async (payload: { email: string; password:
   return response.data;
 };
 
-export const loginStorefrontGoogle = async (payload: { id_token: string; client_id?: string }) => {
-  const response = await publicApi.post<AuthResponse>('/account/google', payload);
-  return response.data;
-};
-
 export const loginStorefrontFacebook = async (payload: { access_token: string; user_id?: string }) => {
   const response = await publicApi.post<AuthResponse>('/account/facebook', payload);
   return response.data;
