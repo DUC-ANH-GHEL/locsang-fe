@@ -9,6 +9,7 @@ import { getProductPricing } from '../../utils/productPricing';
 import { flyProductImageToCart } from '../../utils/cartFlyAnimation';
 import { getProductCardImageUrl, getProductDetailImageUrl } from '../../utils/cloudinaryImage';
 import { useSEO } from '../../hooks/useSEO';
+import { stripClipboardFragments } from '../../utils/richTextSanitizer';
 import {
   formatVnd,
   canPurchaseVariant,
@@ -40,7 +41,7 @@ const getGalleryImages = (product, variant) => {
 };
 
 const cleanText = (value) =>
-  String(value || '')
+  stripClipboardFragments(String(value || ''))
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
     .replace(/<[^>]*>/g, '')
@@ -56,15 +57,15 @@ const escapeHtml = (value) =>
     .replace(/'/g, '&#39;');
 
 const decodeHtmlEntities = (value) => {
-  const raw = String(value || '');
+  const raw = stripClipboardFragments(String(value || ''));
   if (typeof window === 'undefined' || !/[&][a-z#0-9]+;/i.test(raw)) return raw;
   const textarea = document.createElement('textarea');
   textarea.innerHTML = raw;
-  return textarea.value;
+  return stripClipboardFragments(textarea.value);
 };
 
 const sanitizeDescriptionHtml = (value) => {
-  const raw = decodeHtmlEntities(value).trim();
+  const raw = stripClipboardFragments(decodeHtmlEntities(stripClipboardFragments(value))).trim();
   if (!raw) return '';
   if (typeof window === 'undefined') return escapeHtml(raw);
 
@@ -164,7 +165,7 @@ const sanitizeDescriptionHtml = (value) => {
   };
 
   walk(template.content);
-  return template.innerHTML.trim();
+  return stripClipboardFragments(template.innerHTML).trim();
 };
 
 const ProductDetail = () => {

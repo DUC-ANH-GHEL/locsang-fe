@@ -27,6 +27,7 @@ import {
 import ImageUploader from './ImageUploader';
 import { useToast } from '../Toast';
 import { createCategory as createCategoryApi, getCategories as getCategoriesApi } from '../../services/categoryService';
+import { stripClipboardFragments } from '../../utils/richTextSanitizer';
 import {
   AdminProductPayload,
   AdminProductStatus,
@@ -318,11 +319,11 @@ const escapeRichTextText = (value: string) =>
     .replace(/'/g, '&#39;');
 
 const sanitizeRichText = (html: string) => {
-  if (typeof window === 'undefined') return String(html || '');
+  if (typeof window === 'undefined') return stripClipboardFragments(String(html || ''));
   const decodeTextarea = document.createElement('textarea');
-  const inputHtml = String(html || '');
+  const inputHtml = stripClipboardFragments(String(html || ''));
   decodeTextarea.innerHTML = inputHtml;
-  const decodedHtml = /[&][a-z#0-9]+;/i.test(inputHtml) ? decodeTextarea.value : inputHtml;
+  const decodedHtml = stripClipboardFragments(/[&][a-z#0-9]+;/i.test(inputHtml) ? decodeTextarea.value : inputHtml);
   const template = document.createElement('template');
   template.innerHTML = decodedHtml;
   const allowedTags = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'UL', 'OL', 'LI', 'H2', 'H3', 'BLOCKQUOTE', 'A', 'IMG']);
@@ -427,7 +428,7 @@ const sanitizeRichText = (html: string) => {
   };
 
   walk(template.content);
-  return template.innerHTML
+  return stripClipboardFragments(template.innerHTML)
     .replace(/<div>/gi, '<p>')
     .replace(/<\/div>/gi, '</p>')
     .replace(/&nbsp;/gi, ' ')
@@ -1544,7 +1545,7 @@ const ProductForm = ({ id, onSuccess, onCancel, readOnly = false }: ProductFormP
       name: currentDraft.name.trim(),
       slug: currentDraft.slug.trim(),
       short_description: currentDraft.shortDescription.trim() || null,
-      description: currentDraft.description.trim() || null,
+      description: sanitizeRichText(currentDraft.description).trim() || null,
       status: currentDraft.status,
       category_id: Number(currentDraft.categoryId),
       brand: currentDraft.brand.trim() || 'Yanmar',

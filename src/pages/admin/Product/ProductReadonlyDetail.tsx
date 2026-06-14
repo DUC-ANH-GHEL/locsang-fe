@@ -19,6 +19,7 @@ import Breadcrumb from '../../../components/layout/Breadcrumb';
 import { useToast } from '../../../components/Toast';
 import { productService } from '../../../services/productService';
 import { formatViDateTime } from '../../../utils/dateTime';
+import { stripClipboardFragments } from '../../../utils/richTextSanitizer';
 
 const fallbackImage = '/favicon.svg';
 
@@ -42,15 +43,15 @@ const escapeHtml = (value: unknown) =>
     .replace(/'/g, '&#39;');
 
 const decodeHtmlEntities = (value: unknown) => {
-  const raw = String(value ?? '');
+  const raw = stripClipboardFragments(String(value ?? ''));
   if (typeof window === 'undefined' || !/[&][a-z#0-9]+;/i.test(raw)) return raw;
   const textarea = document.createElement('textarea');
   textarea.innerHTML = raw;
-  return textarea.value;
+  return stripClipboardFragments(textarea.value);
 };
 
 const sanitizeDescriptionHtml = (value: unknown) => {
-  const raw = decodeHtmlEntities(value).trim();
+  const raw = stripClipboardFragments(decodeHtmlEntities(value)).trim();
   if (!raw) return '';
   if (typeof window === 'undefined') return escapeHtml(raw);
 
@@ -116,7 +117,7 @@ const sanitizeDescriptionHtml = (value: unknown) => {
   };
 
   walk(template.content);
-  return template.innerHTML.trim();
+  return stripClipboardFragments(template.innerHTML).trim();
 };
 
 const toNumber = (value: unknown) => {
