@@ -7,7 +7,7 @@ const FOOTER_HOTLINE = '0985763838';
 const FOOTER_CONTENT = {
   footer_brand_name: 'Yanmar Lộc Sang',
   footer_mobile_description: 'Phụ tùng và dầu nhớt Yanmar chính hãng.',
-  footer_desktop_caption: 'Phụ tùng và dầu nhớt Yanmar chính hãng, đại lý trực tiếp bởi Lộc Sang.',
+  footer_desktop_caption: 'Phụ tùng và dầu nhớt Yanmar chính hãng, đại lý trực tiếp bởi Yanmar Lộc Sang.',
 };
 
 function Footer() {
