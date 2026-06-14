@@ -166,11 +166,11 @@ const AdminLayout = () => {
 
   return (
     <div className={darkMode ? 'dark' : ''}>
-      <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
+      <div className="min-h-screen overflow-x-hidden bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
         <Sidebar sidebarOpen={sidebarOpen} toggleSidebar={() => setSidebarOpen((value) => !value)} />
         <AdminDrawer open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
 
-        <div className={`min-h-screen transition-[margin] duration-300 ease-in-out ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
+        <div className={`min-h-screen min-w-0 overflow-x-hidden transition-[margin] duration-300 ease-in-out ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
           <Header
             sidebarOpen={sidebarOpen}
             darkMode={darkMode}
@@ -180,7 +180,7 @@ const AdminLayout = () => {
 
           <main
             ref={mainRef}
-            className="h-screen overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom,0px)+6.4rem)] pt-[5.7rem] sm:px-6 lg:px-8 lg:pb-8 lg:pt-[5.75rem]"
+            className="h-screen overflow-x-hidden overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom,0px)+6.4rem)] pt-[5.7rem] sm:px-6 lg:px-8 lg:pb-8 lg:pt-[5.75rem]"
           >
             <div className="mx-auto w-full max-w-7xl">
               <Outlet />

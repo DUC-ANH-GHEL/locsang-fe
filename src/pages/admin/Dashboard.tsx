@@ -71,7 +71,7 @@ const StatCard = ({
   return (
     <Link
       to={href}
-      className="group rounded-[1.4rem] border border-slate-200 bg-white p-4 shadow-[0_18px_55px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-[0_22px_65px_rgba(225,29,72,0.12)] dark:border-slate-800 dark:bg-slate-900"
+      className="group min-w-0 rounded-[1.4rem] border border-slate-200 bg-white p-4 shadow-[0_18px_55px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-[0_22px_65px_rgba(225,29,72,0.12)] dark:border-slate-800 dark:bg-slate-900"
     >
       <div className="flex items-start justify-between gap-3">
         <span className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl ring-1 ${toneClass}`}>
@@ -156,11 +156,11 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-5 pb-24 sm:px-6 lg:px-8">
-      <section className="overflow-hidden rounded-[1.8rem] border border-slate-200 bg-white shadow-[0_22px_70px_rgba(15,23,42,0.07)] dark:border-slate-800 dark:bg-slate-900">
-        <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="p-5 sm:p-7">
-            <div className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1.5 text-xs font-black uppercase tracking-[0.04em] text-rose-700 ring-1 ring-rose-100 dark:bg-rose-500/10 dark:text-rose-200 dark:ring-rose-500/20">
+    <div className="mx-auto w-full max-w-7xl overflow-x-hidden py-5 pb-24">
+      <section className="min-w-0 overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-[0_22px_70px_rgba(15,23,42,0.07)] dark:border-slate-800 dark:bg-slate-900 sm:rounded-[1.8rem]">
+        <div className="grid min-w-0 gap-0 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="min-w-0 p-4 sm:p-7">
+            <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-rose-50 px-3 py-1.5 text-xs font-black uppercase tracking-[0.04em] text-rose-700 ring-1 ring-rose-100 dark:bg-rose-500/10 dark:text-rose-200 dark:ring-rose-500/20">
               <ShoppingCart size={15} strokeWidth={2.4} />
               Bán hàng Lộc Sang
             </div>
@@ -171,24 +171,24 @@ const Dashboard = () => {
               Tập trung vào những việc cần xử lý ngay: đơn mới, doanh thu gần đây và sản phẩm sắp hết hàng.
             </p>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <div className="mt-6 grid min-w-0 gap-3 sm:grid-cols-3">
               {quickActions.map((action) => {
                 const Icon = action.icon;
                 return (
                   <Link
                     key={action.href}
                     to={action.href}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-800 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-rose-500/10"
+                    className="inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 text-center text-sm font-black text-slate-800 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-rose-500/10 sm:px-4"
                   >
-                    <Icon size={18} strokeWidth={2.3} />
-                    {action.label}
+                    <Icon size={18} strokeWidth={2.3} className="shrink-0" />
+                    <span className="min-w-0 leading-tight">{action.label}</span>
                   </Link>
                 );
               })}
             </div>
           </div>
 
-          <div className="border-t border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/60 lg:border-l lg:border-t-0">
+          <div className="min-w-0 border-t border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60 sm:p-5 lg:border-l lg:border-t-0">
             <div className="rounded-[1.4rem] bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -197,7 +197,7 @@ const Dashboard = () => {
                 </div>
                 <div className="text-4xl font-black tracking-tight text-rose-600">{loading ? '-' : dashboard.attentionCount}</div>
               </div>
-              <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+              <div className="mt-5 grid min-w-0 grid-cols-3 gap-2 text-center">
                 <div className="rounded-2xl bg-rose-50 p-3 text-rose-700 dark:bg-rose-500/10 dark:text-rose-200">
                   <div className="text-xl font-black">{loading ? '-' : dashboard.pendingOrders.length}</div>
                   <div className="mt-0.5 text-[0.72rem] font-bold">Đơn mới</div>
