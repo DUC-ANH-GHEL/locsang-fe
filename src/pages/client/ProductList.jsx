@@ -55,7 +55,7 @@ const ProductList = () => {
         : 'all';
 
   useSEO({
-    title: 'Phụ tùng và nhớt Yanmar',
+    title: 'Danh sách sản phẩm',
     description: 'Danh sách phụ tùng, lọc nhớt, lọc gió, dây curoa và dầu nhớt Yanmar chính hãng tại Lộc Sang.',
     canonicalPath: '/products',
   });
@@ -212,7 +212,7 @@ const ProductList = () => {
     <div className="bg-white text-[#111] md:bg-[#f5f5f5]">
       <main className="mx-auto w-full max-w-[944px] bg-white px-3.5 pb-8 pt-5 font-sans sm:px-6 md:shadow-2xl md:shadow-black/10">
         <h1 className="font-sans text-[2.05rem] font-black leading-none tracking-normal text-black max-[390px]:text-[1.82rem]">
-          Phụ tùng & nhớt
+          Danh sách sản phẩm
         </h1>
 
         <div className="mt-4 flex gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
