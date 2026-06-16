@@ -344,7 +344,7 @@ const ProductDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white pb-[calc(env(safe-area-inset-bottom,0px)+10.3rem)] text-[#111] md:bg-[#f5f5f5]">
+    <div className="min-h-screen bg-white pb-[calc(env(safe-area-inset-bottom,0px)+13.5rem)] text-[#111] md:bg-[#f5f5f5] md:pb-0">
       <main className="mx-auto w-full max-w-[944px] bg-white font-sans md:shadow-2xl md:shadow-black/10">
         <section className="relative border-b border-[#e5e5e5] bg-white">
           {discountLabel && (
@@ -390,7 +390,7 @@ const ProductDetail = () => {
           </section>
         )}
 
-        <section className="px-4 py-4">
+        <section className="px-4 pb-6 pt-4">
           <h1 className="font-sans text-[2rem] font-black leading-tight text-[#333] max-[390px]:text-[1.55rem]">
             {product.name}
           </h1>
@@ -509,7 +509,7 @@ const ProductDetail = () => {
 
 
           {longDescription && (
-            <div className="mt-4 rounded-xl border border-[#e1e1e1] bg-white p-4">
+            <div className="mt-5 rounded-xl border border-[#e1e1e1] bg-white p-4 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
               <h2 className="text-[1.05rem] font-black uppercase text-[#111]">Mô tả sản phẩm</h2>
               <div
                 className="mt-2 text-[1rem] font-medium leading-7 text-[#444] [&_a]:font-bold [&_a]:text-[#e30613] [&_blockquote]:border-l-4 [&_blockquote]:border-[#f3a5ac] [&_blockquote]:bg-[#fff1f2] [&_blockquote]:px-3 [&_blockquote]:py-2 [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-black [&_h3]:mb-2 [&_h3]:mt-3 [&_h3]:text-lg [&_h3]:font-black [&_img]:my-3 [&_img]:max-h-[26rem] [&_img]:max-w-full [&_img]:rounded-xl [&_img]:border [&_img]:border-[#eeeeee] [&_li]:ml-5 [&_ol]:list-decimal [&_p]:mb-2 [&_strong]:font-black [&_ul]:list-disc"
@@ -533,7 +533,7 @@ const ProductDetail = () => {
         </section>
 
         {relatedProducts.length > 0 && (
-          <section className="mt-5 border-t border-[#eeeeee] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+10.5rem)] pt-5 md:pb-8">
+          <section className="mt-5 border-t border-[#eeeeee] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+13.5rem)] pt-5 md:pb-8">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-sans text-[1.2rem] font-black uppercase text-[#111]">Sản phẩm liên quan</h2>
               <button type="button" onClick={() => navigate('/products')} className="flex items-center gap-1 text-sm font-bold text-[#e30613]">
@@ -586,6 +586,9 @@ const ProductDetail = () => {
               })}
             </div>
           </section>
+        )}
+        {relatedProducts.length === 0 && (
+          <div className="h-[calc(env(safe-area-inset-bottom,0px)+8.5rem)] md:hidden" aria-hidden="true" />
         )}
       </main>
 

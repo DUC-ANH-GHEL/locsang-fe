@@ -4,9 +4,10 @@ import { ChevronLeft, ShoppingCart, X } from 'lucide-react';
 
 import { useCart } from '../../contexts/CartContext';
 import { checkoutService } from '../../services/checkoutService';
+import { productService } from '../../services/productService';
 import { useStorefrontAuth } from '../../contexts/StorefrontAuthContext';
 import { useSEO } from '../../hooks/useSEO';
-import { formatVnd } from '../../data/yanmarStorefront';
+import { canPurchaseProduct, canPurchaseVariant, formatVnd } from '../../data/yanmarStorefront';
 import BrandLockup from '../../components/BrandLockup';
 
 const VN_PHONE_REGEX = /^(?:\+?84|0)\d{9,10}$/;
@@ -75,9 +76,12 @@ const Checkout = () => {
   const [form, setForm] = useState(loadSavedForm);
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
+  const [cartNotice, setCartNotice] = useState('');
+  const [checkingCart, setCheckingCart] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [orderResult, setOrderResult] = useState(null);
   const fieldRefs = useRef({});
+  const cartCheckRef = useRef(0);
 
   useSEO({
     title: 'Thanh toán',
@@ -110,6 +114,83 @@ const Checkout = () => {
     () => cart.filter((item) => !Number.isFinite(Number(item.product_id)) || Number(item.product_id) <= 0),
     [cart],
   );
+  const cartAvailabilityKey = useMemo(
+    () => cart.map((item) => `${item.item_key}:${item.product_id}:${item.product_variant_id}`).join('|'),
+    [cart],
+  );
+
+  const validateCartAvailability = async ({ silent = false } = {}) => {
+    const checkId = cartCheckRef.current + 1;
+    cartCheckRef.current = checkId;
+    if (cart.length === 0) return { removed: 0, valid: true };
+
+    if (!silent) setCheckingCart(true);
+    const removedKeys = new Set();
+
+    try {
+      const uniqueProductIds = Array.from(
+        new Set(
+          cart
+            .map((item) => Number(item.product_id))
+            .filter((productId) => Number.isFinite(productId) && productId > 0),
+        ),
+      );
+      const productEntries = await Promise.all(
+        uniqueProductIds.map(async (productId) => [
+          productId,
+          await productService.getStorefrontProductByIdFresh(productId),
+        ]),
+      );
+      const productById = new Map(productEntries);
+
+      cart.forEach((item) => {
+        const productId = Number(item.product_id);
+        if (!Number.isFinite(productId) || productId <= 0) {
+          removedKeys.add(item.item_key);
+          return;
+        }
+
+        const product = productById.get(productId);
+        if (!product || !canPurchaseProduct(product)) {
+          removedKeys.add(item.item_key);
+          return;
+        }
+
+        const variantId = Number(item.product_variant_id);
+        if (Number.isFinite(variantId) && variantId > 0) {
+          const variant = Array.isArray(product.variants)
+            ? product.variants.find((candidate) => Number(candidate?.id) === variantId)
+            : null;
+          if (!variant || !canPurchaseVariant(variant)) {
+            removedKeys.add(item.item_key);
+          }
+        }
+      });
+
+      if (cartCheckRef.current !== checkId) return { removed: 0, valid: false };
+
+      removedKeys.forEach((itemKey) => removeFromCart(itemKey));
+      if (removedKeys.size > 0) {
+        const message = 'Một số sản phẩm trong giỏ đã ngừng bán hoặc hết hàng nên đã được tự động xóa khỏi giỏ.';
+        setCartNotice(message);
+        setSubmitError(message);
+      } else if (!silent) {
+        setCartNotice('');
+      }
+      return { removed: removedKeys.size, valid: removedKeys.size === 0 };
+    } catch {
+      if (!silent) {
+        setCartNotice('Chưa kiểm tra được tình trạng sản phẩm. Vui lòng thử đặt hàng lại sau vài giây.');
+      }
+      return { removed: 0, valid: true };
+    } finally {
+      if (cartCheckRef.current === checkId) setCheckingCart(false);
+    }
+  };
+
+  useEffect(() => {
+    validateCartAvailability({ silent: true });
+  }, [cartAvailabilityKey]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -129,6 +210,9 @@ const Checkout = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const availability = await validateCartAvailability();
+    if (!availability.valid) return;
+
     const nextErrors = validate(form);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -170,14 +254,18 @@ const Checkout = () => {
       appendOrderToLocalHistory(orderData, form);
       clearCart();
     } catch (error) {
-      setSubmitError(
-        String(
-          error?.response?.data?.message ||
-            error?.response?.data?.detail ||
-            error?.message ||
-            'Không thể tạo đơn hàng. Vui lòng thử lại.',
-        ),
+      const rawMessage = String(
+        error?.response?.data?.message ||
+          error?.response?.data?.detail ||
+          error?.message ||
+          '',
       );
+      if (/product\s+\d+\s+is\s+not\s+available/i.test(rawMessage)) {
+        await validateCartAvailability();
+        setSubmitError('Sản phẩm trong giỏ đã ngừng bán hoặc hết hàng. Hệ thống đã cập nhật lại giỏ hàng, vui lòng kiểm tra lại.');
+        return;
+      }
+      setSubmitError(rawMessage || 'Không thể tạo đơn hàng. Vui lòng thử lại.');
     } finally {
       setSubmitting(false);
     }
@@ -256,6 +344,18 @@ const Checkout = () => {
           <SummaryRow label="Tổng cộng" value={formatVnd(total)} strong />
         </section>
 
+        {(checkingCart || cartNotice) && (
+          <div
+            className={`mt-3 rounded-xl border px-4 py-3 text-sm font-semibold ${
+              checkingCart
+                ? 'border-[#dbe7ff] bg-[#f4f8ff] text-[#31527a]'
+                : 'border-[#ffd6da] bg-[#fff1f2] text-[#c60010]'
+            }`}
+          >
+            {checkingCart ? 'Đang kiểm tra lại giỏ hàng...' : cartNotice}
+          </div>
+        )}
+
         <form id="checkout-form" onSubmit={handleSubmit} className="mt-4">
           <section className="rounded-xl border border-[#e2e2e2] bg-white px-4 py-4 shadow-[0_2px_10px_rgba(0,0,0,0.05)]">
             <h2 className="font-sans text-[1.15rem] font-black uppercase text-[#111]">Thông tin khách hàng</h2>
@@ -325,10 +425,10 @@ const Checkout = () => {
             <button
               type="submit"
               form="checkout-form"
-              disabled={submitting}
+              disabled={submitting || checkingCart}
               className="h-14 min-w-[12.5rem] rounded-xl bg-[#e30613] px-5 text-lg font-black text-white shadow-[0_10px_22px_rgba(227,6,19,0.24)] active:translate-y-px disabled:bg-[#bbbbbb] max-[390px]:min-w-[10.5rem] max-[390px]:text-base"
             >
-              {submitting ? 'Đang đặt...' : 'Đặt hàng ngay'}
+              {submitting ? 'Đang đặt...' : checkingCart ? 'Đang kiểm tra...' : 'Đặt hàng ngay'}
             </button>
           </div>
         </div>

@@ -561,6 +561,24 @@ export const getStorefrontProductById = async (id: number | string) => {
   );
 };
 
+export const getStorefrontProductByIdFresh = async (id: number | string) => {
+  const productId = Number(id);
+  if (!Number.isFinite(productId) || productId <= 0) return null;
+
+  try {
+    const response = await axios.get(`${getPublicApiBaseUrl()}/products/${productId}`, {
+      params: { _checkout: Date.now() },
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    const raw = response?.data?.data;
+    if (!raw) return null;
+    return normalizePublicProduct(raw);
+  } catch (error: any) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) return null;
+    throw error;
+  }
+};
+
 export const getStorefrontProductBySlug = async (slug: string) => {
   const safeSlug = String(slug || '').trim();
   if (!safeSlug) return null;
@@ -587,6 +605,7 @@ export const productService = {
   getProductById,
   getStorefrontProducts,
   getStorefrontProductById,
+  getStorefrontProductByIdFresh,
   getStorefrontProductBySlug,
   deleteProduct: async (id: number | string) => {
     const productId = Number(id);
