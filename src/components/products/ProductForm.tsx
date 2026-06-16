@@ -1,10 +1,21 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { EditorContent, useEditor } from '@tiptap/react';
+import ImageExtension from '@tiptap/extension-image';
+import LinkExtension from '@tiptap/extension-link';
+import PlaceholderExtension from '@tiptap/extension-placeholder';
+import StarterKit from '@tiptap/starter-kit';
+import TextAlignExtension from '@tiptap/extension-text-align';
+import UnderlineExtension from '@tiptap/extension-underline';
 import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   AlertCircle,
   ArrowLeft,
   BadgeCheck,
   Bold,
+  Eraser,
   Heading2,
   Heading3,
   Image as ImageIcon,
@@ -20,7 +31,7 @@ import {
   Save,
   Settings2,
   Trash2,
-  Underline,
+  Underline as UnderlineIcon,
   Undo2,
 } from 'lucide-react';
 
@@ -310,14 +321,6 @@ const extractImageItemPublicIds = (items: ProductImageDraft[]) =>
       .filter((value): value is string => Boolean(value)),
   );
 
-const escapeRichTextText = (value: string) =>
-  String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
 const sanitizeRichText = (html: string) => {
   if (typeof window === 'undefined') return stripClipboardFragments(String(html || ''));
   const decodeTextarea = document.createElement('textarea');
@@ -597,91 +600,93 @@ type RichTextEditorProps = {
   onChange: (value: string) => void;
 };
 
-type RichTextCommand =
-  | 'bold'
-  | 'italic'
-  | 'underline'
-  | 'insertUnorderedList'
-  | 'insertOrderedList'
-  | 'formatBlock'
-  | 'justifyLeft'
-  | 'justifyCenter'
-  | 'justifyRight'
-  | 'undo'
-  | 'redo'
-  | 'createLink'
-  | 'insertHTML';
-
 const RichTextEditor = ({ value, disabled, placeholder, onImageUpload, onChange }: RichTextEditorProps) => {
-  const editorRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const lastHtmlRef = useRef('');
-  const selectionRef = useRef<Range | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  const editor = useEditor({
+    editable: !disabled,
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [2, 3],
+        },
+      }),
+      UnderlineExtension,
+      LinkExtension.configure({
+        autolink: true,
+        openOnClick: false,
+        linkOnPaste: true,
+        HTMLAttributes: {
+          target: '_blank',
+          rel: 'noopener noreferrer',
+        },
+      }),
+      ImageExtension.configure({
+        allowBase64: false,
+        HTMLAttributes: {
+          loading: 'lazy',
+        },
+      }),
+      TextAlignExtension.configure({
+        types: ['heading', 'paragraph', 'blockquote'],
+        alignments: ['left', 'center', 'right'],
+        defaultAlignment: 'left',
+      }),
+      PlaceholderExtension.configure({
+        placeholder: placeholder || '',
+        emptyEditorClass: 'is-editor-empty',
+      }),
+    ],
+    content: sanitizeRichText(value),
+    onUpdate: ({ editor: currentEditor }) => {
+      onChange(sanitizeRichText(currentEditor.getHTML()));
+    },
+    editorProps: {
+      attributes: {
+        class:
+          'min-h-[220px] max-w-none px-3 py-3 text-sm font-semibold leading-7 text-slate-900 outline-none dark:text-slate-100',
+      },
+      transformPastedHTML: (html) => sanitizeRichText(html),
+    },
+  });
+
   useEffect(() => {
+    editor?.setEditable(!disabled);
+  }, [disabled, editor]);
+
+  useEffect(() => {
+    if (!editor) return;
     const safeValue = sanitizeRichText(value);
-    if (editorRef.current && safeValue !== lastHtmlRef.current) {
-      editorRef.current.innerHTML = safeValue;
-      lastHtmlRef.current = safeValue;
+    if (safeValue !== sanitizeRichText(editor.getHTML())) {
+      editor.commands.setContent(safeValue || '', false);
     }
-  }, [value]);
+  }, [editor, value]);
 
-  const emitChange = () => {
-    if (!editorRef.current) return;
-    const nextValue = sanitizeRichText(editorRef.current.innerHTML);
-    lastHtmlRef.current = nextValue;
-    onChange(nextValue);
-  };
-
-  const saveSelection = () => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-    const range = selection.getRangeAt(0);
-    if (editorRef.current?.contains(range.commonAncestorContainer)) {
-      selectionRef.current = range.cloneRange();
-    }
-  };
-
-  const restoreSelection = () => {
-    const selection = window.getSelection();
-    if (!selection || !selectionRef.current) return;
-    selection.removeAllRanges();
-    selection.addRange(selectionRef.current);
-  };
-
-  const applyCommand = (command: RichTextCommand, valueArg?: string) => {
-    if (disabled) return;
-    editorRef.current?.focus();
-    restoreSelection();
-    document.execCommand(command, false, valueArg);
-    emitChange();
-  };
-
-  const insertHtml = (html: string) => {
-    applyCommand('insertHTML', sanitizeRichText(html));
-  };
-
-  const setBlock = (tagName: 'p' | 'h2' | 'h3' | 'blockquote') => {
-    applyCommand('formatBlock', tagName);
+  const runCommand = (callback: () => void) => {
+    if (!editor || disabled) return;
+    callback();
   };
 
   const insertLink = () => {
-    if (disabled) return;
-    saveSelection();
-    const href = window.prompt('Nhập link cần gắn vào nội dung');
-    if (!href) return;
+    if (!editor || disabled) return;
+    const currentHref = editor.getAttributes('link').href || '';
+    const href = window.prompt('Nhập link cần gắn vào nội dung', currentHref);
+    if (href === null) return;
     const normalized = href.trim();
+    if (!normalized) {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      return;
+    }
     if (!/^https?:\/\//i.test(normalized) && !/^tel:/i.test(normalized)) {
       window.alert('Link cần bắt đầu bằng https://, http:// hoặc tel:');
       return;
     }
-    applyCommand('createLink', normalized);
+    editor.chain().focus().extendMarkRange('link').setLink({ href: normalized }).run();
   };
 
   const insertImageUrl = () => {
-    if (disabled) return;
-    saveSelection();
+    if (!editor || disabled) return;
     const src = window.prompt('Dán URL ảnh cần chèn vào mô tả');
     if (!src) return;
     const normalized = src.trim();
@@ -689,20 +694,19 @@ const RichTextEditor = ({ value, disabled, placeholder, onImageUpload, onChange 
       window.alert('URL ảnh cần bắt đầu bằng https:// hoặc http://');
       return;
     }
-    insertHtml(`<p><img src="${escapeRichTextText(normalized)}" alt="Ảnh mô tả sản phẩm"></p>`);
+    editor.chain().focus().setImage({ src: normalized, alt: 'Ảnh mô tả sản phẩm' }).run();
   };
 
   const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file || disabled || !onImageUpload) return;
+    if (!file || disabled || !onImageUpload || !editor) return;
 
     try {
       setUploadingImage(true);
-      restoreSelection();
       const url = await onImageUpload(file);
       if (!url) throw new Error('Không nhận được URL ảnh.');
-      insertHtml(`<p><img src="${escapeRichTextText(url)}" alt="${escapeRichTextText(file.name || 'Ảnh mô tả sản phẩm')}"></p>`);
+      editor.chain().focus().setImage({ src: url, alt: file.name || 'Ảnh mô tả sản phẩm' }).run();
     } catch (error) {
       console.error('Cannot upload rich text image', error);
       window.alert('Không upload được ảnh mô tả. Vui lòng thử lại.');
@@ -711,140 +715,111 @@ const RichTextEditor = ({ value, disabled, placeholder, onImageUpload, onChange 
     }
   };
 
-  const onPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const html = event.clipboardData.getData('text/html');
-    const text = event.clipboardData.getData('text/plain');
-    if (html) {
-      insertHtml(html);
-      return;
-    }
-    document.execCommand('insertHTML', false, text
-      .split(/\n{2,}/)
-      .map((paragraph) => `<p>${escapeRichTextText(paragraph).replace(/\n/g, '<br>')}</p>`)
-      .join(''));
-    emitChange();
+  const clearFormat = () => {
+    runCommand(() => editor?.chain().focus().clearNodes().unsetAllMarks().run());
   };
 
   const toolbarButtonClass =
-    'inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-lg px-2 text-xs font-black text-slate-800 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-100 dark:hover:bg-slate-800';
+    'inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-lg px-2.5 text-xs font-black text-slate-800 transition hover:bg-white hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-100 dark:hover:bg-slate-800';
+  const activeButtonClass =
+    'bg-white text-rose-600 shadow-sm ring-1 ring-rose-200 dark:bg-slate-800 dark:ring-rose-500/30';
+
+  const ToolbarButton = ({
+    title,
+    active = false,
+    children,
+    onClick,
+  }: {
+    title: string;
+    active?: boolean;
+    children: React.ReactNode;
+    onClick: () => void;
+  }) => (
+    <button
+      type="button"
+      disabled={disabled || !editor}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onClick}
+      className={`${toolbarButtonClass} ${active ? activeButtonClass : ''}`}
+      title={title}
+      aria-label={title}
+    >
+      {children}
+    </button>
+  );
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-300 bg-white transition focus-within:border-rose-500 focus-within:ring-4 focus-within:ring-rose-100 dark:border-slate-700 dark:bg-slate-950 dark:focus-within:ring-rose-500/15">
       <div className="flex flex-wrap gap-1 border-b border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900">
-        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => setBlock('p')} className={toolbarButtonClass}>
+        <ToolbarButton title="Đoạn văn" active={editor?.isActive('paragraph')} onClick={() => runCommand(() => editor?.chain().focus().setParagraph().run())}>
           Đoạn
-        </button>
-        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => setBlock('h2')} className={toolbarButtonClass} title="Tiêu đề lớn">
+        </ToolbarButton>
+        <ToolbarButton title="Tiêu đề H2" active={editor?.isActive('heading', { level: 2 })} onClick={() => runCommand(() => editor?.chain().focus().toggleHeading({ level: 2 }).run())}>
           <Heading2 size={16} />
-        </button>
-        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => setBlock('h3')} className={toolbarButtonClass} title="Tiêu đề nhỏ">
+        </ToolbarButton>
+        <ToolbarButton title="Tiêu đề H3" active={editor?.isActive('heading', { level: 3 })} onClick={() => runCommand(() => editor?.chain().focus().toggleHeading({ level: 3 }).run())}>
           <Heading3 size={16} />
-        </button>
-        <button
-          type="button"
-          disabled={disabled}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => applyCommand('bold')}
-          className={toolbarButtonClass}
-          title="In đậm"
-        >
+        </ToolbarButton>
+        <ToolbarButton title="In đậm" active={editor?.isActive('bold')} onClick={() => runCommand(() => editor?.chain().focus().toggleBold().run())}>
           <Bold size={16} />
-        </button>
-        <button
-          type="button"
-          disabled={disabled}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => applyCommand('italic')}
-          className={toolbarButtonClass}
-          title="In nghiêng"
-        >
+        </ToolbarButton>
+        <ToolbarButton title="In nghiêng" active={editor?.isActive('italic')} onClick={() => runCommand(() => editor?.chain().focus().toggleItalic().run())}>
           <Italic size={16} />
-        </button>
-        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('underline')} className={toolbarButtonClass} title="Gạch chân">
-          <Underline size={16} />
-        </button>
-        <button
-          type="button"
-          disabled={disabled}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => applyCommand('insertUnorderedList')}
-          className={toolbarButtonClass}
-          title="Danh sách chấm"
-        >
+        </ToolbarButton>
+        <ToolbarButton title="Gạch chân" active={editor?.isActive('underline')} onClick={() => runCommand(() => editor?.chain().focus().toggleUnderline().run())}>
+          <UnderlineIcon size={16} />
+        </ToolbarButton>
+        <ToolbarButton title="Danh sách chấm" active={editor?.isActive('bulletList')} onClick={() => runCommand(() => editor?.chain().focus().toggleBulletList().run())}>
           <List size={16} />
-        </button>
-        <button
-          type="button"
-          disabled={disabled}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => applyCommand('insertOrderedList')}
-          className={toolbarButtonClass}
-          title="Danh sách số"
-        >
+        </ToolbarButton>
+        <ToolbarButton title="Danh sách số" active={editor?.isActive('orderedList')} onClick={() => runCommand(() => editor?.chain().focus().toggleOrderedList().run())}>
           <ListOrdered size={16} />
-        </button>
-        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => setBlock('blockquote')} className={toolbarButtonClass} title="Trích dẫn">
+        </ToolbarButton>
+        <ToolbarButton title="Trích dẫn" active={editor?.isActive('blockquote')} onClick={() => runCommand(() => editor?.chain().focus().toggleBlockquote().run())}>
           <Quote size={16} />
-        </button>
-        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('justifyLeft')} className={toolbarButtonClass} title="Căn trái">
-          Trái
-        </button>
-        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('justifyCenter')} className={toolbarButtonClass} title="Căn giữa">
-          Giữa
-        </button>
-        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('justifyRight')} className={toolbarButtonClass} title="Căn phải">
-          Phải
-        </button>
-        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={insertLink} className={toolbarButtonClass} title="Gắn link">
+        </ToolbarButton>
+        <ToolbarButton title="Căn trái" active={editor?.isActive({ textAlign: 'left' })} onClick={() => runCommand(() => editor?.chain().focus().setTextAlign('left').run())}>
+          <AlignLeft size={16} />
+        </ToolbarButton>
+        <ToolbarButton title="Căn giữa" active={editor?.isActive({ textAlign: 'center' })} onClick={() => runCommand(() => editor?.chain().focus().setTextAlign('center').run())}>
+          <AlignCenter size={16} />
+        </ToolbarButton>
+        <ToolbarButton title="Căn phải" active={editor?.isActive({ textAlign: 'right' })} onClick={() => runCommand(() => editor?.chain().focus().setTextAlign('right').run())}>
+          <AlignRight size={16} />
+        </ToolbarButton>
+        <ToolbarButton title="Gắn link" active={editor?.isActive('link')} onClick={insertLink}>
           <LinkIcon size={16} />
-        </button>
-        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={insertImageUrl} className={toolbarButtonClass} title="Chèn ảnh bằng URL">
+        </ToolbarButton>
+        <ToolbarButton title="Chèn ảnh bằng URL" onClick={insertImageUrl}>
           URL ảnh
-        </button>
+        </ToolbarButton>
         <button
           type="button"
-          disabled={disabled || uploadingImage || !onImageUpload}
-          onMouseDown={(event) => {
-            event.preventDefault();
-            saveSelection();
-          }}
+          disabled={disabled || uploadingImage || !onImageUpload || !editor}
+          onMouseDown={(event) => event.preventDefault()}
           onClick={() => imageInputRef.current?.click()}
           className={toolbarButtonClass}
           title="Upload ảnh"
+          aria-label="Upload ảnh"
         >
           <ImagePlus size={16} />
           {uploadingImage ? 'Đang up' : ''}
         </button>
-        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('undo')} className={toolbarButtonClass} title="Hoàn tác">
+        <ToolbarButton title="Xóa định dạng" onClick={clearFormat}>
+          <Eraser size={16} />
+        </ToolbarButton>
+        <ToolbarButton title="Hoàn tác" onClick={() => runCommand(() => editor?.chain().focus().undo().run())}>
           <Undo2 size={16} />
-        </button>
-        <button type="button" disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('redo')} className={toolbarButtonClass} title="Làm lại">
+        </ToolbarButton>
+        <ToolbarButton title="Làm lại" onClick={() => runCommand(() => editor?.chain().focus().redo().run())}>
           <Redo2 size={16} />
-        </button>
+        </ToolbarButton>
         <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={uploadImage} />
       </div>
-      <div className="relative">
-        {!value && placeholder && (
-          <div className="pointer-events-none absolute left-3 top-3 text-sm font-semibold text-slate-400">
-            {placeholder}
-          </div>
-        )}
-        <div
-          ref={editorRef}
-          contentEditable={!disabled}
-          suppressContentEditableWarning
-          role="textbox"
-          aria-multiline="true"
-          className="min-h-[180px] max-w-none px-3 py-3 text-sm font-semibold leading-7 text-slate-900 outline-none dark:text-slate-100 [&_a]:font-bold [&_a]:text-rose-600 [&_blockquote]:border-l-4 [&_blockquote]:border-rose-200 [&_blockquote]:bg-rose-50/60 [&_blockquote]:px-3 [&_blockquote]:py-2 [&_blockquote]:text-slate-700 [&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-xl [&_h2]:font-black [&_h3]:mb-2 [&_h3]:mt-3 [&_h3]:text-lg [&_h3]:font-black [&_img]:my-3 [&_img]:max-h-[24rem] [&_img]:max-w-full [&_img]:rounded-xl [&_img]:border [&_img]:border-slate-200 [&_li]:ml-5 [&_ol]:list-decimal [&_p]:mb-2 [&_ul]:list-disc"
-          onInput={emitChange}
-          onBlur={emitChange}
-          onKeyUp={saveSelection}
-          onMouseUp={saveSelection}
-          onFocus={saveSelection}
-          onPaste={onPaste}
-        />
-      </div>
+      <EditorContent
+        editor={editor}
+        className="[&_.ProseMirror]:min-h-[220px] [&_.ProseMirror]:max-w-none [&_.ProseMirror]:px-3 [&_.ProseMirror]:py-3 [&_.ProseMirror]:text-sm [&_.ProseMirror]:font-semibold [&_.ProseMirror]:leading-7 [&_.ProseMirror]:text-slate-900 [&_.ProseMirror]:outline-none dark:[&_.ProseMirror]:text-slate-100 [&_.ProseMirror_a]:font-bold [&_.ProseMirror_a]:text-rose-600 [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-rose-200 [&_.ProseMirror_blockquote]:bg-rose-50/60 [&_.ProseMirror_blockquote]:px-3 [&_.ProseMirror_blockquote]:py-2 [&_.ProseMirror_blockquote]:text-slate-700 [&_.ProseMirror_h2]:mb-2 [&_.ProseMirror_h2]:mt-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-black [&_.ProseMirror_h3]:mb-2 [&_.ProseMirror_h3]:mt-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-black [&_.ProseMirror_img]:my-3 [&_.ProseMirror_img]:max-h-[24rem] [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:rounded-xl [&_.ProseMirror_img]:border [&_.ProseMirror_img]:border-slate-200 [&_.ProseMirror_li]:ml-5 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_p]:mb-2 [&_.ProseMirror_ul]:list-disc [&_.is-editor-empty:first-child::before]:pointer-events-none [&_.is-editor-empty:first-child::before]:float-left [&_.is-editor-empty:first-child::before]:h-0 [&_.is-editor-empty:first-child::before]:text-slate-400 [&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]"
+      />
     </div>
   );
 };

@@ -11,6 +11,13 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@tiptap/extension-image": "^2.11.5",
+    "@tiptap/extension-link": "^2.11.5",
+    "@tiptap/extension-placeholder": "^2.11.5",
+    "@tiptap/extension-text-align": "^2.11.5",
+    "@tiptap/extension-underline": "^2.11.5",
+    "@tiptap/react": "^2.11.5",
+    "@tiptap/starter-kit": "^2.11.5",
     "@types/node": "^18.0.0",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
