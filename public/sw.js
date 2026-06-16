@@ -43,6 +43,18 @@ const getCachedAge = (response) => {
   return cachedAt > 0 ? Date.now() - cachedAt : Number.POSITIVE_INFINITY;
 };
 
+const getSafeAdminPath = (value) => {
+  try {
+    const url = new URL(value || '/admin/orders', self.location.origin);
+    if (url.origin !== self.location.origin || !url.pathname.startsWith('/admin')) {
+      return '/admin/orders';
+    }
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return '/admin/orders';
+  }
+};
+
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());
 });
@@ -139,6 +151,7 @@ self.addEventListener('push', (event) => {
   }
 
   const title = payload.title || 'Có đơn hàng mới';
+  const safeUrl = getSafeAdminPath(payload.url);
   const options = {
     body: payload.body || 'Lộc Sang vừa nhận một đơn hàng mới.',
     icon: '/favicon.svg',
@@ -146,7 +159,7 @@ self.addEventListener('push', (event) => {
     tag: payload.tag || `locsang-order-${Date.now()}`,
     renotify: true,
     data: {
-      url: payload.url || '/admin/orders',
+      url: safeUrl,
       orderId: payload.orderId || null,
       trackingCode: payload.trackingCode || null,
     },
@@ -176,7 +189,7 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data?.url || '/admin/orders', self.location.origin).href;
+  const targetUrl = new URL(getSafeAdminPath(event.notification.data?.url), self.location.origin).href;
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {

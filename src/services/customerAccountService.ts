@@ -100,8 +100,10 @@ publicApi.interceptors.request.use((config) => {
 });
 
 export const saveStorefrontSession = (auth: AuthResponse) => {
-  localStorage.setItem(STOREFRONT_TOKEN_KEY, String(auth.access_token || ''));
-  localStorage.setItem(STOREFRONT_USER_KEY, JSON.stringify(auth.user || null));
+  sessionStorage.setItem(STOREFRONT_TOKEN_KEY, String(auth.access_token || ''));
+  sessionStorage.setItem(STOREFRONT_USER_KEY, JSON.stringify(auth.user || null));
+  localStorage.removeItem(STOREFRONT_TOKEN_KEY);
+  localStorage.removeItem(STOREFRONT_USER_KEY);
 };
 
 export const clearStorefrontSession = () => {

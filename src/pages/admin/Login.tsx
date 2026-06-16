@@ -29,12 +29,28 @@ const loginValidationRules: ValidationRules = {
   }
 };
 
+const getSafeAdminRedirect = (raw: string | null) => {
+  const fallback = '/admin/';
+  const value = String(raw || '').trim();
+  if (!value || value.startsWith('//') || /[\u0000-\u001f]/.test(value)) return fallback;
+
+  try {
+    const url = new URL(value, window.location.origin);
+    if (url.origin !== window.location.origin || !url.pathname.startsWith('/admin')) {
+      return fallback;
+    }
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return fallback;
+  }
+};
+
 const AdminLoginPage: React.FC = () => {
   const { showToast } = useToast();
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
-    rememberMe: true,
+    rememberMe: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
@@ -48,9 +64,7 @@ const AdminLoginPage: React.FC = () => {
 
     try {
       const remembered = localStorage.getItem('locsang_admin_remember_me');
-      if (remembered === '0') {
-        setFormData((prev) => ({ ...prev, rememberMe: false }));
-      } else if (remembered === '1') {
+      if (remembered === '1') {
         setFormData((prev) => ({ ...prev, rememberMe: true }));
       }
     } catch {
@@ -99,15 +113,10 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
 
       showToast('Đăng nhập thành công!', 'success');
       const urlParams = new URLSearchParams(window.location.search);
-      const redirectUrl = urlParams.get('redirect') || '/admin/';
+      const redirectUrl = getSafeAdminRedirect(urlParams.get('redirect'));
 
-      if (formData.rememberMe) {
-        localStorage.setItem('adminToken', result.token);
-        sessionStorage.removeItem('adminToken');
-      } else {
-        sessionStorage.setItem('adminToken', result.token);
-        localStorage.removeItem('adminToken');
-      }
+      sessionStorage.setItem('adminToken', result.token);
+      localStorage.removeItem('adminToken');
 
       try {
         localStorage.setItem('locsang_admin_remember_me', formData.rememberMe ? '1' : '0');
@@ -115,7 +124,7 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         // ignore storage write failures
       }
 
-      window.location.href = redirectUrl;
+      window.location.assign(redirectUrl);
 
     } catch (error) {
       showToast('Đăng nhập thất bại. Vui lòng thử lại.', 'error');

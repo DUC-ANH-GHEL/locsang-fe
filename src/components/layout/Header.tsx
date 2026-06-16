@@ -37,6 +37,22 @@ const formatNotificationTime = (value?: string | null) =>
     month: '2-digit',
   });
 
+const getSafeAdminNotificationUrl = (raw?: string | null) => {
+  const fallback = '/admin/orders';
+  const value = String(raw || '').trim();
+  if (!value || value.startsWith('//') || /[\u0000-\u001f]/.test(value)) return fallback;
+
+  try {
+    const url = new URL(value, window.location.origin);
+    if (url.origin !== window.location.origin || !url.pathname.startsWith('/admin')) {
+      return fallback;
+    }
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return fallback;
+  }
+};
+
 const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: HeaderProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -61,6 +77,7 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
 
     const orderId = Number(notification.order_id || 0);
     if (orderId && recentPushOrderIdsRef.current.has(orderId)) return;
+    const safeUrl = getSafeAdminNotificationUrl(notification.url);
 
     const desktopNotification = new window.Notification(notification.title || 'Có đơn hàng mới', {
       body: notification.body || 'Lộc Sang vừa nhận một đơn hàng mới.',
@@ -69,7 +86,7 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
       tag: notification.order_id ? `locsang-order-${notification.order_id}` : `locsang-notification-${notification.id}`,
       renotify: true,
       data: {
-        url: notification.url || '/admin/orders',
+        url: safeUrl,
         orderId: notification.order_id || null,
       },
     });
@@ -77,7 +94,7 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
     desktopNotification.onclick = () => {
       window.focus();
       desktopNotification.close();
-      if (notification.url) navigate(notification.url);
+      navigate(safeUrl);
     };
   };
 
@@ -148,7 +165,7 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
 
       const payload = event.data?.payload || {};
       const orderId = Number(payload.orderId || payload.order_id || 0);
-      const url = payload.url || (orderId ? `/admin/orders?orderId=${orderId}` : '/admin/orders');
+      const url = getSafeAdminNotificationUrl(payload.url || (orderId ? `/admin/orders?orderId=${orderId}` : '/admin/orders'));
       if (orderId) {
         recentPushOrderIdsRef.current.add(orderId);
         window.setTimeout(() => {
@@ -183,7 +200,7 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
       adminNotificationService.markRead(notification.id).catch(() => loadNotifications());
     }
     setNotificationOpen(false);
-    if (notification.url) navigate(notification.url);
+    navigate(getSafeAdminNotificationUrl(notification.url));
   };
 
   const markAllRead = async () => {

@@ -16,7 +16,8 @@ const Login: React.FC = () => {
     try {
       const response = await loginWithApi(formData.email, formData.password);
       if (response?.token) {
-        localStorage.setItem('token', response.token);
+        sessionStorage.setItem('token', response.token);
+        localStorage.removeItem('token');
         navigate('/');
       }
     } catch (error) {

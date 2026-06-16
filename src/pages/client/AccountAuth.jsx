@@ -59,11 +59,11 @@ const AccountAuth = () => {
 
   const { login, register, loginWithFacebook } = useStorefrontAuth();
   const [mode, setMode] = useState(() => getModeFromSearch(location.search));
+  const [resetToken, setResetToken] = useState(() => getResetTokenFromSearch(location.search));
   const [loading, setLoading] = useState(false);
   const [facebookReady, setFacebookReady] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
-  const resetTokenFromUrl = useMemo(() => getResetTokenFromSearch(location.search), [location.search]);
 
   const [form, setForm] = useState({
     full_name: '',
@@ -73,8 +73,27 @@ const AccountAuth = () => {
   });
 
   useEffect(() => {
-    setMode(getModeFromSearch(location.search));
-  }, [location.search]);
+    const nextMode = getModeFromSearch(location.search);
+    const token = getResetTokenFromSearch(location.search);
+    setMode(nextMode);
+
+    if (token) {
+      setResetToken(token);
+      const params = new URLSearchParams(location.search);
+      params.set('mode', 'reset');
+      params.delete('token');
+      navigate(
+        {
+          pathname: '/account/login',
+          search: `?${params.toString()}`,
+        },
+        {
+          replace: true,
+          state: location.state,
+        },
+      );
+    }
+  }, [location.search, location.state, navigate]);
 
   useEffect(() => {
     if (mode !== 'login' || !facebookLoginEnabled || !facebookAppId) {
@@ -125,8 +144,8 @@ const AccountAuth = () => {
     params.set('mode', nextMode);
 
     if (nextMode === 'reset') {
-      const token = String(options.token || resetTokenFromUrl || '').trim();
-      if (token) params.set('token', token);
+      const token = String(options.token || resetToken || '').trim();
+      if (token) setResetToken(token);
     } else {
       params.delete('token');
     }
@@ -200,7 +219,7 @@ const AccountAuth = () => {
         return;
       }
 
-      if (!resetTokenFromUrl) {
+      if (!resetToken) {
         setError('Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.');
         return;
       }
@@ -208,7 +227,7 @@ const AccountAuth = () => {
       try {
         setLoading(true);
         const response = await resetStorefrontPassword({
-          token: resetTokenFromUrl,
+          token: resetToken,
           new_password: form.password,
         });
         setInfo(response?.message || 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.');

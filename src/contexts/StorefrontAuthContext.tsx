@@ -87,7 +87,8 @@ export const StorefrontAuthProvider = ({ children }: { children: React.ReactNode
     try {
       const me = await getStorefrontMe();
       setUser(me);
-      localStorage.setItem('storefrontUser', JSON.stringify(me));
+      sessionStorage.setItem('storefrontUser', JSON.stringify(me));
+      localStorage.removeItem('storefrontUser');
       return me;
     } catch {
       clearStorefrontSession();
@@ -101,7 +102,8 @@ export const StorefrontAuthProvider = ({ children }: { children: React.ReactNode
   const updateProfile = async (payload: UpdatePayload) => {
     const updated = await updateStorefrontMe(payload);
     setUser(updated);
-    localStorage.setItem('storefrontUser', JSON.stringify(updated));
+    sessionStorage.setItem('storefrontUser', JSON.stringify(updated));
+    localStorage.removeItem('storefrontUser');
     return updated;
   };
 
