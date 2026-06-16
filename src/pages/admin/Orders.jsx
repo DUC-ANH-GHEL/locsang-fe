@@ -202,7 +202,7 @@ const Orders = () => {
       { label: 'Mới', value: pending, icon: AlertTriangle, tone: 'amber' },
       { label: 'Đã xử lý', value: processed, icon: CheckCircle2, tone: 'emerald' },
       { label: 'Hủy đơn', value: cancelled, icon: Trash2, tone: 'rose' },
-      { label: 'Giá trị trang', value: formatVnd(totalAmount), icon: Package, tone: 'slate' },
+      // { label: 'Giá trị trang', value: formatVnd(totalAmount), icon: Package, tone: 'slate' },
     ];
   }, [orders]);
 
