@@ -309,6 +309,19 @@ const Home = () => {
             </div>
           )}
 
+          {saleProducts.length > 0 && (
+            <ProductSection
+              title="Đang giảm giá"
+              icon={<Tag size={24} fill="#e30613" className="text-[#e30613]" />}
+              products={saleProducts}
+              loading={false}
+              onOpen={openProductDetail}
+              onAdd={addProductToCart}
+              onBuy={buyNow}
+              onViewAll={() => navigate('/products?sale=1')}
+            />
+          )}
+
           {(bestProducts.length > 0 || ((loading || loadFailed) && products.length === 0)) && (
             <ProductSection
               title="Sản phẩm bán chạy"
@@ -319,19 +332,6 @@ const Home = () => {
               onAdd={addProductToCart}
               onBuy={buyNow}
               onViewAll={() => navigate('/products')}
-            />
-          )}
-
-          {(saleProducts.length > 0 || ((loading || loadFailed) && products.length === 0)) && (
-            <ProductSection
-              title="Đang giảm giá"
-              icon={<Tag size={24} fill="#e30613" className="text-[#e30613]" />}
-              products={saleProducts}
-              loading={(loading || loadFailed) && products.length === 0}
-              onOpen={openProductDetail}
-              onAdd={addProductToCart}
-              onBuy={buyNow}
-              onViewAll={() => navigate('/products?sale=1')}
             />
           )}
         </main>
