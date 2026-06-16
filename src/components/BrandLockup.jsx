@@ -13,7 +13,7 @@ const BrandLockup = ({ compact = false, className = '' }) => (
       src={BRAND_MARK}
       alt=""
       aria-hidden="true"
-      className={`${compact ? 'h-[2rem] w-[3.45rem]' : 'h-[2.55rem] w-[4.45rem]'} shrink-0 object-contain`}
+      className={`${compact ? 'h-[4rem] w-[3.45rem]' : 'h-[3.55rem] w-[4.45rem]'} shrink-0 object-contain`}
     />
     <div className="flex flex-col items-start text-[#d50918]">
       <span
