@@ -14,13 +14,15 @@ interface BreadcrumbProps {
 
 const Breadcrumb = ({ items }: BreadcrumbProps) => {
   return (
-    <div className="flex items-center mb-6 text-sm text-gray-600 dark:text-gray-400">
+    <div className="mb-6 flex min-w-0 flex-wrap items-center gap-y-1 text-sm text-gray-600 dark:text-gray-400">
       {items.map((item, index) => (
         <React.Fragment key={item.path || String(index)}>
-          {index > 0 && <ChevronRight size={14} className="mx-2" />}
-          <div className="flex items-center">
+          {index > 0 && <ChevronRight size={14} className="mx-2 shrink-0" />}
+          <div className="flex min-w-0 items-center">
             {index === 0 && item.icon ? item.icon : null}
-            <span className={index === 0 ? "ml-2" : ""}>{item.name}</span>
+            <span className={`${index === 0 ? "ml-2" : ""} max-w-[9rem] truncate sm:max-w-none`}>
+              {item.name}
+            </span>
           </div>
         </React.Fragment>
       ))}

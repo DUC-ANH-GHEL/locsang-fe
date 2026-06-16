@@ -221,7 +221,7 @@ const StatCard = ({
           : 'bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200';
 
   return (
-    <div className={`rounded-2xl p-4 ${toneClass}`}>
+    <div className={`min-w-0 rounded-2xl p-4 ${toneClass}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="text-[11px] font-black uppercase tracking-wide opacity-70">{label}</div>
         <Icon size={17} />
@@ -232,11 +232,27 @@ const StatCard = ({
 };
 
 const DetailBlock = ({ label, value }: { label: string; value: unknown }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+  <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
     <div className="text-[11px] font-black uppercase tracking-wide text-slate-400">{label}</div>
-    <div className="mt-2 text-sm font-black text-slate-950 dark:text-white">{getText(value)}</div>
+    <div className="mt-2 break-words text-sm font-black text-slate-950 dark:text-white">{getText(value)}</div>
   </div>
 );
+
+const CompactDetail = ({ label, value, tone }: { label: string; value: unknown; tone?: 'rose' | 'emerald' | 'slate' }) => {
+  const toneClass =
+    tone === 'rose'
+      ? 'text-rose-700 dark:text-rose-200'
+      : tone === 'emerald'
+        ? 'text-emerald-700 dark:text-emerald-200'
+        : 'text-slate-950 dark:text-white';
+
+  return (
+    <div className="min-w-0 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950">
+      <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">{label}</div>
+      <div className={`mt-1 break-words text-sm font-black leading-snug ${toneClass}`}>{getText(value)}</div>
+    </div>
+  );
+};
 
 const ProductReadonlyDetail = () => {
   const { id } = useParams();
@@ -308,7 +324,7 @@ const ProductReadonlyDetail = () => {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5 px-4 py-5 sm:py-6">
+    <div className="mx-auto max-w-7xl space-y-5 px-4 pb-40 pt-5 sm:py-6 lg:pb-8">
       <Breadcrumb items={[{ name: 'Trang chủ', path: '/admin' }, { name: 'Sản phẩm', path: '/admin/products' }, { name: getText(product.name, 'Chi tiết') }]} />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -402,8 +418,35 @@ const ProductReadonlyDetail = () => {
                 Sản phẩm chưa có biến thể.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-slate-100 text-sm dark:divide-slate-800">
+              <>
+                <div className="space-y-3 sm:hidden">
+                  {variants.map((variant: any) => {
+                    const variantStatus = statusMeta[normalizeStatus(variant.status || (variant.is_active ? 'active' : 'draft'))] || statusMeta.draft;
+                    const stockValue = Number(variant?.stock || 0);
+                    return (
+                      <article key={variant.id || variant.sku} className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                        <div className="flex min-w-0 items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">SKU</div>
+                            <div className="mt-1 break-all text-base font-black text-slate-950 dark:text-white">{getText(variant.sku)}</div>
+                          </div>
+                          <span className={`inline-flex max-w-[8rem] shrink-0 items-center justify-center whitespace-normal rounded-full px-3 py-1 text-center text-xs font-black leading-tight ring-1 ${variantStatus.className}`}>
+                            {variantStatus.label}
+                          </span>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <CompactDetail label="Tên" value={variant.variant_name || variant.name || variant.title} />
+                          <CompactDetail label="Tồn" value={stockValue.toLocaleString('vi-VN')} tone={stockValue > 0 ? 'emerald' : 'rose'} />
+                          <CompactDetail label="Giá bán" value={formatCurrency(variant.price)} />
+                          <CompactDetail label="Giá sale" value={variant.sale_price ? formatCurrency(variant.sale_price) : 'Không có'} tone={variant.sale_price ? 'rose' : 'slate'} />
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                <div className="hidden overflow-x-auto sm:block">
+                  <table className="min-w-[720px] divide-y divide-slate-100 text-sm dark:divide-slate-800">
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
                       <th className="py-3 pr-4 font-black">SKU</th>
@@ -431,8 +474,9 @@ const ProductReadonlyDetail = () => {
                       );
                     })}
                   </tbody>
-                </table>
-              </div>
+                  </table>
+                </div>
+              </>
             )}
           </section>
 

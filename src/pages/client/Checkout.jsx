@@ -7,8 +7,9 @@ import { checkoutService } from '../../services/checkoutService';
 import { productService } from '../../services/productService';
 import { useStorefrontAuth } from '../../contexts/StorefrontAuthContext';
 import { useSEO } from '../../hooks/useSEO';
-import { canPurchaseProduct, canPurchaseVariant, formatVnd } from '../../data/yanmarStorefront';
+import { canPurchaseProduct, canPurchaseVariant, formatVnd, hasSelectableVariants } from '../../data/yanmarStorefront';
 import BrandLockup from '../../components/BrandLockup';
+import { parseApiError } from '../../utils/apiError';
 
 const VN_PHONE_REGEX = /^(?:\+?84|0)\d{9,10}$/;
 const CHECKOUT_FORM_STORAGE_KEY = 'locsang_storefront_checkout_form_v1';
@@ -66,8 +67,47 @@ const validate = (form) => {
   if (!form.phone.trim()) errors.phone = 'Vui lòng nhập số điện thoại';
   else if (!VN_PHONE_REGEX.test(form.phone.trim())) errors.phone = 'Số điện thoại không hợp lệ';
   if (!form.address.trim()) errors.address = 'Vui lòng nhập địa chỉ nhận hàng';
+  if (!errors.address && form.address.trim().length < 5) {
+    errors.address = 'Địa chỉ nhận hàng quá ngắn. Vui lòng nhập rõ số nhà, thôn/xã hoặc khu vực nhận hàng.';
+  }
   return errors;
 };
+
+const stringifyCheckoutDetail = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object') return item.msg || item.message || item.detail || '';
+        return '';
+      })
+      .filter(Boolean)
+      .join(' | ');
+  }
+  if (typeof value === 'object') {
+    return value.message || value.msg || value.detail || value.error || '';
+  }
+  return String(value || '');
+};
+
+const getCheckoutErrorMessage = (error) => {
+  const parsed = parseApiError(error);
+  const data = error?.response?.data;
+  const detailMessage = stringifyCheckoutDetail(data?.detail);
+  const message = detailMessage || parsed?.message || stringifyCheckoutDetail(data?.message) || stringifyCheckoutDetail(error?.message);
+  if (!message || /^request failed with status code/i.test(message)) {
+    return 'Không thể tạo đơn hàng. Vui lòng kiểm tra lại giỏ hàng và thử lại.';
+  }
+  return message;
+};
+
+const isCartStaleError = (message) =>
+  /product\s+\d+\s+(is\s+not\s+available|not\s+found)/i.test(message) ||
+  /variant\s+\d+\s+(is\s+not\s+available|does\s+not\s+belong)/i.test(message) ||
+  /not\s+enough\s+stock/i.test(message) ||
+  /please\s+choose\s+a\s+variant/i.test(message);
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -157,6 +197,11 @@ const Checkout = () => {
         }
 
         const variantId = Number(item.product_variant_id);
+        if ((!Number.isFinite(variantId) || variantId <= 0) && hasSelectableVariants(product)) {
+          removedKeys.add(item.item_key);
+          return;
+        }
+
         if (Number.isFinite(variantId) && variantId > 0) {
           const variant = Array.isArray(product.variants)
             ? product.variants.find((candidate) => Number(candidate?.id) === variantId)
@@ -254,13 +299,8 @@ const Checkout = () => {
       appendOrderToLocalHistory(orderData, form);
       clearCart();
     } catch (error) {
-      const rawMessage = String(
-        error?.response?.data?.message ||
-          error?.response?.data?.detail ||
-          error?.message ||
-          '',
-      );
-      if (/product\s+\d+\s+is\s+not\s+available/i.test(rawMessage)) {
+      const rawMessage = getCheckoutErrorMessage(error);
+      if (isCartStaleError(rawMessage)) {
         await validateCartAvailability();
         setSubmitError('Sản phẩm trong giỏ đã ngừng bán hoặc hết hàng. Hệ thống đã cập nhật lại giỏ hàng, vui lòng kiểm tra lại.');
         return;
