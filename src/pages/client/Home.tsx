@@ -41,13 +41,6 @@ type CategoryLink = {
   saleOnly?: boolean;
 };
 
-const FALLBACK_CATEGORY_LINKS: CategoryLink[] = [
-  { title: 'Phụ tùng', image: getCategoryIconValue('parts') },
-  { title: 'Nhớt', image: getCategoryIconValue('oil') },
-  { title: 'Động cơ', image: getCategoryIconValue('engine') },
-  { title: 'Lọc nhớt', image: getCategoryIconValue('oil_filter') },
-];
-
 const HOME_CONTENT_CACHE_KEY = 'locsang_public_home_content_v1';
 
 const loadCachedHomeContent = (): HomeContentPayload | null => {
@@ -232,10 +225,9 @@ const Home = () => {
         image: category.image,
       }));
 
-    const baseLinks = liveLinks.length > 0 ? liveLinks : FALLBACK_CATEGORY_LINKS;
     return saleProducts.length > 0
-      ? [{ title: 'Khuyến mãi', image: getCategoryIconValue('sale'), saleOnly: true }, ...baseLinks]
-      : baseLinks;
+      ? [{ title: 'Khuyến mãi', image: getCategoryIconValue('sale'), saleOnly: true }, ...liveLinks]
+      : liveLinks;
   }, [activeCategoryIds, categories, saleProducts.length]);
 
   const heroImage = getBannerImageUrl(homeContent?.hero_image_url?.trim() || (homeContentLoaded ? HERO_IMAGE : ''));
@@ -293,38 +285,42 @@ const Home = () => {
             </span>
           </button>
 
-          <div className="mt-4 flex gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] max-[390px]:gap-2 [&::-webkit-scrollbar]:hidden">
-            {categoryLinks.map((category) => (
-              <button
-                key={category.title}
-                type="button"
-                onClick={() => navigate(category.saleOnly ? '/products?sale=1' : category.categoryId ? `/products?categoryId=${category.categoryId}` : '/products')}
-                className="flex min-h-[5.6rem] w-[5.35rem] shrink-0 flex-col items-center justify-center rounded-xl border border-[#e4e4e4] bg-white px-1 py-2 text-center shadow-[0_1px_4px_rgba(0,0,0,0.04)] active:scale-[0.98] max-[390px]:w-[5rem]"
-              >
-                <CategoryIconPreview
-                  name={category.title}
-                  value={category.image}
-                  size={36}
-                  iconClassName="text-[#e30613]"
-                  imageClassName="h-9 w-9 rounded-lg object-contain"
-                />
-                <span className="mt-2 line-clamp-2 text-[0.82rem] font-black leading-[1.05] text-[#111] max-[390px]:text-[0.72rem]">
-                  {category.title}
-                </span>
-              </button>
-            ))}
-          </div>
+          {categoryLinks.length > 0 && (
+            <div className="mt-4 flex gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] max-[390px]:gap-2 [&::-webkit-scrollbar]:hidden">
+              {categoryLinks.map((category) => (
+                <button
+                  key={category.title}
+                  type="button"
+                  onClick={() => navigate(category.saleOnly ? '/products?sale=1' : category.categoryId ? `/products?categoryId=${category.categoryId}` : '/products')}
+                  className="flex min-h-[5.6rem] w-[5.35rem] shrink-0 flex-col items-center justify-center rounded-xl border border-[#e4e4e4] bg-white px-1 py-2 text-center shadow-[0_1px_4px_rgba(0,0,0,0.04)] active:scale-[0.98] max-[390px]:w-[5rem]"
+                >
+                  <CategoryIconPreview
+                    name={category.title}
+                    value={category.image}
+                    size={36}
+                    iconClassName="text-[#e30613]"
+                    imageClassName="h-9 w-9 rounded-lg object-contain"
+                  />
+                  <span className="mt-2 line-clamp-2 text-[0.82rem] font-black leading-[1.05] text-[#111] max-[390px]:text-[0.72rem]">
+                    {category.title}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
 
-          <ProductSection
-            title="Sản phẩm bán chạy"
-            icon={<Flame size={24} fill="#e30613" className="text-[#e30613]" />}
-            products={bestProducts}
-            loading={(loading || loadFailed) && products.length === 0}
-            onOpen={openProductDetail}
-            onAdd={addProductToCart}
-            onBuy={buyNow}
-            onViewAll={() => navigate('/products')}
-          />
+          {(bestProducts.length > 0 || ((loading || loadFailed) && products.length === 0)) && (
+            <ProductSection
+              title="Sản phẩm bán chạy"
+              icon={<Flame size={24} fill="#e30613" className="text-[#e30613]" />}
+              products={bestProducts}
+              loading={(loading || loadFailed) && products.length === 0}
+              onOpen={openProductDetail}
+              onAdd={addProductToCart}
+              onBuy={buyNow}
+              onViewAll={() => navigate('/products')}
+            />
+          )}
 
           {(saleProducts.length > 0 || ((loading || loadFailed) && products.length === 0)) && (
             <ProductSection
