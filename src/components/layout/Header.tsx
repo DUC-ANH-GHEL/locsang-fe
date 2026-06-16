@@ -11,6 +11,7 @@ import {
 } from '../../services/adminNotificationService';
 import { adminNavItems } from './adminNavigation';
 import { formatViDateTime } from '../../utils/dateTime';
+import { playAdminNewOrderSound, unlockAdminNotificationSound } from '../../utils/adminNotificationSound';
 
 interface HeaderProps {
   darkMode: boolean;
@@ -64,11 +65,25 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
   const hasLoadedNotificationsRef = useRef(false);
   const seenNotificationIdsRef = useRef<Set<number>>(new Set());
   const recentPushOrderIdsRef = useRef<Set<number>>(new Set());
+  const playedSoundOrderIdsRef = useRef<Set<number>>(new Set());
   const navigate = useNavigate();
   const location = useLocation();
   const title = getCurrentTitle(location.pathname);
 
+  const playNewOrderSound = (notification: Partial<AdminNotification>) => {
+    const orderId = Number(notification.order_id || 0);
+    if (orderId) {
+      if (playedSoundOrderIdsRef.current.has(orderId)) return;
+      playedSoundOrderIdsRef.current.add(orderId);
+      window.setTimeout(() => {
+        playedSoundOrderIdsRef.current.delete(orderId);
+      }, 30000);
+    }
+    playAdminNewOrderSound();
+  };
+
   const dispatchNewOrderNotification = (notification: Partial<AdminNotification>) => {
+    playNewOrderSound(notification);
     window.dispatchEvent(new CustomEvent(ADMIN_NEW_ORDER_EVENT, { detail: notification }));
   };
 
@@ -131,6 +146,19 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
       setNotificationsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const unlock = () => unlockAdminNotificationSound();
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
+    window.addEventListener('touchstart', unlock);
+
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+      window.removeEventListener('touchstart', unlock);
+    };
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
