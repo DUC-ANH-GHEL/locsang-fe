@@ -3,7 +3,7 @@ import { Bell, ChevronDown, KeyRound, LogOut, Menu, Moon, Settings, Sun } from '
 import { useLocation, useNavigate } from 'react-router-dom';
 import { logo_url } from '../../config/api';
 import { logout } from '../../services/authService';
-import { AdminNotification, adminNotificationService } from '../../services/adminNotificationService';
+import { ADMIN_NEW_ORDER_EVENT, AdminNotification, adminNotificationService } from '../../services/adminNotificationService';
 import { adminNavItems } from './adminNavigation';
 import { formatViDateTime } from '../../utils/dateTime';
 
@@ -40,16 +40,68 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const avatarRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const hasLoadedNotificationsRef = useRef(false);
+  const seenNotificationIdsRef = useRef<Set<number>>(new Set());
+  const recentPushOrderIdsRef = useRef<Set<number>>(new Set());
   const navigate = useNavigate();
   const location = useLocation();
   const title = getCurrentTitle(location.pathname);
+
+  const dispatchNewOrderNotification = (notification: Partial<AdminNotification>) => {
+    window.dispatchEvent(new CustomEvent(ADMIN_NEW_ORDER_EVENT, { detail: notification }));
+  };
+
+  const showDesktopNotification = (notification: AdminNotification) => {
+    if (typeof window === 'undefined' || !('Notification' in window) || window.Notification.permission !== 'granted') return;
+
+    const orderId = Number(notification.order_id || 0);
+    if (orderId && recentPushOrderIdsRef.current.has(orderId)) return;
+
+    const desktopNotification = new window.Notification(notification.title || 'Có đơn hàng mới', {
+      body: notification.body || 'Lộc Sang vừa nhận một đơn hàng mới.',
+      icon: '/favicon.svg',
+      badge: '/favicon.svg',
+      tag: notification.order_id ? `locsang-order-${notification.order_id}` : `locsang-notification-${notification.id}`,
+      renotify: true,
+      data: {
+        url: notification.url || '/admin/orders',
+        orderId: notification.order_id || null,
+      },
+    });
+
+    desktopNotification.onclick = () => {
+      window.focus();
+      desktopNotification.close();
+      if (notification.url) navigate(notification.url);
+    };
+  };
 
   const loadNotifications = async () => {
     setNotificationsLoading(true);
     try {
       const response = await adminNotificationService.list(20);
-      setNotifications(Array.isArray(response.data) ? response.data : []);
+      const nextNotifications = Array.isArray(response.data) ? response.data : [];
+      const firstLoad = !hasLoadedNotificationsRef.current;
+      const freshOrderNotifications = firstLoad
+        ? []
+        : nextNotifications.filter((notification) => (
+          notification.type === 'order'
+          && !notification.read_at
+          && !seenNotificationIdsRef.current.has(notification.id)
+        ));
+
+      seenNotificationIdsRef.current = new Set(nextNotifications.map((notification) => notification.id));
+      hasLoadedNotificationsRef.current = true;
+      setNotifications(nextNotifications);
       setUnreadCount(Number(response.unread_count || 0));
+
+      freshOrderNotifications
+        .slice()
+        .reverse()
+        .forEach((notification) => {
+          dispatchNewOrderNotification(notification);
+          showDesktopNotification(notification);
+        });
     } catch {
       setNotifications([]);
       setUnreadCount(0);
@@ -74,8 +126,39 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
 
   useEffect(() => {
     loadNotifications();
-    const timer = window.setInterval(loadNotifications, 30000);
+    const timer = window.setInterval(loadNotifications, 10000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return undefined;
+
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type !== 'LOCSANG_ADMIN_NEW_ORDER_PUSH') return;
+
+      const payload = event.data?.payload || {};
+      const orderId = Number(payload.orderId || payload.order_id || 0);
+      const url = payload.url || (orderId ? `/admin/orders?orderId=${orderId}` : '/admin/orders');
+      if (orderId) {
+        recentPushOrderIdsRef.current.add(orderId);
+        window.setTimeout(() => {
+          recentPushOrderIdsRef.current.delete(orderId);
+        }, 15000);
+      }
+
+      dispatchNewOrderNotification({
+        type: 'order',
+        title: payload.title || 'Có đơn hàng mới',
+        body: payload.body || '',
+        url,
+        order_id: orderId || null,
+        tracking_code: payload.trackingCode || payload.tracking_code || null,
+      });
+      loadNotifications();
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
   }, []);
 
   const handleLogout = () => {

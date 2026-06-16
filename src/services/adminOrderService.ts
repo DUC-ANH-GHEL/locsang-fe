@@ -49,8 +49,11 @@ export const adminOrderService = {
     limit?: number;
     search?: string;
     status?: string;
-  }): Promise<AdminOrderListResponse> => {
-    const res = await apiClient.get('/admin/orders', { params });
+  }, options?: { skipGlobalLoading?: boolean }): Promise<AdminOrderListResponse> => {
+    const res = await apiClient.get('/admin/orders', {
+      params,
+      skipGlobalLoading: options?.skipGlobalLoading,
+    } as any);
     return res.data;
   },
 

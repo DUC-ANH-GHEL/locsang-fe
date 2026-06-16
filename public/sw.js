@@ -152,7 +152,26 @@ self.addEventListener('push', (event) => {
     },
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  const notifyOpenAdminTabs = self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+    clients.forEach((client) => {
+      client.postMessage({
+        type: 'LOCSANG_ADMIN_NEW_ORDER_PUSH',
+        payload: {
+          ...payload,
+          title,
+          body: options.body,
+          url: options.data.url,
+          orderId: options.data.orderId,
+          trackingCode: options.data.trackingCode,
+        },
+      });
+    });
+  });
+
+  event.waitUntil(Promise.all([
+    self.registration.showNotification(title, options),
+    notifyOpenAdminTabs,
+  ]));
 });
 
 self.addEventListener('notificationclick', (event) => {

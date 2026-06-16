@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { adminOrderService } from '../../services/adminOrderService';
+import { ADMIN_NEW_ORDER_EVENT } from '../../services/adminNotificationService';
 import { useToast } from '../../components/Toast';
 import { parseApiError } from '../../utils/apiError';
 import { logout } from '../../services/authService';
@@ -217,15 +218,16 @@ const Orders = () => {
     showToast(parsed?.message || fallbackMessage, 'error', 6000);
   }, [showToast]);
 
-  const loadOrders = useCallback(async () => {
-    setLoading(true);
+  const loadOrders = useCallback(async (options = {}) => {
+    const silent = Boolean(options?.silent);
+    if (!silent) setLoading(true);
     try {
       const response = await adminOrderService.getOrders({
         page: pagination.page,
         limit: PAGE_LIMIT,
         search: debouncedSearch.trim() || undefined,
         status: statusFilter || undefined,
-      });
+      }, { skipGlobalLoading: silent });
       setOrders(Array.isArray(response?.data) ? response.data.map(normalizeOrder) : []);
       setPagination((prev) => ({
         ...prev,
@@ -235,10 +237,12 @@ const Orders = () => {
         total_pages: Number(response?.pagination?.total_pages ?? 1),
       }));
     } catch (error) {
-      setOrders([]);
-      handleApiError(error, 'Không tải được danh sách đơn hàng');
+      if (!silent) {
+        setOrders([]);
+        handleApiError(error, 'Không tải được danh sách đơn hàng');
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [debouncedSearch, handleApiError, pagination.page, statusFilter]);
 
@@ -253,6 +257,34 @@ const Orders = () => {
   useEffect(() => {
     loadOrders();
   }, [loadOrders]);
+
+  const refreshLatestOrders = useCallback(() => {
+    if (Number(pagination.page || 1) !== 1) {
+      setPagination((prev) => ({ ...prev, page: 1 }));
+      return;
+    }
+    loadOrders({ silent: true });
+  }, [loadOrders, pagination.page]);
+
+  useEffect(() => {
+    const handleNewOrder = () => refreshLatestOrders();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshLatestOrders();
+    };
+
+    window.addEventListener(ADMIN_NEW_ORDER_EVENT, handleNewOrder);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== 'hidden') refreshLatestOrders();
+    }, 5000);
+
+    return () => {
+      window.removeEventListener(ADMIN_NEW_ORDER_EVENT, handleNewOrder);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.clearInterval(timer);
+    };
+  }, [refreshLatestOrders]);
 
   useEffect(() => {
     setSelectedIds((prev) => prev.filter((id) => orders.some((order) => order.id === id)));

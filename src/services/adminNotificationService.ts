@@ -1,5 +1,7 @@
 import { apiClient } from './apiClient';
 
+export const ADMIN_NEW_ORDER_EVENT = 'locsang:admin-new-order-notification';
+
 export type AdminNotification = {
   id: number;
   type: string;
