@@ -3,7 +3,12 @@ import { Bell, ChevronDown, KeyRound, LogOut, Menu, Moon, Settings, Sun } from '
 import { useLocation, useNavigate } from 'react-router-dom';
 import { logo_url } from '../../config/api';
 import { logout } from '../../services/authService';
-import { ADMIN_NEW_ORDER_EVENT, AdminNotification, adminNotificationService } from '../../services/adminNotificationService';
+import {
+  ADMIN_NEW_ORDER_EVENT,
+  ADMIN_NOTIFICATIONS_CHANGED_EVENT,
+  AdminNotification,
+  adminNotificationService,
+} from '../../services/adminNotificationService';
 import { adminNavItems } from './adminNavigation';
 import { formatViDateTime } from '../../utils/dateTime';
 
@@ -128,6 +133,11 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
     loadNotifications();
     const timer = window.setInterval(loadNotifications, 10000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener(ADMIN_NOTIFICATIONS_CHANGED_EVENT, loadNotifications);
+    return () => window.removeEventListener(ADMIN_NOTIFICATIONS_CHANGED_EVENT, loadNotifications);
   }, []);
 
   useEffect(() => {

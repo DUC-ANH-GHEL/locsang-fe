@@ -1,6 +1,12 @@
 import { apiClient } from './apiClient';
 
 export const ADMIN_NEW_ORDER_EVENT = 'locsang:admin-new-order-notification';
+export const ADMIN_NOTIFICATIONS_CHANGED_EVENT = 'locsang:admin-notifications-changed';
+
+export const dispatchAdminNotificationsChanged = () => {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(ADMIN_NOTIFICATIONS_CHANGED_EVENT));
+};
 
 export type AdminNotification = {
   id: number;

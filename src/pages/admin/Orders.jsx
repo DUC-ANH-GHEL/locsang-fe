@@ -18,7 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { adminOrderService } from '../../services/adminOrderService';
-import { ADMIN_NEW_ORDER_EVENT } from '../../services/adminNotificationService';
+import { ADMIN_NEW_ORDER_EVENT, dispatchAdminNotificationsChanged } from '../../services/adminNotificationService';
 import { useToast } from '../../components/Toast';
 import { parseApiError } from '../../utils/apiError';
 import { logout } from '../../services/authService';
@@ -300,6 +300,7 @@ const Orders = () => {
       const nextOrder = normalizeOrder(response?.data || order);
       setDetailOrder(nextOrder);
       setDetailStatus(nextOrder.status || ORDER_STATUS_NEW);
+      dispatchAdminNotificationsChanged();
     } catch (error) {
       handleApiError(error, 'Không tải được chi tiết đơn hàng');
     } finally {
@@ -331,6 +332,7 @@ const Orders = () => {
         const order = normalizeOrder(response?.data || {});
         setDetailOrder(order);
         setDetailStatus(order?.status || ORDER_STATUS_NEW);
+        dispatchAdminNotificationsChanged();
       })
       .catch((error) => {
         if (!active) return;
@@ -371,6 +373,7 @@ const Orders = () => {
         setDetailOrder((prev) => normalizeOrder({ ...prev, status: normalizedStatus, ...(updated || {}) }));
         setDetailStatus(normalizedStatus);
       }
+      dispatchAdminNotificationsChanged();
       showToast(successMessage, 'success');
     } catch (error) {
       handleApiError(error, 'Không cập nhật được trạng thái đơn hàng');
@@ -405,6 +408,7 @@ const Orders = () => {
         action,
         status: action === 'status' ? bulkStatus : undefined,
       });
+      if (action === 'status') dispatchAdminNotificationsChanged();
       showToast(isDelete ? 'Đã xóa các đơn đã chọn' : 'Đã cập nhật các đơn đã chọn', 'success');
       setSelectedIds([]);
       await loadOrders();
