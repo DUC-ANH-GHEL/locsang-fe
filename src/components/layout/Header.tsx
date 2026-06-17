@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Bell, ChevronDown, KeyRound, LogOut, Menu, Moon, Settings, Sun } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { logo_url } from '../../config/api';
-import { logout } from '../../services/authService';
+import { AdminCurrentUser, getCurrentAdminUser, logout } from '../../services/authService';
 import {
   ADMIN_NEW_ORDER_EVENT,
   ADMIN_NOTIFICATIONS_CHANGED_EVENT,
@@ -70,12 +70,21 @@ const sortAdminNotifications = (items: AdminNotification[]) =>
       return Number(b.id || 0) - Number(a.id || 0);
     });
 
+const getAdminDisplayName = (user: AdminCurrentUser | null) => {
+  const fullName = String(user?.full_name || '').trim();
+  if (fullName) return fullName;
+  const email = String(user?.email || '').trim();
+  if (email) return email.split('@')[0] || email;
+  return 'Admin';
+};
+
 const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: HeaderProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [currentAdmin, setCurrentAdmin] = useState<AdminCurrentUser | null>(null);
   const avatarRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const hasLoadedNotificationsRef = useRef(false);
@@ -85,6 +94,7 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
   const navigate = useNavigate();
   const location = useLocation();
   const title = getCurrentTitle(location.pathname);
+  const adminDisplayName = getAdminDisplayName(currentAdmin);
 
   const playNewOrderSound = (notification: Partial<AdminNotification>) => {
     const orderId = Number(notification.order_id || 0);
@@ -194,6 +204,16 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
     loadNotifications();
     const timer = window.setInterval(loadNotifications, 10000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCurrentAdminUser().then((user) => {
+      if (!cancelled) setCurrentAdmin(user);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -393,8 +413,8 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
               onClick={() => setDropdownOpen((value) => !value)}
               aria-label="Tài khoản admin"
             >
-              <img src={logo_url} alt="Admin" className="h-8 w-8 rounded-full bg-white object-contain ring-2 ring-rose-200 dark:ring-rose-500/30" />
-              <span className="hidden text-sm font-bold text-slate-700 dark:text-slate-200 sm:block">Admin</span>
+              <img src={logo_url} alt={adminDisplayName} className="h-8 w-8 rounded-full bg-white object-contain ring-2 ring-rose-200 dark:ring-rose-500/30" />
+              <span className="hidden max-w-36 truncate text-sm font-bold text-slate-700 dark:text-slate-200 sm:block">{adminDisplayName}</span>
               <ChevronDown size={16} className="hidden text-slate-400 sm:block" />
             </button>
 
