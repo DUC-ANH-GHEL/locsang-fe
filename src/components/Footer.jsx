@@ -25,7 +25,7 @@ function Footer() {
       <div className={footerInnerClass}>
         <div className="min-w-0">
           <div className="flex items-center gap-3">
-            <img src={`${logo_url}?v=footer-yanmar`} alt="Yanmar Lộc Sang" className="h-9 w-12 shrink-0 object-contain" />
+            <img src={`${logo_url}?v=footer-yanmar`} alt="Yanmar Lộc Sang" className="h-12 w-12 shrink-0 object-contain" />
             <div>
               <div className="text-lg font-black text-[#e30613]">{FOOTER_CONTENT.footer_brand_name}</div>
               <p className="mt-0.5 max-w-sm text-sm font-medium leading-snug text-[#5f6673] md:hidden">
