@@ -1,6 +1,21 @@
 let audioContext: AudioContext | null = null;
 let lastPlayedAt = 0;
 
+export const ADMIN_NOTIFICATION_SOUND_STORAGE_KEY = 'locsang_admin_notification_sound_enabled';
+export const ADMIN_NOTIFICATION_SOUND_CHANGED_EVENT = 'locsang:admin-notification-sound-changed';
+
+export const isAdminNotificationSoundEnabled = () => {
+  if (typeof window === 'undefined') return true;
+  return window.localStorage.getItem(ADMIN_NOTIFICATION_SOUND_STORAGE_KEY) !== '0';
+};
+
+export const setAdminNotificationSoundEnabled = (enabled: boolean) => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(ADMIN_NOTIFICATION_SOUND_STORAGE_KEY, enabled ? '1' : '0');
+  window.dispatchEvent(new CustomEvent(ADMIN_NOTIFICATION_SOUND_CHANGED_EVENT, { detail: { enabled } }));
+  if (enabled) unlockAdminNotificationSound();
+};
+
 const getAudioContext = () => {
   if (typeof window === 'undefined') return null;
   const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
@@ -38,6 +53,8 @@ const playTone = (context: AudioContext, startAt: number, frequency: number, dur
 };
 
 export const playAdminNewOrderSound = () => {
+  if (!isAdminNotificationSoundEnabled()) return;
+
   const context = getAudioContext();
   if (!context) return;
 

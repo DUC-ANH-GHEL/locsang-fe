@@ -8,6 +8,8 @@ import {
   Loader2,
   Settings as SettingsIcon,
   Smartphone,
+  Volume2,
+  VolumeX,
   WifiOff,
 } from 'lucide-react';
 import {
@@ -18,6 +20,10 @@ import {
 } from '../../services/adminPushNotificationService';
 import { adminAccountService } from '../../services/adminAccountService';
 import { useToast } from '../../components/Toast';
+import {
+  isAdminNotificationSoundEnabled,
+  setAdminNotificationSoundEnabled,
+} from '../../utils/adminNotificationSound';
 
 const stateCopy: Record<AdminPushState, { title: string; description: string; tone: string }> = {
   unsupported: {
@@ -62,6 +68,7 @@ const isStrongPassword = (value: string) => value.length >= 8 && /[A-Za-zÀ-ỹ]
 const Settings = () => {
   const { showToast } = useToast();
   const [pushState, setPushState] = useState<AdminPushState>('default');
+  const [notificationSoundEnabled, setNotificationSoundEnabledState] = useState(() => isAdminNotificationSoundEnabled());
   const [loadingPush, setLoadingPush] = useState(true);
   const [savingPush, setSavingPush] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
@@ -95,6 +102,12 @@ const Settings = () => {
   useEffect(() => {
     refreshState();
   }, []);
+
+  const setNotificationSoundEnabled = (enabled: boolean) => {
+    setNotificationSoundEnabledState(enabled);
+    setAdminNotificationSoundEnabled(enabled);
+    showToast(enabled ? 'Đã bật âm thanh thông báo.' : 'Đã tắt âm thanh thông báo.', 'success');
+  };
 
   const enablePush = async () => {
     setSavingPush(true);
@@ -268,6 +281,38 @@ const Settings = () => {
                 {loadingPush ? 'Đang kiểm tra...' : copy.title}
               </div>
               <p className="mt-1 text-xs font-bold opacity-80">{copy.description}</p>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-rose-600 shadow-sm dark:bg-slate-900 dark:text-rose-200">
+                  {notificationSoundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+                </div>
+                <div>
+                  <div className="text-sm font-black text-slate-950 dark:text-white">Âm thanh thông báo</div>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-slate-400">
+                    Mặc định bật. Tắt nếu không muốn nghe tiếng báo khi có đơn hàng mới trên thiết bị này.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={notificationSoundEnabled}
+                onClick={() => setNotificationSoundEnabled(!notificationSoundEnabled)}
+                className={`relative h-8 w-14 shrink-0 rounded-full transition ${
+                  notificationSoundEnabled ? 'bg-rose-600' : 'bg-slate-300 dark:bg-slate-700'
+                }`}
+              >
+                <span
+                  className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${
+                    notificationSoundEnabled ? 'left-7' : 'left-1'
+                  }`}
+                />
+                <span className="sr-only">
+                  {notificationSoundEnabled ? 'Tắt âm thanh thông báo' : 'Bật âm thanh thông báo'}
+                </span>
+              </button>
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
