@@ -54,6 +54,22 @@ const getSafeAdminNotificationUrl = (raw?: string | null) => {
   }
 };
 
+const getNotificationTimestamp = (notification: AdminNotification) => {
+  const timestamp = notification.created_at ? new Date(notification.created_at).getTime() : 0;
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
+
+const sortAdminNotifications = (items: AdminNotification[]) =>
+  items
+    .slice()
+    .sort((a, b) => {
+      const unreadDiff = Number(Boolean(a.read_at)) - Number(Boolean(b.read_at));
+      if (unreadDiff !== 0) return unreadDiff;
+      const timeDiff = getNotificationTimestamp(b) - getNotificationTimestamp(a);
+      if (timeDiff !== 0) return timeDiff;
+      return Number(b.id || 0) - Number(a.id || 0);
+    });
+
 const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: HeaderProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -117,7 +133,7 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
     setNotificationsLoading(true);
     try {
       const response = await adminNotificationService.list(20);
-      const nextNotifications = Array.isArray(response.data) ? response.data : [];
+      const nextNotifications = sortAdminNotifications(Array.isArray(response.data) ? response.data : []);
       const firstLoad = !hasLoadedNotificationsRef.current;
       const freshOrderNotifications = firstLoad
         ? []
@@ -224,7 +240,7 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
   const openNotification = async (notification: AdminNotification) => {
     if (!notification.read_at) {
       setUnreadCount((value) => Math.max(0, value - 1));
-      setNotifications((prev) => prev.map((item) => (item.id === notification.id ? { ...item, read_at: new Date().toISOString() } : item)));
+      setNotifications((prev) => sortAdminNotifications(prev.map((item) => (item.id === notification.id ? { ...item, read_at: new Date().toISOString() } : item))));
       adminNotificationService.markRead(notification.id).catch(() => loadNotifications());
     }
     setNotificationOpen(false);
@@ -233,7 +249,7 @@ const Header = ({ darkMode, toggleDarkMode, sidebarOpen, onOpenMobileMenu }: Hea
 
   const markAllRead = async () => {
     setUnreadCount(0);
-    setNotifications((prev) => prev.map((item) => ({ ...item, read_at: item.read_at || new Date().toISOString() })));
+    setNotifications((prev) => sortAdminNotifications(prev.map((item) => ({ ...item, read_at: item.read_at || new Date().toISOString() }))));
     try {
       await adminNotificationService.markAllRead();
     } catch {
