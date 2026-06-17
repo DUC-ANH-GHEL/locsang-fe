@@ -14,7 +14,7 @@ const isAssetRequest = (requestUrl) =>
     requestUrl.pathname.endsWith('.webmanifest'));
 
 const isPublicApiRequest = (requestUrl) =>
-  requestUrl.origin === 'https://locsang-be.cgnn.vn' &&
+  requestUrl.origin === 'https://be.locsang.vn' &&
   (requestUrl.pathname === '/api/home' ||
     requestUrl.pathname === '/api/home-content' ||
     requestUrl.pathname === '/api/categories' ||

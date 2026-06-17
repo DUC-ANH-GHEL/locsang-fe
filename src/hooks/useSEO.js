@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 const SITE_NAME = 'Lộc Sang';
 const DEFAULT_DESCRIPTION = 'Lộc Sang - Mua sắm online sản phẩm chọn lọc, giá tốt và giao nhanh toàn quốc.';
 const DEFAULT_IMAGE = '/favicon.svg';
-const DEFAULT_URL = 'https://locsang.shop';
+const DEFAULT_URL = 'https://locsang.vn';
 
 const upsertMeta = (selector, attrs, content) => {
   let el = document.head.querySelector(selector);

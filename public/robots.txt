@@ -7,4 +7,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://locsang.shop/sitemap.xml
+Sitemap: https://locsang.vn/sitemap.xml
