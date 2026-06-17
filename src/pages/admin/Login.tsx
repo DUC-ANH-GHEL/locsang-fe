@@ -13,7 +13,6 @@ import { logo_url } from '../../config/api';
 interface LoginFormData {
   email: string;
   password: string;
-  rememberMe: boolean;
 }
 
 const loginValidationRules: ValidationRules = {
@@ -50,7 +49,6 @@ const AdminLoginPage: React.FC = () => {
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
-    rememberMe: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
@@ -62,14 +60,6 @@ const AdminLoginPage: React.FC = () => {
     const emailInput = document.getElementById('email');
     if (emailInput) emailInput.focus();
 
-    try {
-      const remembered = localStorage.getItem('locsang_admin_remember_me');
-      if (remembered === '1') {
-        setFormData((prev) => ({ ...prev, rememberMe: true }));
-      }
-    } catch {
-      // ignore storage read failures
-    }
   }, []);
 
   // Handle form changes
@@ -115,14 +105,8 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
       const urlParams = new URLSearchParams(window.location.search);
       const redirectUrl = getSafeAdminRedirect(urlParams.get('redirect'));
 
-      sessionStorage.setItem('adminToken', result.token);
-      localStorage.removeItem('adminToken');
-
-      try {
-        localStorage.setItem('locsang_admin_remember_me', formData.rememberMe ? '1' : '0');
-      } catch {
-        // ignore storage write failures
-      }
+      localStorage.setItem('adminToken', result.token);
+      sessionStorage.removeItem('adminToken');
 
       window.location.assign(redirectUrl);
 
@@ -242,22 +226,8 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
                 )}
               </div>
 
-              {/* Remember Me & Forgot Password */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
-                    id="remember-me"
-                    name="rememberMe"
-                    type="checkbox"
-                    checked={formData.rememberMe}
-                    onChange={handleChange}
-                    className={`h-4 w-4 ${darkMode ? 'bg-gray-950 border-gray-700 text-rose-500' : 'text-rose-600 border-gray-300'} rounded focus:ring-rose-500`}
-                  />
-                  <label htmlFor="remember-me" className={`ml-2 block text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Nhớ đăng nhập
-                  </label>
-                </div>
-
+              {/* Forgot Password */}
+              <div className="flex items-center justify-end">
                 <div className="text-sm">
                   <button
                     type="button"
