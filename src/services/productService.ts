@@ -2,7 +2,6 @@ import axios from 'axios';
 import { Product } from '../types/product';
 import { API_BASE_URL } from '../config/api';
 import { apiClient } from './apiClient';
-import { fetchCachedPublicData } from './publicCache';
 import { optimizeImageForUpload } from '../utils/imageUploadOptimization';
 import { parseApiDateTime } from '../utils/dateTime';
 
@@ -529,13 +528,7 @@ export const getStorefrontProducts = async (params: StorefrontProductsParams = {
     return items.map(normalizePublicProduct);
   };
 
-  if (!params.cacheKey) return fetcher();
-
-  return fetchCachedPublicData<Product[]>(
-    `products:${params.cacheKey}:${JSON.stringify(requestParams)}`,
-    fetcher,
-    { ttlMs: params.cacheTtlMs ?? 60_000 },
-  );
+  return fetcher();
 };
 
 export const getProducts = async (params: GetProductsParams = {}) => {
@@ -549,16 +542,10 @@ export const getProducts = async (params: GetProductsParams = {}) => {
 };
 
 export const getStorefrontProductById = async (id: number | string) => {
-  return fetchCachedPublicData<Product | null>(
-    `product-detail:${id}`,
-    async () => {
-      const response = await axios.get(`${getPublicApiBaseUrl()}/products/${id}`);
-      const raw = response?.data?.data;
-      if (!raw) return null;
-      return normalizePublicProduct(raw);
-    },
-    { ttlMs: 60_000 },
-  );
+  const response = await axios.get(`${getPublicApiBaseUrl()}/products/${id}`);
+  const raw = response?.data?.data;
+  if (!raw) return null;
+  return normalizePublicProduct(raw);
 };
 
 export const getStorefrontProductByIdFresh = async (id: number | string) => {
@@ -583,16 +570,10 @@ export const getStorefrontProductBySlug = async (slug: string) => {
   const safeSlug = String(slug || '').trim();
   if (!safeSlug) return null;
 
-  return fetchCachedPublicData<Product | null>(
-    `product-detail-slug:${safeSlug}`,
-    async () => {
-      const response = await axios.get(`${getPublicApiBaseUrl()}/products/slug/${encodeURIComponent(safeSlug)}`);
-      const raw = response?.data?.data;
-      if (!raw) return null;
-      return normalizePublicProduct(raw);
-    },
-    { ttlMs: 60_000 },
-  );
+  const response = await axios.get(`${getPublicApiBaseUrl()}/products/slug/${encodeURIComponent(safeSlug)}`);
+  const raw = response?.data?.data;
+  if (!raw) return null;
+  return normalizePublicProduct(raw);
 };
 
 export const productService = {

@@ -4,7 +4,6 @@ import axios from 'axios';
 import { optimizeImageForUpload } from '../utils/imageUploadOptimization';
 import type { Product } from '../types/product';
 import { normalizePublicProduct } from './productService';
-import { fetchCachedPublicData } from './publicCache';
 
 const PUBLIC_API_BASE_URL = API_BASE_URL.replace(/\/api\/v1\/?$/, '/api');
 
@@ -159,47 +158,35 @@ export const homeContentService = {
   },
 
   getPublicHomeContent: async (): Promise<HomeContentPublicResponse> => {
-    return fetchCachedPublicData<HomeContentPublicResponse>(
-      'home-content',
-      async () => {
-        const res = await axios.get(`${PUBLIC_API_BASE_URL}/home-content`, {
-          headers: { 'Content-Type': 'application/json' },
-        });
-        return res.data;
-      },
-      { ttlMs: 60_000 },
-    );
+    const res = await axios.get(`${PUBLIC_API_BASE_URL}/home-content`, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return res.data;
   },
 
   getPublicHomeData: async (): Promise<PublicHomeDataResponse> => {
-    return fetchCachedPublicData<PublicHomeDataResponse>(
-      'home-aggregate',
-      async () => {
-        const res = await axios.get(`${PUBLIC_API_BASE_URL}/home`, {
-          headers: { 'Content-Type': 'application/json' },
-        });
-        const data = res.data || {};
-        const categories = Array.isArray(data.categories_with_products)
-          ? data.categories_with_products.map((category: any) => ({
-              id: Number(category?.id ?? 0),
-              name: String(category?.name ?? '').trim(),
-              slug: category?.slug ?? null,
-              description: category?.description ?? null,
-              image: category?.image ?? null,
-              products: Array.isArray(category?.products)
-                ? category.products.map(normalizePublicProduct)
-                : [],
-            }))
-          : [];
+    const res = await axios.get(`${PUBLIC_API_BASE_URL}/home`, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = res.data || {};
+    const categories = Array.isArray(data.categories_with_products)
+      ? data.categories_with_products.map((category: any) => ({
+          id: Number(category?.id ?? 0),
+          name: String(category?.name ?? '').trim(),
+          slug: category?.slug ?? null,
+          description: category?.description ?? null,
+          image: category?.image ?? null,
+          products: Array.isArray(category?.products)
+            ? category.products.map(normalizePublicProduct)
+            : [],
+        }))
+      : [];
 
-        return {
-          home_content: data.home_content || { content: null, published_at: null },
-          categories_with_products: categories.filter((category: HomeCategoryWithProducts) => category.id > 0 && category.name),
-          best_sellers: Array.isArray(data.best_sellers) ? data.best_sellers.map(normalizePublicProduct) : [],
-          sale_products: Array.isArray(data.sale_products) ? data.sale_products.map(normalizePublicProduct) : [],
-        };
-      },
-      { ttlMs: 60_000 },
-    );
+    return {
+      home_content: data.home_content || { content: null, published_at: null },
+      categories_with_products: categories.filter((category: HomeCategoryWithProducts) => category.id > 0 && category.name),
+      best_sellers: Array.isArray(data.best_sellers) ? data.best_sellers.map(normalizePublicProduct) : [],
+      sale_products: Array.isArray(data.sale_products) ? data.sale_products.map(normalizePublicProduct) : [],
+    };
   },
 };

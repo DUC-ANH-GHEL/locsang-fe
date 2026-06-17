@@ -419,7 +419,7 @@ const ProductReadonlyDetail = () => {
               </div>
             ) : (
               <>
-                <div className="space-y-3 sm:hidden">
+                <div className="space-y-3 lg:hidden">
                   {variants.map((variant: any) => {
                     const variantStatus = statusMeta[normalizeStatus(variant.status || (variant.is_active ? 'active' : 'draft'))] || statusMeta.draft;
                     const stockValue = Number(variant?.stock || 0);
@@ -445,7 +445,7 @@ const ProductReadonlyDetail = () => {
                   })}
                 </div>
 
-                <div className="hidden overflow-x-auto sm:block">
+                <div className="hidden overflow-x-auto lg:block">
                   <table className="min-w-[720px] divide-y divide-slate-100 text-sm dark:divide-slate-800">
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wide text-slate-400">

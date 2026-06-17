@@ -119,11 +119,25 @@ const Header = ({ onOpenSearch }) => {
     navigate('/checkout');
   };
 
+  const handleHomeClick = (event) => {
+    event?.preventDefault();
+    setCartOpen(false);
+    navigate('/');
+  };
+
+  const handleMobileBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate('/products');
+  };
+
   return (
     <header className="fixed inset-x-0 top-0 z-50 bg-white">
       <div className="hidden border-b border-[#e5e5e5] bg-white md:block">
         <div className="mx-auto flex h-[4.75rem] max-w-[944px] items-center justify-between px-6">
-          <Link to="/" className="flex min-w-0 items-center" aria-label="Về trang chủ Lộc Sang">
+          <Link to="/" onClick={handleHomeClick} className="flex min-w-0 items-center" aria-label="Về trang chủ Lộc Sang">
             <BrandLockup />
           </Link>
 
@@ -179,7 +193,7 @@ const Header = ({ onOpenSearch }) => {
           {isProductDetailMobileHeader ? (
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={handleMobileBack}
               className="inline-flex h-11 w-11 shrink-0 items-center justify-center text-[#111] active:scale-[0.98]"
               aria-label="Quay lại"
             >
@@ -189,7 +203,7 @@ const Header = ({ onOpenSearch }) => {
             <span aria-hidden="true" />
           )}
 
-          <Link to="/" className="col-start-2 flex min-w-0 justify-center" aria-label="Về trang chủ Lộc Sang">
+          <Link to="/" onClick={handleHomeClick} className="col-start-2 flex min-w-0 justify-center" aria-label="Về trang chủ Lộc Sang">
             <BrandLockup compact />
           </Link>
 

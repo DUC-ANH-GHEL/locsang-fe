@@ -37,7 +37,7 @@ const getGalleryImages = (product, variant) => {
   if (Array.isArray(product?.images)) product.images.forEach(push);
   push(getProductImage(product));
 
-  return images.slice(0, 5);
+  return images.slice(0, 9);
 };
 
 const cleanText = (value) =>
@@ -168,6 +168,17 @@ const sanitizeDescriptionHtml = (value) => {
   return stripClipboardFragments(template.innerHTML).trim();
 };
 
+const hasRenderableHtml = (html) => {
+  const value = String(html || '').trim();
+  if (!value) return false;
+  if (typeof window === 'undefined') return cleanText(value).length > 0;
+
+  const template = document.createElement('template');
+  template.innerHTML = value;
+  if (template.content.querySelector('img[src]')) return true;
+  return String(template.content.textContent || '').trim().length > 0;
+};
+
 const ProductDetail = () => {
   const { id, slug } = useParams();
   const navigate = useNavigate();
@@ -183,6 +194,7 @@ const ProductDetail = () => {
   const [loadFailed, setLoadFailed] = useState(false);
   const mainImageRef = useRef(null);
   const variantSelectorRef = useRef(null);
+  const touchStartRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     let cancelled = false;
@@ -274,6 +286,7 @@ const ProductDetail = () => {
   const discountLabel = getDiscountLabel(selectedVariant || product) || (pricing.hasDiscount ? '-15%' : '');
   const shortDescription = useMemo(() => cleanText(product?.short_description), [product?.short_description]);
   const longDescription = useMemo(() => sanitizeDescriptionHtml(product?.description), [product?.description]);
+  const shouldShowLongDescription = useMemo(() => hasRenderableHtml(longDescription), [longDescription]);
 
   useEffect(() => {
     if (selectedImageIndex >= galleryImages.length) {
@@ -307,6 +320,29 @@ const ProductDetail = () => {
     if (!inStock) return;
     if (animate) flyProductImageToCart(mainImageRef.current);
     addToCart(toCartPayload(product, quantity, selectedVariant));
+  };
+
+  const showGalleryImage = (direction) => {
+    if (galleryImages.length <= 1) return;
+    setSelectedImageIndex((current) => {
+      if (direction > 0) return (current + 1) % galleryImages.length;
+      return (current - 1 + galleryImages.length) % galleryImages.length;
+    });
+  };
+
+  const handleGalleryTouchStart = (event) => {
+    const touch = event.touches?.[0];
+    if (!touch) return;
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleGalleryTouchEnd = (event) => {
+    const touch = event.changedTouches?.[0];
+    if (!touch) return;
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    if (Math.abs(deltaX) < 42 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+    showGalleryImage(deltaX < 0 ? 1 : -1);
   };
 
   const buyNow = () => {
@@ -346,7 +382,11 @@ const ProductDetail = () => {
   return (
     <div className="min-h-screen bg-white pb-[calc(env(safe-area-inset-bottom,0px)+13.5rem)] text-[#111] md:bg-[#f5f5f5] md:pb-0">
       <main className="mx-auto w-full max-w-[944px] bg-white font-sans md:shadow-2xl md:shadow-black/10">
-        <section className="relative border-b border-[#e5e5e5] bg-white">
+        <section
+          className="relative touch-pan-y border-b border-[#e5e5e5] bg-white"
+          onTouchStart={handleGalleryTouchStart}
+          onTouchEnd={handleGalleryTouchEnd}
+        >
           {discountLabel && (
             <div className="absolute left-4 top-4 z-10 rounded-lg bg-[#e30613] px-3 py-2 text-[1.25rem] font-black leading-none text-white">
               {discountLabel}
@@ -367,13 +407,13 @@ const ProductDetail = () => {
 
         {galleryImages.length > 1 && (
           <section className="border-b border-[#eeeeee] px-4 py-3">
-            <div className="grid grid-cols-4 gap-3">
-              {galleryImages.slice(0, 4).map((image, index) => (
+            <div className="flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {galleryImages.map((image, index) => (
                 <button
                   key={`${image}-${index}`}
                   type="button"
                   onClick={() => setSelectedImageIndex(index)}
-                  className={`flex aspect-[1.35/1] items-center justify-center rounded-lg border bg-white p-1.5 ${
+                  className={`flex h-[4.65rem] w-[4.65rem] flex-none items-center justify-center rounded-lg border bg-white p-1.5 ${
                     index === selectedImageIndex ? 'border-2 border-[#e30613]' : 'border-[#e1e1e1]'
                   }`}
                 >
@@ -382,7 +422,7 @@ const ProductDetail = () => {
                     alt={`${product.name} ${index + 1}`}
                     loading="lazy"
                     decoding="async"
-                    className="max-h-full max-w-full object-contain"
+                    className="h-full w-full rounded-md object-cover"
                   />
                 </button>
               ))}
@@ -508,7 +548,7 @@ const ProductDetail = () => {
           </div>
 
 
-          {longDescription && (
+          {shouldShowLongDescription && (
             <div className="mt-5 rounded-xl border border-[#e1e1e1] bg-white p-4 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
               <h2 className="text-[1.05rem] font-black uppercase text-[#111]">Mô tả sản phẩm</h2>
               <div
