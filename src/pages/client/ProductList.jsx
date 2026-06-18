@@ -221,6 +221,17 @@ const ProductList = () => {
     setSearchParams(next);
   };
 
+  const scrollToProductListTop = () => {
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  };
+
+  const handleSortChange = (event) => {
+    setSortBy(event.target.value);
+    scrollToProductListTop();
+  };
+
   const visibleProducts = useMemo(() => {
     return products.filter((product) => {
       if (!canPurchaseProduct(product)) return false;
@@ -306,7 +317,7 @@ const ProductList = () => {
               <ChevronDown size={22} />
               <select
                 value={sortBy}
-                onChange={(event) => setSortBy(event.target.value)}
+                onChange={handleSortChange}
                 className="absolute inset-0 h-full w-full opacity-0"
                 aria-label="Sắp xếp sản phẩm"
               >
