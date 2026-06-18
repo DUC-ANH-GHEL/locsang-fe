@@ -121,9 +121,22 @@ type StorefrontProductsParams = {
   sortBy?: 'createdAt' | 'price' | 'name' | 'bestSelling';
   order?: 'asc' | 'desc';
   includeTotal?: boolean;
+  saleOnly?: boolean;
   card?: boolean;
   cacheKey?: string;
   cacheTtlMs?: number;
+};
+
+type StorefrontProductsPage = {
+  items: Product[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
 };
 
 const STORE_DEFAULT_IMAGE_URL = '/favicon.svg';
@@ -501,7 +514,7 @@ export const getProductById = async (id: number | string) => {
   return response.data;
 };
 
-export const getStorefrontProducts = async (params: StorefrontProductsParams = {}) => {
+export const getStorefrontProductPage = async (params: StorefrontProductsParams = {}): Promise<StorefrontProductsPage> => {
   const requestedLimit = Number(params.limit ?? 100);
   const safeLimit = Number.isFinite(requestedLimit) ? Math.max(1, Math.min(100, requestedLimit)) : 100;
 
@@ -515,20 +528,33 @@ export const getStorefrontProducts = async (params: StorefrontProductsParams = {
     status: params.status ?? 'active',
     sortBy: params.sortBy,
     order: params.order,
+    saleOnly: params.saleOnly ? 'true' : undefined,
     includeTotal: params.includeTotal === false ? 'false' : undefined,
     card: params.card ? 'true' : undefined,
   };
 
-  const fetcher = async () => {
-    const response = await axios.get(`${getPublicApiBaseUrl()}/products`, {
-      params: requestParams,
-    });
+  const response = await axios.get(`${getPublicApiBaseUrl()}/products`, {
+    params: requestParams,
+  });
 
-    const items = Array.isArray(response?.data?.data) ? response.data.data : [];
-    return items.map(normalizePublicProduct);
+  const items = Array.isArray(response?.data?.data) ? response.data.data : [];
+  const pagination = response?.data?.pagination || {};
+  return {
+    items: items.map(normalizePublicProduct),
+    pagination: {
+      page: Number(pagination?.page ?? requestParams.page ?? 1),
+      limit: Number(pagination?.limit ?? safeLimit),
+      totalItems: Number(pagination?.totalItems ?? items.length),
+      totalPages: Number(pagination?.totalPages ?? 1),
+      hasNext: Boolean(pagination?.hasNext ?? false),
+      hasPrev: Boolean(pagination?.hasPrev ?? Number(requestParams.page ?? 1) > 1),
+    },
   };
+};
 
-  return fetcher();
+export const getStorefrontProducts = async (params: StorefrontProductsParams = {}) => {
+  const page = await getStorefrontProductPage(params);
+  return page.items;
 };
 
 export const getProducts = async (params: GetProductsParams = {}) => {
@@ -584,6 +610,7 @@ export const productService = {
   getProductVariants,
   updateVariantPartial,
   getProductById,
+  getStorefrontProductPage,
   getStorefrontProducts,
   getStorefrontProductById,
   getStorefrontProductByIdFresh,

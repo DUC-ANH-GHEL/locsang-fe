@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowDownUp, ChevronDown } from 'lucide-react';
 
@@ -19,7 +19,7 @@ import {
   toCartPayload,
 } from '../../data/yanmarStorefront';
 
-const FALLBACK_CATEGORY_CHIPS = ['Nhớt', 'Động cơ', 'Lọc nhớt', 'Dây curoa'];
+const PRODUCT_PAGE_SIZE = 10;
 
 const SORT_OPTIONS = [
   { value: 'default', label: 'Sắp xếp' },
@@ -34,15 +34,28 @@ const normalizeText = (value) =>
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
+const sortToApiParams = (sortBy) => {
+  if (sortBy === 'price_asc') return { sortBy: 'price', order: 'asc' };
+  if (sortBy === 'price_desc') return { sortBy: 'price', order: 'desc' };
+  if (sortBy === 'name_asc') return { sortBy: 'name', order: 'asc' };
+  return { sortBy: 'createdAt', order: 'desc' };
+};
+
 const ProductList = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { addToCart } = useCart();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [loadingInitial, setLoadingInitial] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [hasSaleCategory, setHasSaleCategory] = useState(false);
   const [sortBy, setSortBy] = useState('default');
+  const observerRef = useRef(null);
+  const loadTokenRef = useRef(0);
   const selectedCategoryId = searchParams.get('categoryId') || '';
   const selectedCategoryName = searchParams.get('category') || '';
   const selectedSaleOnly = searchParams.get('sale') === '1';
@@ -60,40 +73,71 @@ const ProductList = () => {
     canonicalPath: '/products',
   });
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadProductPage = useCallback(
+    async (pageToLoad, { replace = false } = {}) => {
+      const token = loadTokenRef.current;
+      const apiSort = sortToApiParams(sortBy);
 
-    const loadProducts = async () => {
       try {
-        setLoading(true);
-        const data = await productService.getStorefrontProducts({
+        if (replace) {
+          setLoadingInitial(true);
+        } else {
+          setLoadingMore(true);
+        }
+
+        const result = await productService.getStorefrontProductPage({
           status: 'active',
-          limit: 60,
-          page: 1,
+          limit: PRODUCT_PAGE_SIZE,
+          page: pageToLoad,
           categoryId: selectedCategoryId || undefined,
           includeTotal: false,
           card: true,
-          cacheKey: `product-list:${selectedCategoryId || 'all'}`,
+          saleOnly: selectedSaleOnly,
+          ...apiSort,
         });
-        if (!cancelled) {
-          setProducts(Array.isArray(data) ? data : []);
-          setLoadFailed(false);
-        }
-      } catch {
-        if (!cancelled) {
-          setProducts([]);
-          setLoadFailed(true);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
 
-    loadProducts();
+        if (token !== loadTokenRef.current) return;
+
+        const nextItems = Array.isArray(result?.items) ? result.items : [];
+        setProducts((current) => {
+          if (replace) return nextItems;
+          const seen = new Set(current.map((product) => String(product.id)));
+          return [...current, ...nextItems.filter((product) => !seen.has(String(product.id)))];
+        });
+        setPage(pageToLoad);
+        setHasNextPage(Boolean(result?.pagination?.hasNext));
+        setLoadFailed(false);
+      } catch {
+        if (token !== loadTokenRef.current) return;
+        if (replace) {
+          setProducts([]);
+          setHasNextPage(false);
+        }
+        setLoadFailed(true);
+      } finally {
+        if (token === loadTokenRef.current) {
+          setLoadingInitial(false);
+          setLoadingMore(false);
+        }
+      }
+    },
+    [selectedCategoryId, selectedSaleOnly, sortBy],
+  );
+
+  useEffect(() => {
+    loadTokenRef.current += 1;
+    setProducts([]);
+    setPage(1);
+    setHasNextPage(false);
+    setLoadFailed(false);
+    loadProductPage(1, { replace: true });
+  }, [loadProductPage]);
+
+  useEffect(() => {
     return () => {
-      cancelled = true;
+      if (observerRef.current) observerRef.current.disconnect();
     };
-  }, [selectedCategoryId]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,9 +159,36 @@ const ProductList = () => {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSaleAvailability = async () => {
+      try {
+        const result = await productService.getStorefrontProductPage({
+          status: 'active',
+          limit: 1,
+          page: 1,
+          includeTotal: false,
+          card: true,
+          saleOnly: true,
+        });
+        if (!cancelled) setHasSaleCategory((result?.items || []).length > 0);
+      } catch {
+        if (!cancelled) setHasSaleCategory(false);
+      }
+    };
+
+    loadSaleAvailability();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const hasSaleProducts = useMemo(
-    () => products.some((product) => canPurchaseProduct(product) && getProductPricing(product).hasDiscount),
-    [products],
+    () =>
+      hasSaleCategory ||
+      products.some((product) => canPurchaseProduct(product) && getProductPricing(product).hasDiscount),
+    [hasSaleCategory, products],
   );
 
   const categoryChips = useMemo(() => {
@@ -129,22 +200,9 @@ const ProductList = () => {
         categoryId: String(category.id),
       }));
 
-    const saleChip = hasSaleProducts ? [{ key: 'sale', label: 'Khuyến mãi', saleOnly: true }] : [];
-
-    if (liveCategories.length > 0) {
-      return [{ key: 'all', label: 'Tất cả' }, ...saleChip, ...liveCategories];
-    }
-
-    return [
-      { key: 'all', label: 'Tất cả' },
-      ...saleChip,
-      ...FALLBACK_CATEGORY_CHIPS.map((label) => ({
-        key: `name:${label}`,
-        label,
-        categoryName: label,
-      })),
-    ];
-  }, [categories, hasSaleProducts]);
+    const saleChip = hasSaleProducts || selectedSaleOnly ? [{ key: 'sale', label: 'Khuyến mãi', saleOnly: true }] : [];
+    return [{ key: 'all', label: 'Tất cả' }, ...saleChip, ...liveCategories];
+  }, [categories, hasSaleProducts, selectedSaleOnly]);
 
   const selectCategory = (category) => {
     const next = new URLSearchParams(searchParams);
@@ -164,29 +222,32 @@ const ProductList = () => {
   };
 
   const visibleProducts = useMemo(() => {
-    let next = products.filter((product) => {
+    return products.filter((product) => {
       if (!canPurchaseProduct(product)) return false;
       if (!selectedCategoryName) return true;
       const categoryToken = normalizeText(selectedCategoryName);
       const haystack = normalizeText(`${product?.category_name || ''} ${product?.name || ''} ${product?.description || ''}`);
       return haystack.includes(categoryToken);
     });
+  }, [selectedCategoryName, products]);
 
-    if (selectedSaleOnly) {
-      next = next.filter((product) => getProductPricing(product).hasDiscount);
-    }
+  const loadMoreRef = useCallback(
+    (node) => {
+      if (observerRef.current) observerRef.current.disconnect();
+      if (!node || loadingInitial || loadingMore || !hasNextPage || loadFailed) return;
 
-    next = [...next];
-    if (sortBy === 'price_asc') {
-      next.sort((a, b) => getProductPricing(a).currentPrice - getProductPricing(b).currentPrice);
-    } else if (sortBy === 'price_desc') {
-      next.sort((a, b) => getProductPricing(b).currentPrice - getProductPricing(a).currentPrice);
-    } else if (sortBy === 'name_asc') {
-      next.sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), 'vi'));
-    }
-
-    return next;
-  }, [selectedCategoryName, selectedSaleOnly, sortBy, products]);
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting && !loadingMore && hasNextPage) {
+            loadProductPage(page + 1);
+          }
+        },
+        { root: null, rootMargin: '520px 0px', threshold: 0 },
+      );
+      observerRef.current.observe(node);
+    },
+    [hasNextPage, loadFailed, loadProductPage, loadingInitial, loadingMore, page],
+  );
 
   const addProduct = (product, event) => {
     if (!canPurchaseProduct(product)) return;
@@ -215,50 +276,52 @@ const ProductList = () => {
           Danh sách sản phẩm
         </h1>
 
-        <div className="mt-4 flex gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {categoryChips.map((category) => {
-            const active = category.key === activeCategoryKey;
-            return (
-              <button
-                key={category.key}
-                type="button"
-                onClick={() => selectCategory(category)}
-                className={`h-11 shrink-0 rounded-xl border px-4 text-[0.98rem] font-black transition active:scale-[0.98] max-[390px]:px-3.5 max-[390px]:text-[0.88rem] ${
-                  active
-                    ? 'border-[#e30613] bg-[#e30613] text-white shadow-[0_8px_20px_rgba(227,6,19,0.18)]'
-                    : 'border-[#d6d6d6] bg-white text-[#202020]'
-                }`}
-              >
-                {category.label}
-              </button>
-            );
-          })}
-        </div>
+        <div className="sticky top-[calc(env(safe-area-inset-top,0px)+5.05rem)] z-20 -mx-3.5 mt-4 border-b border-[#eeeeee] bg-white/95 px-3.5 pb-3 pt-2 shadow-[0_8px_18px_rgba(0,0,0,0.04)] backdrop-blur sm:-mx-6 sm:px-6 md:top-[4.75rem]">
+          <div className="flex gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {categoryChips.map((category) => {
+              const active = category.key === activeCategoryKey;
+              return (
+                <button
+                  key={category.key}
+                  type="button"
+                  onClick={() => selectCategory(category)}
+                  className={`h-11 shrink-0 rounded-xl border px-4 text-[0.98rem] font-black transition active:scale-[0.98] max-[390px]:px-3.5 max-[390px]:text-[0.88rem] ${
+                    active
+                      ? 'border-[#e30613] bg-[#e30613] text-white shadow-[0_8px_20px_rgba(227,6,19,0.18)]'
+                      : 'border-[#d6d6d6] bg-white text-[#202020]'
+                  }`}
+                >
+                  {category.label}
+                </button>
+              );
+            })}
+          </div>
 
-        <div className="mt-4">
-          <label className="relative flex h-14 w-full items-center justify-between rounded-xl border border-[#d9d9d9] bg-white px-4 text-[#111] sm:max-w-[18rem]">
-            <span className="flex items-center gap-2 text-[1.02rem] font-black max-[390px]:text-[0.92rem]">
-              <ArrowDownUp size={26} className="text-[#e30613]" />
-              {SORT_OPTIONS.find((item) => item.value === sortBy)?.label || 'Sắp xếp'}
-            </span>
-            <ChevronDown size={22} />
-            <select
-              value={sortBy}
-              onChange={(event) => setSortBy(event.target.value)}
-              className="absolute inset-0 h-full w-full opacity-0"
-              aria-label="Sắp xếp sản phẩm"
-            >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="mt-3">
+            <label className="relative flex h-14 w-full items-center justify-between rounded-xl border border-[#d9d9d9] bg-white px-4 text-[#111] sm:max-w-[18rem]">
+              <span className="flex items-center gap-2 text-[1.02rem] font-black max-[390px]:text-[0.92rem]">
+                <ArrowDownUp size={26} className="text-[#e30613]" />
+                {SORT_OPTIONS.find((item) => item.value === sortBy)?.label || 'Sắp xếp'}
+              </span>
+              <ChevronDown size={22} />
+              <select
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value)}
+                className="absolute inset-0 h-full w-full opacity-0"
+                aria-label="Sắp xếp sản phẩm"
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
 
         <section className="mt-4 grid grid-cols-2 gap-3">
-          {(loading || loadFailed) && products.length === 0
+          {(loadingInitial || loadFailed) && products.length === 0
             ? Array.from({ length: 6 }).map((_, index) => <ProductSkeleton key={index} />)
             : visibleProducts.map((product) => (
                 <ProductCard
@@ -271,7 +334,7 @@ const ProductList = () => {
               ))}
         </section>
 
-        {!loading && !loadFailed && visibleProducts.length === 0 && (
+        {!loadingInitial && !loadFailed && visibleProducts.length === 0 && (
           <div className="mt-8 rounded-2xl border border-[#eee] bg-[#fafafa] px-5 py-8 text-center">
             <p className="text-lg font-black text-[#111]">Chưa có sản phẩm phù hợp</p>
             <button
@@ -283,6 +346,14 @@ const ProductList = () => {
             </button>
           </div>
         )}
+
+        {loadingMore && (
+          <section className="mt-3 grid grid-cols-2 gap-3" aria-label="Đang tải thêm sản phẩm">
+            {Array.from({ length: 2 }).map((_, index) => <ProductSkeleton key={`more-${index}`} />)}
+          </section>
+        )}
+
+        <div ref={loadMoreRef} className="h-12" aria-hidden="true" />
       </main>
     </div>
   );
